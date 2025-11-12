@@ -22,14 +22,20 @@ export default function JobList() {
         setLoading(true);
         setError(null);
 
-        const [localResponse, externalJobs] = await Promise.all([
+        const [localResult, externalResult] = await Promise.allSettled([
           axios.get("http://localhost:8080/api/jobs", {
             withCredentials: true,
           }),
           fetchJobs("software developer in India"),
         ]);
 
-        const localJobs = (localResponse.data || []).map((job, idx) => ({
+        const localData =
+          localResult.status === "fulfilled" ? localResult.value.data : [];
+        const externalJobs =
+          externalResult.status === "fulfilled" ? externalResult.value : [];
+
+        const localJobs = (Array.isArray(localData) ? localData : []).map(
+          (job, idx) => ({
           id:
             job.id ??
             job._id ??
@@ -42,7 +48,7 @@ export default function JobList() {
           raw: job,
         }));
 
-        const rapidJobs = (externalJobs || []).map((job) => ({
+        const rapidJobs = (Array.isArray(externalJobs) ? externalJobs : []).map((job) => ({
           id: job.job_id,
           title: job.job_title,
           description: job.job_description,
@@ -53,6 +59,19 @@ export default function JobList() {
         }));
 
         setJobs([...localJobs, ...rapidJobs]);
+
+        if (
+          localResult.status === "rejected" &&
+          externalResult.status === "fulfilled"
+        ) {
+          console.warn("Failed to load local jobs:", localResult.reason);
+        }
+        if (
+          externalResult.status === "rejected" &&
+          localResult.status === "fulfilled"
+        ) {
+          console.warn("Failed to load external jobs:", externalResult.reason);
+        }
       } catch (err) {
         console.error("Error fetching jobs:", err);
         setError("Unable to load jobs right now. Please try again later.");
