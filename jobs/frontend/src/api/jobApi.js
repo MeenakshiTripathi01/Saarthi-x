@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_KEY = 'efa1b0fc04mshe3bf27ddf6d5c80p1cac9bjsn574050d4c9d0';
+const API_KEY = 'f0235cd2b0mshac603cc0e4cabafp1ffb39jsnd44cae2de884';
 const HOST = 'jsearch.p.rapidapi.com';
 const BASE_URL = `https://${HOST}`;
 
@@ -24,6 +24,7 @@ export const fetchJobs = async (query = 'developer jobs', location = 'us', page 
 
   try {
     const response = await axios.request(options);
+    console.log(response.data);
     return response.data.data || [];
   } catch (error) {
     console.error('Error fetching jobs:', error);
