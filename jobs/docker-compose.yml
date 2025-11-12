@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saarthix-backend
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/saarthix
+      - SPRING_DATA_MONGODB_DATABASE=saarthix
+      - SPRING_PROFILES_ACTIVE=default
+    depends_on:
+      - mongo
+      - redis
+    restart: always
+
+  mongo:
+    image: mongo:7
+    container_name: saarthix-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+
+  redis:
+    image: redis:latest
+    container_name: saarthix-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+volumes:
+  mongo-data:
