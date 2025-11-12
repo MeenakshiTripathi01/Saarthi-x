@@ -3,7 +3,7 @@ const BACKEND_URL = 'http://localhost:8080';
 // Check if user is authenticated
 export const checkAuth = async () => {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/jobs`, {
+    const response = await fetch(`${BACKEND_URL}/api/auth/me`, {
       credentials: 'include'
     });
     
