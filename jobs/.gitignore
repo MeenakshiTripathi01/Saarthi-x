@@ -35,3 +35,13 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Node ###
+node_modules/
+application.properties
+docker-compose.yml
+Dockerfile
+.dockerignore
+.gitattributes
+.gitignore jobs
+

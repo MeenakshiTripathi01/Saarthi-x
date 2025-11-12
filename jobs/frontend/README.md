@@ -1,75 +1,98 @@
-# Frontend Setup
+# Saarthix Jobs - React Frontend
 
-This is a minimal frontend for the Jobs Portal application.
+A modern React frontend for the Saarthix Jobs portal with RapidAPI integration and Google OAuth authentication.
 
 ## Features
 
-- Display jobs fetched from the backend API
-- Google OAuth login integration
-- Apply button disabled when not logged in
-- User profile display when logged in
+- 🔍 **Job Search** - Search jobs using RapidAPI JSearch
+- 📋 **Job Details** - View detailed job information
+- 🔐 **Google Authentication** - Login with Google OAuth
+- 🚫 **Protected Apply** - Apply to jobs only when logged in
+- 📱 **Responsive Design** - Works on all devices
 
 ## Setup Instructions
 
-### Option 1: Using Python HTTP Server (Recommended)
+### 1. Install Dependencies
 
-1. Navigate to the frontend directory:
-   ```bash
-   cd jobs/frontend
-   ```
-
-2. Start a simple HTTP server:
-   ```bash
-   # Python 3
-   python -m http.server 3000
-   
-   # Or Python 2
-   python -m SimpleHTTPServer 3000
-   ```
-
-3. Open your browser and go to: `http://localhost:3000`
-
-### Option 2: Using Node.js http-server
-
-1. Install http-server globally (if not already installed):
-   ```bash
-   npm install -g http-server
-   ```
-
-2. Navigate to the frontend directory:
-   ```bash
-   cd jobs/frontend
-   ```
-
-3. Start the server:
-   ```bash
-   http-server -p 3000
-   ```
-
-4. Open your browser and go to: `http://localhost:3000`
-
-### Option 3: Using VS Code Live Server
-
-1. Install the "Live Server" extension in VS Code
-2. Right-click on `index.html` and select "Open with Live Server"
-
-## Backend Requirements
-
-Make sure the Spring Boot backend is running on `http://localhost:8080` before using the frontend.
-
-## Configuration
-
-If your backend runs on a different port, update the `API_BASE` constant in `app.js`:
-
-```javascript
-const API_BASE = 'http://localhost:8080/api';
+```bash
+cd jobs/frontend
+npm install
 ```
 
-## Usage
+### 2. Start Development Server
 
-1. Start the backend server (port 8080)
-2. Start the frontend server (port 3000)
-3. Open `http://localhost:3000` in your browser
-4. Click "Sign in with Google" to login
-5. Browse jobs and apply (login required)
+```bash
+npm run dev
+```
 
+The frontend will run on `http://localhost:5173`
+
+### 3. Backend Requirements
+
+Make sure your Spring Boot backend is running on `http://localhost:8080` before using the frontend.
+
+## API Integration
+
+The frontend uses RapidAPI JSearch API for job listings:
+
+- **Search Jobs**: `/search` endpoint
+- **Job Details**: `/job-details` endpoint
+- **Estimated Salaries**: `/estimated-salary` endpoint (available but not used in UI yet)
+
+API credentials are configured in `src/api/jobApi.js`.
+
+## Authentication Flow
+
+1. User clicks "Sign in with Google"
+2. Redirects to Spring Boot OAuth endpoint
+3. After successful login, redirects back to frontend
+4. Frontend checks auth status via `/api/auth/me`
+5. Apply buttons are enabled when authenticated
+
+## Project Structure
+
+```
+frontend/
+├── src/
+│   ├── api/
+│   │   ├── authApi.js      # Authentication API calls
+│   │   └── jobApi.js        # RapidAPI job search calls
+│   ├── components/
+│   │   ├── Header.jsx       # Header with login/logout
+│   │   └── JobList.jsx      # Job listing and search
+│   ├── App.jsx              # Main app component
+│   ├── main.jsx             # React entry point
+│   └── index.css            # Tailwind CSS imports
+├── index.html               # HTML template
+├── vite.config.js          # Vite configuration
+├── tailwind.config.js      # Tailwind CSS configuration
+└── package.json            # Dependencies
+
+```
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+
+## Environment Variables
+
+If you need to change the backend URL, update it in:
+- `src/api/authApi.js` - `BACKEND_URL` constant
+- `src/api/jobApi.js` - API endpoints (if using proxy)
+
+## Troubleshooting
+
+### CORS Issues
+Make sure your backend CORS configuration allows `http://localhost:5173`
+
+### Authentication Not Working
+1. Check that backend is running on port 8080
+2. Verify OAuth redirect URL in backend config matches frontend URL
+3. Check browser console for errors
+
+### Jobs Not Loading
+1. Verify RapidAPI key is valid in `src/api/jobApi.js`
+2. Check network tab for API errors
+3. Ensure backend `/api/jobs` endpoint is accessible
