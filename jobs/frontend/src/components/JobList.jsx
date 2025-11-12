@@ -33,6 +33,7 @@ export default function JobList() {
           localResult.status === "fulfilled" ? localResult.value.data : [];
         const externalJobs =
           externalResult.status === "fulfilled" ? externalResult.value : [];
+        console.log(localData, externalJobs);
 
         const localJobs = (Array.isArray(localData) ? localData : []).map(
           (job, idx) => ({
