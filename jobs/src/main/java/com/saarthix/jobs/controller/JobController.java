@@ -1,51 +1,60 @@
 package com.saarthix.jobs.controller;
 
 import com.saarthix.jobs.model.Job;
-import com.saarthix.jobs.service.JobService;
+import com.saarthix.jobs.repository.JobRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/jobs")
 @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class JobController {
 
-    private final JobService jobService;
+    private final JobRepository jobRepository;
 
-    public JobController(JobService jobService) {
-        this.jobService = jobService;
+    public JobController(JobRepository jobRepository) {
+        this.jobRepository = jobRepository;
     }
 
-    // 🔹 Get all jobs
+    // ✅ GET all jobs (public)
     @GetMapping
     public List<Job> getAllJobs() {
-        return jobService.getAllJobs();
+        return jobRepository.findAll();
     }
 
-    // 🔹 Get a single job by ID
+    // ✅ GET a single job by ID
     @GetMapping("/{id}")
-    public Job getJobById(@PathVariable String id) {
-        return jobService.getJobById(id)
-                .orElseThrow(() -> new RuntimeException("Job not found with id: " + id));
+    public Optional<Job> getJobById(@PathVariable String id) {
+        return jobRepository.findById(id);
     }
 
-    // 🔹 Create new job
+    // ✅ POST a new job (will be made protected later)
     @PostMapping
     public Job createJob(@RequestBody Job job) {
-        return jobService.createJob(job);
+        return jobRepository.save(job);
     }
 
-    // 🔹 Update existing job
+    // ✅ PUT update a job
     @PutMapping("/{id}")
     public Job updateJob(@PathVariable String id, @RequestBody Job updatedJob) {
-        return jobService.updateJob(id, updatedJob);
+        return jobRepository.findById(id)
+            .map(job -> {
+                job.setTitle(updatedJob.getTitle());
+                job.setDescription(updatedJob.getDescription());
+                job.setCompany(updatedJob.getCompany());
+                job.setLocation(updatedJob.getLocation());
+                job.setActive(updatedJob.isActive());
+                return jobRepository.save(job);
+            })
+            .orElseThrow(() -> new RuntimeException("Job not found"));
     }
 
-    // 🔹 Delete job
+    // ✅ DELETE a job
     @DeleteMapping("/{id}")
     public String deleteJob(@PathVariable String id) {
-        jobService.deleteJob(id);
-        return "Job deleted successfully.";
+        jobRepository.deleteById(id);
+        return "Job deleted successfully";
     }
 }

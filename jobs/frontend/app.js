@@ -12,7 +12,7 @@ loginBtn.addEventListener("click", () => {
 
 // 2️⃣ Fetch logged-in user info
 async function fetchUser() {
-  const res = await fetch(`${backendUrl}/api/auth/me`, {
+  const res = await fetch(`${backendUrl}/api/jobs`, {
     credentials: "include",
   });
   const data = await res.json();
@@ -23,9 +23,7 @@ async function fetchUser() {
       <span>Welcome, ${data.name}</span>
     `;
     loginBtn.style.display = "none";
-  } else {
-    userInfoDiv.innerHTML = "Not logged in";
-  }
+  } 
 }
 
 // 3️⃣ Fetch jobs

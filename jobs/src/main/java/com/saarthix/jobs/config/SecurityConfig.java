@@ -4,12 +4,16 @@ import com.saarthix.jobs.model.User;
 import com.saarthix.jobs.repository.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Optional;
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -23,28 +27,43 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // ✅ New syntax for Spring Boot 3.5+
-            .cors(cors -> cors.configurationSource(request -> {
-                var config = new org.springframework.web.cors.CorsConfiguration();
-                config.setAllowedOrigins(java.util.List.of("http://localhost:3000"));
-                config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                config.setAllowedHeaders(java.util.List.of("*"));
-                config.setAllowCredentials(true);
-                return config;
-            }))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/**", "/oauth2/**", "/login/**").permitAll()
-                .anyRequest().authenticated()
-            )
-            .oauth2Login(oauth -> oauth
-                .defaultSuccessUrl("/api/auth/success", true)
-                .successHandler(successHandler())
-            );
+                // ✅ Enable CORS for frontend
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+
+                // ✅ Authorization rules
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/api/test",
+                                "/",
+                                "/index.html",
+                                "/static/**",
+                                "/error",
+                                "/oauth2/**"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
+
+                // ✅ OAuth2 Login config
+                .oauth2Login(oauth -> oauth
+                        // IMPORTANT: Do not override Google's login page
+                        .defaultSuccessUrl("http://localhost:5173", true)
+                        .successHandler(successHandler())
+                )
+
+                // ✅ Logout config
+                .logout(logout -> logout
+                        .logoutSuccessUrl("http://localhost:5173")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                );
 
         return http.build();
     }
 
-    // ✅ Automatically save new Google users in MongoDB
+    // ✅ Success handler — saves user and redirects
     @Bean
     public AuthenticationSuccessHandler successHandler() {
         return (request, response, authentication) -> {
@@ -54,14 +73,24 @@ public class SecurityConfig {
             String name = oauthUser.getAttribute("name");
             String picture = oauthUser.getAttribute("picture");
 
-            Optional<User> existing = userRepository.findByEmail(email);
-            if (existing.isEmpty()) {
-                userRepository.save(new User(name, email, picture));
-            }
+            userRepository.findByEmail(email)
+                    .orElseGet(() -> userRepository.save(new User(name, email, picture)));
 
-            // ✅ Redirect back to frontend after login
-response.sendRedirect("http://localhost:5173/");
-
+            response.sendRedirect("http://localhost:5173/"); // ✅ redirect to your React app
         };
+    }
+
+    // ✅ Proper CORS config
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
