@@ -8,6 +8,10 @@ export default function JobList() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterSource, setFilterSource] = useState("All");
+  const [filterLocation, setFilterLocation] = useState("All");
+  const [filterCompany, setFilterCompany] = useState("All");
 
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobDetails, setJobDetails] = useState(null);
@@ -15,6 +19,19 @@ export default function JobList() {
   const [detailsError, setDetailsError] = useState(null);
 
   const { isAuthenticated } = useAuth();
+
+  // Get unique locations and companies from jobs
+  const locations = ["All", ...new Set(jobs.map((job) => job.location))];
+  const companies = ["All", ...new Set(jobs.map((job) => job.company).filter(Boolean))];
+
+  // Filter jobs based on search query, source, location, and company
+  const filteredJobs = jobs.filter((job) => {
+    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSource = filterSource === "All" || job.source === filterSource;
+    const matchesLocation = filterLocation === "All" || job.location === filterLocation;
+    const matchesCompany = filterCompany === "All" || job.company === filterCompany;
+    return matchesSearch && matchesSource && matchesLocation && matchesCompany;
+  });
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -33,6 +50,7 @@ export default function JobList() {
           localResult.status === "fulfilled" ? localResult.value.data : [];
         const externalJobs =
           externalResult.status === "fulfilled" ? externalResult.value : [];
+        console.log(localData, externalJobs);
 
         const localJobs = (Array.isArray(localData) ? localData : []).map(
           (job, idx) => ({
@@ -171,6 +189,70 @@ export default function JobList() {
           </p>
         </div>
 
+        {/* Search and Filter Bar */}
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          {/* Search Bar - Left Side */}
+          <div className="relative flex-1 max-w-md">
+            <input
+              type="text"
+              placeholder="Search jobs by title..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            />
+            <div className="pointer-events-none absolute right-3 top-2.5 text-gray-400">
+              🔍
+            </div>
+          </div>
+
+          {/* Filter Options - Right Side */}
+          <div className="flex gap-3 flex-wrap">
+            {/* Source Filter */}
+            <select
+              value={filterSource}
+              onChange={(e) => setFilterSource(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              <option value="All">📍 All Sources</option>
+              <option value="Local">📍 Local</option>
+              <option value="External">📍 External</option>
+            </select>
+
+            {/* Location Filter */}
+            <select
+              value={filterLocation}
+              onChange={(e) => setFilterLocation(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              {locations.map((location) => (
+                <option key={location} value={location}>
+                  {location === "All" ? "📌 All Locations" : `📌 ${location}`}
+                </option>
+              ))}
+            </select>
+
+            {/* Company Filter */}
+            <select
+              value={filterCompany}
+              onChange={(e) => setFilterCompany(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              {companies.map((company) => (
+                <option key={company} value={company}>
+                  {company === "All" ? "🏢 All Companies" : `🏢 ${company}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Results Counter */}
+        {(searchQuery || filterSource !== "All" || filterLocation !== "All" || filterCompany !== "All") && (
+          <p className="mb-4 text-sm text-gray-600">
+            Found <span className="font-semibold text-gray-900">{filteredJobs.length}</span> job{filteredJobs.length !== 1 ? "s" : ""} matching your filters
+          </p>
+        )}
+
         {error ? (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
             {error}
@@ -179,9 +261,13 @@ export default function JobList() {
           <div className="rounded-md border border-yellow-200 bg-yellow-50 p-6 text-center text-yellow-700">
             No jobs found. Please try again later.
           </div>
+        ) : filteredJobs.length === 0 ? (
+          <div className="rounded-md border border-yellow-200 bg-yellow-50 p-6 text-center text-yellow-700">
+            No jobs match your search. Try different keywords.
+          </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {jobs.map((job) => (
+            {filteredJobs.map((job) => (
               <div
                 key={job.id}
                 className="flex h-full flex-col rounded-lg border border-gray-100 bg-white p-6 shadow-sm transition hover:shadow-lg"
