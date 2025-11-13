@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { fetchJobs, fetchJobDetails } from "../api/jobApi";
+import { fetchJobs, fetchJobDetails, recordJobApplication } from "../api/jobApi";
 import { loginWithGoogle } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
 
@@ -147,7 +147,7 @@ export default function JobList() {
     }
   };
 
-  const handleApply = (job, details) => {
+  const handleApply = async (job, details) => {
     if (!isAuthenticated) {
       if (
         window.confirm("Please sign in with Google to apply. Continue to login?")
@@ -157,13 +157,61 @@ export default function JobList() {
       return;
     }
 
-    const applyLink =
-      details?.job_apply_link || job.raw?.job_apply_link || job.raw?.applyLink;
+    try {
+      console.log("Recording application for job:", job.id);
+      
+      // Record application in tracker
+      try {
+        const response = await recordJobApplication({
+          id: job.id,
+          title: job.title,
+          company: job.company,
+          location: job.location,
+          description: job.description,
+        });
+        console.log("Application recorded successfully:", response);
+      } catch (apiError) {
+        console.error("API Error recording application:", apiError);
+        console.error("Error details:", apiError.response?.data || apiError.message);
+        
+        // Fallback: Save to local storage if API fails
+        const localApplications = JSON.parse(localStorage.getItem("localApplications") || "[]");
+        const newApplication = {
+          id: `local_${job.id}_${Date.now()}`,
+          jobId: job.id,
+          jobTitle: job.title,
+          company: job.company || "Company confidential",
+          location: job.location || "Location not specified",
+          jobDescription: job.description || "",
+          status: "pending",
+          appliedAt: new Date().toISOString(),
+          isLocal: true,
+        };
+        localApplications.push(newApplication);
+        localStorage.setItem("localApplications", JSON.stringify(localApplications));
+        console.log("Application saved to local storage as fallback");
+      }
 
-    if (applyLink) {
-      window.open(applyLink, "_blank", "noopener,noreferrer");
-    } else {
-      alert("Application link not available for this job yet.");
+      // Show success message
+      alert("✅ Application recorded! You can track it in 'My Applications'");
+
+      // Open application link if available
+      const applyLink =
+        details?.job_apply_link || job.raw?.job_apply_link || job.raw?.applyLink;
+
+      if (applyLink) {
+        window.open(applyLink, "_blank", "noopener,noreferrer");
+      } else {
+        console.log("No application link available for job:", job.id);
+      }
+      
+      // Close the modal after successful apply
+      setTimeout(() => {
+        closeModal();
+      }, 500);
+    } catch (error) {
+      console.error("Unexpected error in handleApply:", error);
+      alert("Application recorded but there was an issue. Please refresh and check 'My Applications'");
     }
   };
 

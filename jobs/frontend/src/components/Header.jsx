@@ -21,6 +21,19 @@ export default function Header() {
           <Link to="/" className="text-2xl font-bold text-blue-600 hover:text-blue-700 transition">
             🧑‍💻 Saarthix Jobs
           </Link>
+
+          {/* Navigation Links */}
+          <div className="hidden md:flex items-center gap-6">
+            <Link to="/apply-jobs" className="text-gray-600 hover:text-blue-600 font-medium transition">
+              Browse Jobs
+            </Link>
+            <Link to="/job-tracker" className="text-gray-600 hover:text-blue-600 font-medium transition">
+              📊 My Applications
+            </Link>
+            <Link to="/post-jobs" className="text-gray-600 hover:text-blue-600 font-medium transition">
+              Post a Job
+            </Link>
+          </div>
           
           <div className="flex items-center gap-4">
             {loading ? (
