@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { loginWithGoogle, logout } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 
@@ -17,7 +18,9 @@ export default function Header() {
     <header className="bg-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          <h1 className="text-2xl font-bold text-blue-600">🧑‍💻 Saarthix Jobs</h1>
+          <Link to="/" className="text-2xl font-bold text-blue-600 hover:text-blue-700 transition">
+            🧑‍💻 Saarthix Jobs
+          </Link>
           
           <div className="flex items-center gap-4">
             {loading ? (

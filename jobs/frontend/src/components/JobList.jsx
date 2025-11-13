@@ -12,6 +12,7 @@ export default function JobList() {
   const [filterSource, setFilterSource] = useState("All");
   const [filterLocation, setFilterLocation] = useState("All");
   const [filterCompany, setFilterCompany] = useState("All");
+  const [refreshing, setRefreshing] = useState(false);
 
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobDetails, setJobDetails] = useState(null);
@@ -19,6 +20,77 @@ export default function JobList() {
   const [detailsError, setDetailsError] = useState(null);
 
   const { isAuthenticated } = useAuth();
+
+  // Define loadJobs outside useEffect so it can be called manually
+  const loadJobs = async () => {
+    try {
+      if (!refreshing) setLoading(true);
+      setError(null);
+
+      const [localResult, externalResult] = await Promise.allSettled([
+        axios.get("http://localhost:8080/api/jobs", {
+          withCredentials: true,
+        }),
+        fetchJobs("software developer in India"),
+      ]);
+
+      const localData =
+        localResult.status === "fulfilled" ? localResult.value.data : [];
+      const externalJobs =
+        externalResult.status === "fulfilled" ? externalResult.value : [];
+      console.log(localData, externalJobs);
+
+      const localJobs = (Array.isArray(localData) ? localData : []).map(
+        (job, idx) => ({
+        id:
+          job.id ??
+          job._id ??
+          `local-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+        title: job.title,
+        description: job.description,
+        company: job.company,
+        location: job.location || "Remote",
+        source: "Local",
+        raw: job,
+      }));
+
+      const rapidJobs = (Array.isArray(externalJobs) ? externalJobs : []).map((job) => ({
+        id: job.job_id,
+        title: job.job_title,
+        description: job.job_description,
+        company: job.employer_name,
+        location: [job.job_city, job.job_country].filter(Boolean).join(", "),
+        source: "External",
+        raw: job,
+      }));
+
+      setJobs([...localJobs, ...rapidJobs]);
+
+      if (
+        localResult.status === "rejected" &&
+        externalResult.status === "fulfilled"
+      ) {
+        console.warn("Failed to load local jobs:", localResult.reason);
+      }
+      if (
+        externalResult.status === "rejected" &&
+        localResult.status === "fulfilled"
+      ) {
+        console.warn("Failed to load external jobs:", externalResult.reason);
+      }
+    } catch (err) {
+      console.error("Error fetching jobs:", err);
+      setError("Unable to load jobs right now. Please try again later.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadJobs();
+  };
 
   // Get unique locations and companies from jobs
   const locations = ["All", ...new Set(jobs.map((job) => job.location))];
@@ -34,70 +106,6 @@ export default function JobList() {
   });
 
   useEffect(() => {
-    const loadJobs = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const [localResult, externalResult] = await Promise.allSettled([
-          axios.get("http://localhost:8080/api/jobs", {
-            withCredentials: true,
-          }),
-          fetchJobs("software developer in India"),
-        ]);
-
-        const localData =
-          localResult.status === "fulfilled" ? localResult.value.data : [];
-        const externalJobs =
-          externalResult.status === "fulfilled" ? externalResult.value : [];
-        console.log(localData, externalJobs);
-
-        const localJobs = (Array.isArray(localData) ? localData : []).map(
-          (job, idx) => ({
-          id:
-            job.id ??
-            job._id ??
-            `local-${idx}-${Math.random().toString(36).slice(2, 8)}`,
-          title: job.title,
-          description: job.description,
-          company: job.company,
-          location: job.location || "Remote",
-          source: "Local",
-          raw: job,
-        }));
-
-        const rapidJobs = (Array.isArray(externalJobs) ? externalJobs : []).map((job) => ({
-          id: job.job_id,
-          title: job.job_title,
-          description: job.job_description,
-          company: job.employer_name,
-          location: [job.job_city, job.job_country].filter(Boolean).join(", "),
-          source: "External",
-          raw: job,
-        }));
-
-        setJobs([...localJobs, ...rapidJobs]);
-
-        if (
-          localResult.status === "rejected" &&
-          externalResult.status === "fulfilled"
-        ) {
-          console.warn("Failed to load local jobs:", localResult.reason);
-        }
-        if (
-          externalResult.status === "rejected" &&
-          localResult.status === "fulfilled"
-        ) {
-          console.warn("Failed to load external jobs:", externalResult.reason);
-        }
-      } catch (err) {
-        console.error("Error fetching jobs:", err);
-        setError("Unable to load jobs right now. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadJobs();
   }, []);
 
@@ -206,7 +214,7 @@ export default function JobList() {
           </div>
 
           {/* Filter Options - Right Side */}
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-3 flex-wrap items-end">
             {/* Source Filter */}
             <select
               value={filterSource}
@@ -243,6 +251,22 @@ export default function JobList() {
                 </option>
               ))}
             </select>
+
+            {/* Refresh Button */}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:cursor-not-allowed"
+              title="Refresh jobs list"
+            >
+              {refreshing ? (
+                <span className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-900 border-t-transparent"></div>
+                </span>
+              ) : (
+                "🔄 Refresh"
+              )}
+            </button>
           </div>
         </div>
 
