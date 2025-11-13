@@ -80,3 +80,61 @@ export const fetchJobSalaries = async (jobTitle, location, radius = 200) => {
     return [];
   }
 };
+
+// Get user's job applications with tracking
+export const getUserJobApplications = async () => {
+  try {
+    const response = await axios.get(
+      'http://localhost:8080/api/applications',
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching job applications:', error);
+    return [];
+  }
+};
+
+// Update job application status
+export const updateApplicationStatus = async (applicationId, status) => {
+  try {
+    const response = await axios.put(
+      `http://localhost:8080/api/applications/${applicationId}`,
+      { status },
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating application status:', error);
+    throw error;
+  }
+};
+
+// Record job application (add to tracker)
+export const recordJobApplication = async (jobData) => {
+  try {
+    const response = await axios.post(
+      'http://localhost:8080/api/applications',
+      {
+        jobId: jobData.id,
+        jobTitle: jobData.title,
+        company: jobData.company || "Company confidential",
+        location: jobData.location || "Location not specified",
+        jobDescription: jobData.description || "",
+        status: 'pending',
+        appliedAt: new Date().toISOString(),
+      },
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error recording job application:', error);
+    throw error;
+  }
+};

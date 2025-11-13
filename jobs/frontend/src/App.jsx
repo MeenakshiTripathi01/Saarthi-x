@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import JobList from './components/JobList';
 import PostJobs from './components/PostJobs';
+import JobTracker from './components/JobTracker';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/apply-jobs" element={<JobList />} />
             <Route path="/post-jobs" element={<PostJobs />} />
+            <Route path="/job-tracker" element={<JobTracker />} />
           </Routes>
         </div>
       </Router>
