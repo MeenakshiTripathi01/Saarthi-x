@@ -44,4 +44,7 @@ Dockerfile
 .dockerignore
 .gitattributes
 .gitignore jobs
+vite.config.js
+.package-lock.json
+_metadata.json
 

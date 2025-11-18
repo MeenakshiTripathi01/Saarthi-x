@@ -13,19 +13,11 @@ export default function JobTracker() {
   const [selectedApplication, setSelectedApplication] = useState(null);
 
   const statusColors = {
-    pending: "bg-yellow-50 border-yellow-200 text-yellow-700",
-    accepted: "bg-green-50 border-green-200 text-green-700",
-    rejected: "bg-red-50 border-red-200 text-red-700",
-    interview: "bg-blue-50 border-blue-200 text-blue-700",
-    offer: "bg-purple-50 border-purple-200 text-purple-700",
-  };
-
-  const statusIcons = {
-    pending: "⏳",
-    accepted: "✅",
-    rejected: "❌",
-    interview: "📞",
-    offer: "🎉",
+    pending: "bg-amber-50 border-amber-200 text-amber-800",
+    accepted: "bg-emerald-50 border-emerald-200 text-emerald-800",
+    rejected: "bg-rose-50 border-rose-200 text-rose-800",
+    interview: "bg-blue-50 border-blue-200 text-blue-800",
+    offer: "bg-violet-50 border-violet-200 text-violet-800",
   };
 
   const loadApplications = async () => {
@@ -96,8 +88,8 @@ export default function JobTracker() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-600 border-t-transparent"></div>
+          <p className="mt-4 text-gray-600 text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -109,20 +101,19 @@ export default function JobTracker() {
         <div className="mx-auto max-w-4xl">
           <button
             onClick={() => navigate("/")}
-            className="mb-4 text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
+            className="mb-4 text-gray-600 hover:text-gray-900 font-medium flex items-center gap-2 text-sm"
           >
             ← Back to Dashboard
           </button>
 
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <div className="text-6xl mb-4">🔐</div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Sign in Required</h1>
-            <p className="text-gray-600 mb-8 text-lg">
-              Sign in to track
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-3">Authentication Required</h1>
+            <p className="text-gray-600 mb-8 text-sm">
+              Sign in with your Google account to track your job applications.
             </p>
             <button
               onClick={loginWithGoogle}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-semibold"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors duration-200 font-semibold"
             >
               <svg width="20" height="20" viewBox="0 0 18 18" fill="none">
                 <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
@@ -142,8 +133,8 @@ export default function JobTracker() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600">Loading your applications...</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-600 border-t-transparent"></div>
+          <p className="mt-4 text-gray-600 text-sm">Loading your applications...</p>
         </div>
       </div>
     );
@@ -156,41 +147,37 @@ export default function JobTracker() {
         <div className="mb-8">
           <button
             onClick={() => navigate("/")}
-            className="mb-4 text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
+            className="mb-4 text-gray-600 hover:text-gray-900 font-medium flex items-center gap-2 text-sm"
           >
             ← Back to Dashboard
           </button>
-          <h1 className="text-4xl font-bold text-gray-900">📊 Job Application Tracker</h1>
-          <p className="mt-2 text-gray-600">The Jobs You have applied to</p>
+          <h1 className="text-3xl font-bold text-gray-900">Application Tracker</h1>
+          <p className="mt-2 text-gray-600 text-sm">Monitor the status of your job applications</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 text-red-700">
+          <div className="mb-6 rounded-lg bg-rose-50 border border-rose-200 p-4 text-rose-700 text-sm">
             {error}
           </div>
         )}
 
         {/* Applications List */}
         {filteredApplications.length === 0 ? (
-          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-8 text-center text-yellow-700">
-            <div className="text-4xl mb-2">📭</div>
+          <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
+            <h3 className="font-semibold text-lg text-gray-900 mb-2">No applications found</h3>
             {applications.length === 0 ? (
               <>
-                <p className="font-semibold text-lg">No applications yet</p>
-                <p className="text-sm">Start applying to jobs to track them here!</p>
+                <p className="text-sm text-gray-600 mb-6">You haven't applied to any positions yet.</p>
                 <button
                   onClick={() => navigate("/apply-jobs")}
-                  className="mt-4 px-6 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition"
+                  className="px-6 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-medium transition text-sm"
                 >
-                  Browse Jobs
+                  Browse Job Opportunities
                 </button>
               </>
             ) : (
-              <>
-                <p className="font-semibold">No applications with this status</p>
-                <p className="text-sm">Try a different filter</p>
-              </>
+              <p className="text-sm text-gray-600">Try adjusting your filters</p>
             )}
           </div>
         ) : (
@@ -199,17 +186,17 @@ export default function JobTracker() {
               <div
                 key={app.id}
                 onClick={() => setSelectedApplication(app)}
-                className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer p-4 border-l-4 border-blue-500"
+                className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition cursor-pointer p-5"
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">{app.jobTitle || "Job Title"}</h3>
-                    <p className="text-blue-600 font-medium text-sm">{app.company || "Company"}</p>
-                    <span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-semibold border ${statusColors[app.status] || "bg-gray-50 border-gray-200 text-gray-700"}`}>
-                      {statusIcons[app.status]} {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                    </span>
+                    <h3 className="font-semibold text-gray-900 truncate text-sm mb-1">{app.jobTitle || "Job Title"}</h3>
+                    <p className="text-gray-700 font-medium text-xs mb-3">{app.company || "Company"}</p>
                   </div>
                 </div>
+                <span className={`inline-block px-2.5 py-1.5 rounded text-xs font-semibold border ${statusColors[app.status] || "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                  {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                </span>
               </div>
             ))}
           </div>
@@ -227,44 +214,44 @@ export default function JobTracker() {
               </button>
 
               <div className="mb-6">
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{selectedApplication.jobTitle}</h2>
-                    <p className="text-blue-600 font-semibold text-lg">{selectedApplication.company}</p>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedApplication.jobTitle}</h2>
+                    <p className="text-gray-700 font-semibold">{selectedApplication.company}</p>
                   </div>
-                  <span className={`px-4 py-2 rounded-full font-semibold border text-sm ${statusColors[selectedApplication.status] || "bg-gray-50 border-gray-200 text-gray-700"}`}>
-                    {statusIcons[selectedApplication.status]} {selectedApplication.status.toUpperCase()}
+                  <span className={`px-4 py-2 rounded-lg font-semibold border text-xs whitespace-nowrap ${statusColors[selectedApplication.status] || "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                    {selectedApplication.status.toUpperCase()}
                   </span>
                 </div>
 
-                <p className="text-gray-600 flex items-center gap-2">
-                  📍 {selectedApplication.location || "Location not specified"}
+                <p className="text-gray-600 text-sm">
+                  {selectedApplication.location || "Location not specified"}
                 </p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">Application Date</p>
-                  <p className="font-semibold text-gray-900">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <p className="text-xs text-gray-600 font-medium mb-1">Applied On</p>
+                  <p className="font-semibold text-gray-900 text-sm">
                     {new Date(selectedApplication.appliedAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">Current Status</p>
-                  <p className="font-semibold text-gray-900">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <p className="text-xs text-gray-600 font-medium mb-1">Status</p>
+                  <p className="font-semibold text-gray-900 text-sm">
                     {selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)}
                   </p>
                 </div>
                 {selectedApplication.salary && (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600">Salary Range</p>
-                    <p className="font-semibold text-gray-900">{selectedApplication.salary}</p>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p className="text-xs text-gray-600 font-medium mb-1">Salary Range</p>
+                    <p className="font-semibold text-gray-900 text-sm">{selectedApplication.salary}</p>
                   </div>
                 )}
                 {selectedApplication.lastUpdated && (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600">Last Updated</p>
-                    <p className="font-semibold text-gray-900">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p className="text-xs text-gray-600 font-medium mb-1">Last Updated</p>
+                    <p className="font-semibold text-gray-900 text-sm">
                       {new Date(selectedApplication.lastUpdated).toLocaleDateString()}
                     </p>
                   </div>
@@ -272,16 +259,16 @@ export default function JobTracker() {
               </div>
 
               {selectedApplication.notes && (
-                <div className="mb-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <p className="text-sm text-blue-600 font-semibold mb-2">Notes:</p>
-                  <p className="text-gray-700">{selectedApplication.notes}</p>
+                <div className="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <p className="text-xs text-gray-600 font-medium mb-2">Notes</p>
+                  <p className="text-gray-700 text-sm">{selectedApplication.notes}</p>
                 </div>
               )}
 
               {selectedApplication.jobDescription && (
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-2">Job Description</h3>
-                  <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 max-h-48 overflow-y-auto">
+                  <h3 className="font-semibold text-gray-900 mb-3 text-sm">Job Description</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 max-h-48 overflow-y-auto border border-gray-200">
                     {selectedApplication.jobDescription}
                   </div>
                 </div>
@@ -290,13 +277,13 @@ export default function JobTracker() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setSelectedApplication(null)}
-                  className="flex-1 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 font-semibold py-3 px-6 transition"
+                  className="flex-1 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 font-semibold py-2.5 px-6 transition text-sm"
                 >
                   Close
                 </button>
                 <button
                   onClick={() => navigate("/apply-jobs")}
-                  className="flex-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 transition"
+                  className="flex-1 rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2.5 px-6 transition text-sm"
                 >
                   Browse More Jobs
                 </button>

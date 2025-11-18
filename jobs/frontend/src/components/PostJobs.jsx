@@ -86,8 +86,8 @@ export default function PostJobs() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-600 border-t-transparent"></div>
+          <p className="mt-4 text-gray-600 text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -100,22 +100,21 @@ export default function PostJobs() {
         <div className="mx-auto max-w-3xl">
           <button
             onClick={() => navigate("/")}
-            className="mb-4 text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
+            className="mb-4 text-gray-600 hover:text-gray-900 font-medium flex items-center gap-2 text-sm"
           >
             ← Back to Dashboard
           </button>
           
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <div className="text-6xl mb-4">🔐</div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              Sign in Required
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-3">
+              Authentication Required
             </h1>
-            <p className="text-gray-600 mb-8 text-lg">
-              You need to be authenticated with Google to post a job opportunity.
+            <p className="text-gray-600 mb-8 text-sm">
+              Sign in with your Google account to create and post job opportunities.
             </p>
             <button
               onClick={loginWithGoogle}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-semibold"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors duration-200 font-semibold"
             >
               <svg width="20" height="20" viewBox="0 0 18 18" fill="none">
                 <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
@@ -138,25 +137,25 @@ export default function PostJobs() {
         <div className="mb-8">
           <button
             onClick={() => navigate("/")}
-            className="mb-4 text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
+            className="mb-4 text-gray-600 hover:text-gray-900 font-medium flex items-center gap-2 text-sm"
           >
             ← Back to Dashboard
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">📝 Post a New Job</h1>
-          <p className="mt-2 text-gray-600">
-            Fill out the form below to post a new job opportunity
+          <h1 className="text-3xl font-bold text-gray-900">Create Job Posting</h1>
+          <p className="mt-2 text-gray-600 text-sm">
+            Fill out the form to post a new job opportunity
           </p>
         </div>
 
         {/* Success Message */}
         {successMessage && (
-          <div className="mb-6 rounded-lg bg-green-50 border border-green-200 p-4 text-green-700">
+          <div className="mb-6 rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-emerald-700 text-sm">
             {successMessage}
           </div>
         )}
 
         {/* Form */}
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white rounded-lg border border-gray-200 p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Job Title */}
             <div>
@@ -170,7 +169,7 @@ export default function PostJobs() {
                 onChange={handleChange}
                 placeholder="e.g., Senior Frontend Engineer"
                 required
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
               />
             </div>
 
@@ -186,7 +185,7 @@ export default function PostJobs() {
                 onChange={handleChange}
                 placeholder="e.g., Tech Company Inc."
                 required
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
               />
             </div>
 
@@ -202,7 +201,7 @@ export default function PostJobs() {
                 onChange={handleChange}
                 placeholder="e.g., Bangalore, India"
                 required
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
               />
             </div>
 
@@ -216,7 +215,7 @@ export default function PostJobs() {
                 value={formData.employmentType}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
               >
                 <option value="">Select Employment Type</option>
                 <option value="Full-time">Full-time</option>
@@ -239,7 +238,7 @@ export default function PostJobs() {
                   value={formData.minSalary}
                   onChange={handleChange}
                   placeholder="e.g., 500000"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
                 />
               </div>
               <div>
@@ -252,7 +251,7 @@ export default function PostJobs() {
                   value={formData.maxSalary}
                   onChange={handleChange}
                   placeholder="e.g., 1500000"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
                 />
               </div>
             </div>
@@ -269,7 +268,7 @@ export default function PostJobs() {
                 placeholder="Describe the job responsibilities, requirements, and benefits..."
                 rows="8"
                 required
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
               />
             </div>
 
@@ -278,7 +277,7 @@ export default function PostJobs() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-3 px-6 transition-colors duration-200 disabled:cursor-not-allowed"
+                className="flex-1 rounded-md bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 text-white font-semibold py-2.5 px-6 transition-colors duration-200 disabled:cursor-not-allowed text-sm"
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
@@ -293,7 +292,7 @@ export default function PostJobs() {
                 type="button"
                 onClick={() => navigate("/")}
                 disabled={submitting}
-                className="flex-1 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-900 font-semibold py-3 px-6 transition-colors duration-200 disabled:cursor-not-allowed"
+                className="flex-1 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-900 font-semibold py-2.5 px-6 transition-colors duration-200 disabled:cursor-not-allowed text-sm"
               >
                 Cancel
               </button>
