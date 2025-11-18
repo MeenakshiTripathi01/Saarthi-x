@@ -33,18 +33,25 @@ public class SecurityConfig {
 
                 // ✅ Authorization rules
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/api/test",
-                                "/",
-                                "/index.html",
-                                "/static/**",
-                                "/error",
-                                "/oauth2/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
+        // ✅ Allow GET & POST job APIs without Google login
+        .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
+        .requestMatchers(HttpMethod.POST, "/api/jobs/**").permitAll()
+        
+        // Public endpoints
+        .requestMatchers(
+                "/api/auth/**",
+                "/api/test",
+                "/",
+                "/index.html",
+                "/static/**",
+                "/error",
+                "/oauth2/**"
+        ).permitAll()
+
+        // Everything else requires Google OAuth
+        .anyRequest().authenticated()
+)
+
 
                 // ✅ OAuth2 Login config
                 .oauth2Login(oauth -> oauth

@@ -226,8 +226,8 @@ export default function JobList() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600">Loading jobs...</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-600 border-t-transparent"></div>
+          <p className="mt-4 text-gray-600 text-sm">Loading opportunities...</p>
         </div>
       </div>
     );
@@ -236,85 +236,84 @@ export default function JobList() {
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 text-center">
+        <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
-            🚀 Available Jobs
+            Job Opportunities
           </h1>
-          <p className="mt-2 text-gray-600">
-            Showing openings from Saarthix and trusted partners.
+          <p className="mt-2 text-gray-600 text-sm">
+            Explore positions from Saarthix and partner organizations.
           </p>
         </div>
 
         {/* Search and Filter Bar */}
-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          {/* Search Bar - Left Side */}
-          <div className="relative flex-1 max-w-md">
-            <input
-              type="text"
-              placeholder="Search jobs by title..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-            />
-            <div className="pointer-events-none absolute right-3 top-2.5 text-gray-400">
-              🔍
+        <div className="mb-8 bg-white rounded-lg border border-gray-200 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            {/* Search Bar - Left Side */}
+            <div className="relative flex-1 max-w-md">
+              <input
+                type="text"
+                placeholder="Search by job title..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+              />
             </div>
-          </div>
 
-          {/* Filter Options - Right Side */}
-          <div className="flex gap-3 flex-wrap items-end">
-            {/* Source Filter */}
-            <select
-              value={filterSource}
-              onChange={(e) => setFilterSource(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-            >
-              <option value="All">📍 All Sources</option>
-              <option value="Local">📍 Local</option>
-              <option value="External">📍 External</option>
-            </select>
+            {/* Filter Options - Right Side */}
+            <div className="flex gap-2 flex-wrap items-end">
+              {/* Source Filter */}
+              <select
+                value={filterSource}
+                onChange={(e) => setFilterSource(e.target.value)}
+                className="rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+              >
+                <option value="All">All Sources</option>
+                <option value="Local">Local</option>
+                <option value="External">External</option>
+              </select>
 
-            {/* Location Filter */}
-            <select
-              value={filterLocation}
-              onChange={(e) => setFilterLocation(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-            >
-              {locations.map((location) => (
-                <option key={location} value={location}>
-                  {location === "All" ? "📌 All Locations" : `📌 ${location}`}
-                </option>
-              ))}
-            </select>
+              {/* Location Filter */}
+              <select
+                value={filterLocation}
+                onChange={(e) => setFilterLocation(e.target.value)}
+                className="rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+              >
+                {locations.map((location) => (
+                  <option key={location} value={location}>
+                    {location === "All" ? "All Locations" : location}
+                  </option>
+                ))}
+              </select>
 
-            {/* Company Filter */}
-            <select
-              value={filterCompany}
-              onChange={(e) => setFilterCompany(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-            >
-              {companies.map((company) => (
-                <option key={company} value={company}>
-                  {company === "All" ? "🏢 All Companies" : `🏢 ${company}`}
-                </option>
-              ))}
-            </select>
+              {/* Company Filter */}
+              <select
+                value={filterCompany}
+                onChange={(e) => setFilterCompany(e.target.value)}
+                className="rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+              >
+                {companies.map((company) => (
+                  <option key={company} value={company}>
+                    {company === "All" ? "All Companies" : company}
+                  </option>
+                ))}
+              </select>
 
-            {/* Refresh Button */}
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:cursor-not-allowed"
-              title="Refresh jobs list"
-            >
-              {refreshing ? (
-                <span className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-900 border-t-transparent"></div>
-                </span>
-              ) : (
-                "🔄 Refresh"
-              )}
-            </button>
+              {/* Refresh Button */}
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-900 transition disabled:cursor-not-allowed"
+                title="Refresh jobs list"
+              >
+                {refreshing ? (
+                  <span className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-600 border-t-transparent"></div>
+                  </span>
+                ) : (
+                  "Refresh"
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -326,48 +325,48 @@ export default function JobList() {
         )}
 
         {error ? (
-          <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
+          <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-rose-700 text-sm">
             {error}
           </div>
         ) : jobs.length === 0 ? (
-          <div className="rounded-md border border-yellow-200 bg-yellow-50 p-6 text-center text-yellow-700">
-            No jobs found. Please try again later.
+          <div className="rounded-md border border-gray-200 bg-white p-8 text-center">
+            <p className="text-gray-600 text-sm">No jobs available at the moment. Please check back later.</p>
           </div>
         ) : filteredJobs.length === 0 ? (
-          <div className="rounded-md border border-yellow-200 bg-yellow-50 p-6 text-center text-yellow-700">
-            No jobs match your search. Try different keywords.
+          <div className="rounded-md border border-gray-200 bg-white p-8 text-center">
+            <p className="text-gray-600 text-sm">No jobs match your search criteria. Try adjusting your filters.</p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {filteredJobs.map((job) => (
               <div
                 key={job.id}
-                className="flex h-full flex-col rounded-lg border border-gray-100 bg-white p-6 shadow-sm transition hover:shadow-lg"
+                className="flex h-full flex-col rounded-lg border border-gray-200 bg-white p-6 transition hover:border-gray-300 hover:shadow-md"
               >
                 <div className="flex-1">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                  <div className="mb-4 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-600 bg-gray-100 px-2.5 py-1 rounded">
                       {job.source}
                     </span>
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
                     {job.title}
                   </h2>
-                  <p className="mt-2 text-blue-600 font-medium">
+                  <p className="text-gray-700 font-medium text-sm mb-1">
                     {job.company || "Company confidential"}
                   </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    📍 {job.location || "Location not specified"}
+                  <p className="text-sm text-gray-600 mb-4">
+                    {job.location || "Location not specified"}
                   </p>
                   {job.description && (
-                    <p className="mt-3 line-clamp-3 text-sm text-gray-600">
+                    <p className="line-clamp-2 text-sm text-gray-600">
                       {job.description}
                     </p>
                   )}
                 </div>
                 <button
                   onClick={() => handleViewDetails(job)}
-                  className="mt-6 w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                  className="mt-6 w-full rounded-md bg-gray-800 hover:bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition"
                 >
                   View Details
                 </button>
@@ -378,36 +377,35 @@ export default function JobList() {
       </div>
 
       {selectedJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="relative w-full max-w-3xl rounded-lg bg-white shadow-xl">
             <button
               onClick={closeModal}
-              className="absolute right-4 top-4 text-2xl text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-4 text-3xl text-gray-400 hover:text-gray-600 transition"
               aria-label="Close"
             >
               ×
             </button>
 
             <div className="max-h-[80vh] overflow-y-auto p-6 sm:p-8">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-600">
+              <div className="mb-6 flex items-center justify-between">
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
                   {selectedJob.source}
                 </span>
                 {detailsLoading && (
                   <span className="text-sm text-gray-500">
-                    Fetching latest details...
+                    Loading details...
                   </span>
                 )}
               </div>
 
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 {jobDetails?.job_title || selectedJob.title}
               </h2>
-              <p className="mt-2 text-blue-600 text-lg font-semibold">
+              <p className="text-lg text-gray-700 font-semibold mb-1">
                 {jobDetails?.employer_name || selectedJob.company}
               </p>
-              <p className="mt-1 text-sm text-gray-500">
-                📍{" "}
+              <p className="text-sm text-gray-600 mb-6">
                 {[
                   jobDetails?.job_city || selectedJob.raw?.job_city,
                   jobDetails?.job_country || selectedJob.raw?.job_country,
@@ -418,14 +416,14 @@ export default function JobList() {
               </p>
 
               {detailsError && (
-                <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                <div className="mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
                   {detailsError}
                 </div>
               )}
 
               {detailsLoading ? (
                 <div className="mt-6 flex justify-center">
-                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-600 border-t-transparent"></div>
                 </div>
               ) : (
                 <>
@@ -464,16 +462,17 @@ export default function JobList() {
 
                     {(jobDetails?.job_min_salary ||
                       jobDetails?.job_max_salary) && (
-                      <div className="rounded-md bg-green-50 px-4 py-3 text-green-700">
-                        💰{" "}
-                        {jobDetails?.job_min_salary
-                          ? `$${jobDetails.job_min_salary.toLocaleString()}`
-                          : "N/A"}{" "}
-                        -{" "}
-                        {jobDetails?.job_max_salary
-                          ? `$${jobDetails.job_max_salary.toLocaleString()}`
-                          : "N/A"}{" "}
-                        {jobDetails?.job_salary_currency || "USD"}
+                      <div className="rounded-md bg-gray-100 px-4 py-3">
+                        <span className="font-semibold text-gray-900">
+                          {jobDetails?.job_min_salary
+                            ? `$${jobDetails.job_min_salary.toLocaleString()}`
+                            : "N/A"}{" "}
+                          -{" "}
+                          {jobDetails?.job_max_salary
+                            ? `$${jobDetails.job_max_salary.toLocaleString()}`
+                            : "N/A"}{" "}
+                          {jobDetails?.job_salary_currency || "USD"}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -483,11 +482,12 @@ export default function JobList() {
                       onClick={() => handleApply(selectedJob, jobDetails)}
                       className={`flex-1 rounded-md px-6 py-3 text-sm font-semibold transition ${
                         isAuthenticated
-                          ? "bg-green-600 text-white hover:bg-green-700"
-                          : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                          ? "bg-gray-800 text-white hover:bg-gray-900"
+                          : "bg-gray-300 text-gray-600 cursor-not-allowed"
                       }`}
+                      disabled={!isAuthenticated}
                     >
-                      {isAuthenticated ? "Apply Now" : "Login to Apply"}
+                      {isAuthenticated ? "Apply Now" : "Sign in to Apply"}
                     </button>
 
                     {jobDetails?.job_apply_link && (
@@ -495,9 +495,9 @@ export default function JobList() {
                         href={jobDetails.job_apply_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 rounded-md border border-blue-600 px-6 py-3 text-center text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
+                        className="flex-1 rounded-md border border-gray-400 px-6 py-3 text-center text-sm font-semibold text-gray-900 transition hover:bg-gray-50"
                       >
-                        View Original Posting
+                        View Original
                       </a>
                     )}
                   </div>
