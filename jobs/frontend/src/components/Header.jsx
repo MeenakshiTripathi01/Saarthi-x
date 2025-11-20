@@ -30,9 +30,11 @@ export default function Header() {
             <Link to="/job-tracker" className="text-gray-600 hover:text-gray-900 font-medium transition text-sm">
               My Applications
             </Link>
-            <Link to="/post-jobs" className="text-gray-600 hover:text-gray-900 font-medium transition text-sm">
-              Post a Job
-            </Link>
+            {user?.userType === 'INDUSTRY' && (
+              <Link to="/post-jobs" className="text-gray-600 hover:text-gray-900 font-medium transition text-sm">
+                Post a Job
+              </Link>
+            )}
           </div>
           
           <div className="flex items-center gap-4">

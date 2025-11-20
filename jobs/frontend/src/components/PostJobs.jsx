@@ -6,7 +6,7 @@ import { loginWithGoogle } from "../api/authApi";
 
 export default function PostJobs() {
   const navigate = useNavigate();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, isIndustry } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -113,7 +113,11 @@ export default function PostJobs() {
               Sign in with your Google account to create and post job opportunities.
             </p>
             <button
-              onClick={loginWithGoogle}
+              onClick={() => {
+                loginWithGoogle();
+                // Redirect to role selection after OAuth
+                sessionStorage.setItem('postJobsRedirect', 'true');
+              }}
               className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors duration-200 font-semibold"
             >
               <svg width="20" height="20" viewBox="0 0 18 18" fill="none">
@@ -123,6 +127,40 @@ export default function PostJobs() {
                 <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.582C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.951L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
               </svg>
               Sign in with Google
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user has INDUSTRY role
+  if (!isIndustry) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl">
+          <button
+            onClick={() => navigate("/")}
+            className="mb-4 text-gray-600 hover:text-gray-900 font-medium flex items-center gap-2 text-sm"
+          >
+            ← Back to Dashboard
+          </button>
+          
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-3">
+              Access Denied
+            </h1>
+            <p className="text-gray-600 mb-8 text-sm">
+              Only INDUSTRY users (recruiters/HR) can post jobs. You are currently logged in as a JOB SEEKER.
+            </p>
+            <p className="text-gray-600 mb-8 text-sm">
+              To post jobs, please create a new account with an INDUSTRY role.
+            </p>
+            <button
+              onClick={() => navigate("/")}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors duration-200 font-semibold"
+            >
+              Back to Dashboard
             </button>
           </div>
         </div>
