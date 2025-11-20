@@ -12,6 +12,9 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
 
 import java.util.List;
 
@@ -22,6 +25,12 @@ public class SecurityConfig {
 
     public SecurityConfig(UserRepository userRepository) {
         this.userRepository = userRepository;
+    }
+
+    
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
     }
 
     @Bean
@@ -48,6 +57,12 @@ public class SecurityConfig {
                 "/oauth2/**"
         ).permitAll()
 
+        // ✅ Get current user endpoint (requires auth)
+        .requestMatchers(HttpMethod.GET, "/api/user/me").authenticated()
+        
+        // ✅ Save role endpoint (public, called after OAuth)
+        .requestMatchers(HttpMethod.POST, "/api/user/save-role").permitAll()
+
         // Everything else requires Google OAuth
         .anyRequest().authenticated()
 )
@@ -70,7 +85,8 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ✅ Success handler — saves user and redirects
+
+    // ✅ Success handler — handles both new and existing users
     @Bean
     public AuthenticationSuccessHandler successHandler() {
         return (request, response, authentication) -> {
@@ -80,10 +96,29 @@ public class SecurityConfig {
             String name = oauthUser.getAttribute("name");
             String picture = oauthUser.getAttribute("picture");
 
-            userRepository.findByEmail(email)
-                    .orElseGet(() -> userRepository.save(new User(name, email, picture)));
+            User existingUser = userRepository.findByEmail(email).orElse(null);
 
-            response.sendRedirect("http://localhost:5173/"); // ✅ redirect to your React app
+            if (existingUser == null) {
+                // NEW USER - redirect to role selection
+                // Get intent from session/cookie if available (from Dashboard click)
+                String intent = request.getParameter("intent");
+                String intentParam = (intent != null && !intent.isEmpty()) ? "&intent=" + intent : "";
+                
+                // Encode URL parameters properly
+                String redirectUrl = String.format(
+                    "http://localhost:5173/choose-role?email=%s&name=%s&picture=%s%s",
+                    java.net.URLEncoder.encode(email, "UTF-8"),
+                    java.net.URLEncoder.encode(name != null ? name : "", "UTF-8"),
+                    java.net.URLEncoder.encode(picture != null ? picture : "", "UTF-8"),
+                    intentParam
+                );
+                response.sendRedirect(redirectUrl);
+            } else {
+                // EXISTING USER - has role saved in database
+                // Redirect to home - AuthContext will fetch role via /api/user/me
+                // User will be automatically directed based on their role
+                response.sendRedirect("http://localhost:5173/");
+            }
         };
     }
 

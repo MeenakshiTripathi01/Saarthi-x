@@ -13,6 +13,7 @@ public class Job {
     private String company;
     private String location;
     private String postedBy;
+    private String industryId;           // NEW: User ID of the INDUSTRY user who posted
     private LocalDateTime createdAt = LocalDateTime.now();
     private boolean active = true;
 
@@ -34,6 +35,9 @@ public class Job {
 
     public String getPostedBy() { return postedBy; }
     public void setPostedBy(String postedBy) { this.postedBy = postedBy; }
+
+    public String getIndustryId() { return industryId; }
+    public void setIndustryId(String industryId) { this.industryId = industryId; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

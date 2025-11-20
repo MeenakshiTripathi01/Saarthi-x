@@ -10,6 +10,12 @@ public class User {
     private String name;
     private String email;
     private String pictureUrl;
+    private String password;   // null for Google users
+
+    // NEW: identifies whether user is APPLICANT or INDUSTRY
+    private String userType;   // "APPLICANT" or "INDUSTRY"
+
+
 
     public User() {}
 
@@ -31,4 +37,10 @@ public class User {
 
     public String getPictureUrl() { return pictureUrl; }
     public void setPictureUrl(String pictureUrl) { this.pictureUrl = pictureUrl; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public String getUserType() { return userType; }
+    public void setUserType(String userType) { this.userType = userType; }
 }

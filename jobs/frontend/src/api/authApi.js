@@ -3,7 +3,7 @@ const BACKEND_URL = 'http://localhost:8080';
 // Check if user is authenticated
 export const checkAuth = async () => {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/auth/me`, {
+    const response = await fetch(`${BACKEND_URL}/api/user/me`, {
       credentials: 'include'
     });
     
@@ -12,7 +12,14 @@ export const checkAuth = async () => {
     }
     
     const data = await response.json();
-    return data;
+    // Map the response to match expected format
+    return {
+      authenticated: data.authenticated || true,
+      name: data.name,
+      email: data.email,
+      picture: data.picture,
+      userType: data.userType
+    };
   } catch (error) {
     console.error('Error checking auth:', error);
     return { authenticated: false };

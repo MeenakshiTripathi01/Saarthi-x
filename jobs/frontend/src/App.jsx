@@ -6,6 +6,8 @@ import Dashboard from './components/Dashboard';
 import JobList from './components/JobList';
 import PostJobs from './components/PostJobs';
 import JobTracker from './components/JobTracker';
+import RoleSelection from './components/RoleSelection';
+import EditProfile from './components/EditProfile';
 
 function App() {
   return (
@@ -15,9 +17,11 @@ function App() {
           <Header />
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/choose-role" element={<RoleSelection />} />
             <Route path="/apply-jobs" element={<JobList />} />
             <Route path="/post-jobs" element={<PostJobs />} />
             <Route path="/job-tracker" element={<JobTracker />} />
+            <Route path="/edit-profile" element={<EditProfile />} />
           </Routes>
         </div>
       </Router>
