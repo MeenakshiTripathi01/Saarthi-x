@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
         if (authData.authenticated) {
           setUser(authData);
           setIsAuthenticated(true);
+          console.log('User authenticated with role:', authData.userType);
         } else {
           setUser(null);
           setIsAuthenticated(false);
@@ -39,15 +40,19 @@ export const AuthProvider = ({ children }) => {
     if (isOAuthReturn) {
       sessionStorage.removeItem('oauthRedirect');
       // Check auth again after a short delay to ensure session is established
+      // This is crucial for EXISTING users to get their role from database
       setTimeout(() => {
         loadAuth();
-      }, 500);
+      }, 1000); // Increased to 1000ms to ensure backend is ready
     }
   }, []); // Empty dependency array - only runs once on mount
 
   const updateAuth = (authData) => {
     if (authData.authenticated) {
-      setUser(authData);
+      setUser({
+        ...authData,
+        userType: authData.userType || 'APPLICANT', // Default to APPLICANT if not specified
+      });
       setIsAuthenticated(true);
     } else {
       setUser(null);
@@ -60,8 +65,14 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
   };
 
+  // Helper to check if user is INDUSTRY type
+  const isIndustry = user?.userType === 'INDUSTRY';
+  
+  // Helper to check if user is APPLICANT type
+  const isApplicant = user?.userType === 'APPLICANT';
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, loading, updateAuth, clearAuth }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, updateAuth, clearAuth, isIndustry, isApplicant }}>
       {children}
     </AuthContext.Provider>
   );
