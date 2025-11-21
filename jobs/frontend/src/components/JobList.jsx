@@ -169,10 +169,23 @@ export default function JobList() {
           location: job.location,
           description: job.description,
         });
-        console.log("Application recorded successfully:", response);
+        console.log("Application recorded successfully in database:", response);
       } catch (apiError) {
         console.error("API Error recording application:", apiError);
-        console.error("Error details:", apiError.response?.data || apiError.message);
+        const errorMessage = apiError.response?.data?.message || apiError.response?.data || apiError.message;
+        console.error("Error details:", errorMessage);
+        
+        // Show specific error message to user
+        if (apiError.response?.status === 401) {
+          alert("Please sign in to apply for jobs.");
+          return;
+        } else if (apiError.response?.status === 403) {
+          alert("Only job seekers can apply to jobs. Please update your profile.");
+          return;
+        } else if (apiError.response?.status === 400) {
+          alert("You have already applied to this job.");
+          return;
+        }
         
         // Fallback: Save to local storage if API fails
         const localApplications = JSON.parse(localStorage.getItem("localApplications") || "[]");
@@ -190,6 +203,7 @@ export default function JobList() {
         localApplications.push(newApplication);
         localStorage.setItem("localApplications", JSON.stringify(localApplications));
         console.log("Application saved to local storage as fallback");
+        alert("⚠️ Application saved locally. Please check your connection and try again later.");
       }
 
       // Show success message

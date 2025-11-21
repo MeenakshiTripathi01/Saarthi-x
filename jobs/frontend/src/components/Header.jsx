@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { loginWithGoogle, logout } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header() {
   const { user, loading, clearAuth } = useAuth();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   const handleLogin = () => {
     loginWithGoogle();
@@ -12,7 +14,25 @@ export default function Header() {
 
   const handleLogout = () => {
     logout(clearAuth);
+    setDropdownOpen(false);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -41,19 +61,58 @@ export default function Header() {
             {loading ? (
               <div className="text-gray-500 text-sm">Loading...</div>
             ) : user ? (
-              <div className="flex items-center gap-4">
-                <img 
-                  src={user.picture} 
-                  alt={user.name}
-                  className="w-9 h-9 rounded-full border border-gray-300"
-                />
-                <span className="text-gray-700 font-medium text-sm hidden sm:inline">{user.name}</span>
+              <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition text-sm font-medium"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-gray-300 rounded-lg p-1 transition"
                 >
-                  Logout
+                  <img 
+                    src={user.picture} 
+                    alt={user.name}
+                    className="w-10 h-10 rounded-full border-2 border-gray-300 hover:border-gray-400 transition"
+                  />
+                  <span className="text-gray-700 font-medium text-sm hidden sm:inline max-w-[120px] truncate">
+                    {user.name}
+                  </span>
+                  <svg 
+                    className={`w-4 h-4 text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
+
+                {/* Dropdown Menu */}
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    <div className="px-4 py-3 border-b border-gray-200">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                      <p className="text-xs text-gray-500 truncate mt-1">{user.email}</p>
+                    </div>
+                    <Link
+                      to="/edit-profile"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                    >
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit Profile
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"
+                    >
+                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <button

@@ -27,45 +27,29 @@ export default function JobTracker() {
       setLoading(true);
       setError(null);
       
-      // Try to fetch from backend
-      try {
-        const data = await getUserJobApplications();
-        const backendApps = Array.isArray(data) ? data : [];
-        
-        // Also get local storage apps
-        const localApps = JSON.parse(localStorage.getItem("localApplications") || "[]");
-        
-        // Merge both, backend takes priority
-        const allApplications = [...localApps, ...backendApps];
-        
-        // Remove duplicates (keep backend version if exists)
-        const uniqueApps = [];
-        const seenJobIds = new Set();
-        
-        for (const app of allApplications) {
-          if (!seenJobIds.has(app.jobId)) {
-            uniqueApps.push(app);
-            seenJobIds.add(app.jobId);
-          }
-        }
-        
-        setApplications(uniqueApps);
-      } catch (apiError) {
-        console.error("Error loading from backend:", apiError);
-        
-        // Fallback to local storage only
-        const localApps = JSON.parse(localStorage.getItem("localApplications") || "[]");
-        setApplications(localApps);
-        
-        if (localApps.length > 0) {
-          console.log("Showing applications from local storage");
-        } else {
-          setError("Failed to load applications. Please try again later.");
-        }
+      // Fetch only from database
+      const data = await getUserJobApplications();
+      
+      if (Array.isArray(data)) {
+        setApplications(data);
+        console.log(`Loaded ${data.length} applications from database`);
+      } else {
+        setApplications([]);
+        setError("Invalid data received from server.");
       }
     } catch (err) {
-      console.error("Error loading applications:", err);
-      setError("Failed to load your job applications. Please try again later.");
+      console.error("Error loading applications from database:", err);
+      
+      // Show specific error messages
+      if (err.response?.status === 401) {
+        setError("Please sign in to view your applications.");
+      } else if (err.response?.status === 404) {
+        setError("Applications endpoint not found. Please contact support.");
+      } else {
+        setError("Failed to load applications from database. Please try again later.");
+      }
+      
+      setApplications([]);
     } finally {
       setLoading(false);
     }
