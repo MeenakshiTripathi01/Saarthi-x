@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { fetchJobs, fetchJobDetails, recordJobApplication } from "../api/jobApi";
+import { fetchJobs, fetchJobDetails } from "../api/jobApi";
 import { loginWithGoogle } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
+import JobApplicationForm from "./JobApplicationForm";
 
 export default function JobList() {
   const [jobs, setJobs] = useState([]);
@@ -18,6 +19,8 @@ export default function JobList() {
   const [jobDetails, setJobDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState(null);
+  const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [jobToApply, setJobToApply] = useState(null);
 
   const { isAuthenticated } = useAuth();
 
@@ -147,7 +150,7 @@ export default function JobList() {
     }
   };
 
-  const handleApply = async (job, details) => {
+  const handleApply = (job, details) => {
     if (!isAuthenticated) {
       if (
         window.confirm("Please sign in with Google to apply. Continue to login?")
@@ -157,76 +160,15 @@ export default function JobList() {
       return;
     }
 
-    try {
-      console.log("Recording application for job:", job.id);
-      
-      // Record application in tracker
-      try {
-        const response = await recordJobApplication({
-          id: job.id,
-          title: job.title,
-          company: job.company,
-          location: job.location,
-          description: job.description,
-        });
-        console.log("Application recorded successfully in database:", response);
-      } catch (apiError) {
-        console.error("API Error recording application:", apiError);
-        const errorMessage = apiError.response?.data?.message || apiError.response?.data || apiError.message;
-        console.error("Error details:", errorMessage);
-        
-        // Show specific error message to user
-        if (apiError.response?.status === 401) {
-          alert("Please sign in to apply for jobs.");
-          return;
-        } else if (apiError.response?.status === 403) {
-          alert("Only job seekers can apply to jobs. Please update your profile.");
-          return;
-        } else if (apiError.response?.status === 400) {
-          alert("You have already applied to this job.");
-          return;
-        }
-        
-        // Fallback: Save to local storage if API fails
-        const localApplications = JSON.parse(localStorage.getItem("localApplications") || "[]");
-        const newApplication = {
-          id: `local_${job.id}_${Date.now()}`,
-          jobId: job.id,
-          jobTitle: job.title,
-          company: job.company || "Company confidential",
-          location: job.location || "Location not specified",
-          jobDescription: job.description || "",
-          status: "pending",
-          appliedAt: new Date().toISOString(),
-          isLocal: true,
-        };
-        localApplications.push(newApplication);
-        localStorage.setItem("localApplications", JSON.stringify(localApplications));
-        console.log("Application saved to local storage as fallback");
-        alert("⚠️ Application saved locally. Please check your connection and try again later.");
-      }
+    // Show application form
+    setJobToApply({ ...job, details });
+    setShowApplicationForm(true);
+  };
 
-      // Show success message
-      alert("✅ Application recorded! You can track it in 'My Applications'");
-
-      // Open application link if available
-      const applyLink =
-        details?.job_apply_link || job.raw?.job_apply_link || job.raw?.applyLink;
-
-      if (applyLink) {
-        window.open(applyLink, "_blank", "noopener,noreferrer");
-      } else {
-        console.log("No application link available for job:", job.id);
-      }
-      
-      // Close the modal after successful apply
-      setTimeout(() => {
-        closeModal();
-      }, 500);
-    } catch (error) {
-      console.error("Unexpected error in handleApply:", error);
-      alert("Application recorded but there was an issue. Please refresh and check 'My Applications'");
-    }
+  const handleApplicationSuccess = () => {
+    setShowApplicationForm(false);
+    setJobToApply(null);
+    closeModal();
   };
 
   const closeModal = () => {
@@ -520,6 +462,18 @@ export default function JobList() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Application Form Modal */}
+      {showApplicationForm && jobToApply && (
+        <JobApplicationForm
+          job={jobToApply}
+          onClose={() => {
+            setShowApplicationForm(false);
+            setJobToApply(null);
+          }}
+          onSuccess={handleApplicationSuccess}
+        />
       )}
     </div>
   );
