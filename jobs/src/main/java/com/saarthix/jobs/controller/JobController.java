@@ -1,7 +1,9 @@
 package com.saarthix.jobs.controller;
 
+import com.saarthix.jobs.model.Application;
 import com.saarthix.jobs.model.Job;
 import com.saarthix.jobs.model.User;
+import com.saarthix.jobs.repository.ApplicationRepository;
 import com.saarthix.jobs.repository.JobRepository;
 import com.saarthix.jobs.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +21,12 @@ public class JobController {
 
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
+    private final ApplicationRepository applicationRepository;
 
-    public JobController(JobRepository jobRepository, UserRepository userRepository) {
+    public JobController(JobRepository jobRepository, UserRepository userRepository, ApplicationRepository applicationRepository) {
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
+        this.applicationRepository = applicationRepository;
     }
 
     // ✅ GET all jobs (public - no auth required)
@@ -144,8 +148,43 @@ public class JobController {
             return ResponseEntity.status(404).body("Job not found");
         }
 
-        // TODO: Record application in database
-        return ResponseEntity.ok("Applied successfully to job");
+        Job job = jobOpt.get();
+
+        // Check if user already applied to this job
+        Optional<Application> existingApp = applicationRepository.findByJobIdAndApplicantEmail(jobId, user.getEmail());
+        if (existingApp.isPresent()) {
+            return ResponseEntity.status(400).body("You have already applied to this job");
+        }
+
+        // Create and save application
+        Application application = new Application();
+        application.setJobId(jobId);
+        application.setApplicantEmail(user.getEmail());
+        application.setApplicantId(user.getId());
+        application.setJobTitle(job.getTitle());
+        application.setCompany(job.getCompany());
+        application.setLocation(job.getLocation());
+        application.setJobDescription(job.getDescription());
+        application.setStatus("pending");
+
+        Application saved = applicationRepository.save(application);
+        
+        // Log detailed information about the saved application
+        System.out.println("=========================================");
+        System.out.println("APPLICATION SAVED TO MONGODB DATABASE");
+        System.out.println("Collection: all_applied_jobs");
+        System.out.println("Application ID: " + saved.getId());
+        System.out.println("Applicant Email: " + saved.getApplicantEmail());
+        System.out.println("Applicant ID: " + saved.getApplicantId());
+        System.out.println("Job ID: " + saved.getJobId());
+        System.out.println("Job Title: " + saved.getJobTitle());
+        System.out.println("Company: " + saved.getCompany());
+        System.out.println("Location: " + saved.getLocation());
+        System.out.println("Status: " + saved.getStatus());
+        System.out.println("Applied At: " + saved.getAppliedAt());
+        System.out.println("=========================================");
+
+        return ResponseEntity.ok("Applied successfully to job. Application saved to database with ID: " + saved.getId());
     }
 
     /**
