@@ -8,6 +8,7 @@ import PostJobs from './components/PostJobs';
 import JobTracker from './components/JobTracker';
 import RoleSelection from './components/RoleSelection';
 import EditProfile from './components/EditProfile';
+import ProfileBuilder from './components/ProfileBuilder';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
             <Route path="/post-jobs" element={<PostJobs />} />
             <Route path="/job-tracker" element={<JobTracker />} />
             <Route path="/edit-profile" element={<EditProfile />} />
+            <Route path="/build-profile" element={<ProfileBuilder />} />
           </Routes>
         </div>
       </Router>

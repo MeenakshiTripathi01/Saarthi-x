@@ -4,33 +4,41 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 
-@Document(collection = "all_applied_jobs")
-public class Application {
+@Document(collection = "resume_and_details")
+public class ResumeAndDetails {
     @Id
     private String id;
+    
+    // Job Information
     private String jobId;
-    private String applicantEmail;
-    private String applicantId;  // User ID
     private String jobTitle;
     private String company;
     private String location;
     private String jobDescription;
-    private String status = "pending";  // pending, accepted, rejected, interview, offer
-    private LocalDateTime appliedAt = LocalDateTime.now();
-    private LocalDateTime lastUpdated = LocalDateTime.now();
     
-    // Application form fields
+    // Applicant Information
+    private String applicantEmail;
+    private String applicantId;
     private String fullName;
     private String phoneNumber;
-    private String coverLetter;
+    
+    // Resume Information
     private String resumeFileName;
     private String resumeFileType;  // e.g., "application/pdf", "application/msword"
     private String resumeBase64;    // Base64 encoded resume file
     private Long resumeFileSize;    // File size in bytes
+    
+    // Additional Information
+    private String coverLetter;
     private String linkedInUrl;
     private String portfolioUrl;
     private String experience;      // Years of experience
     private String availability;    // e.g., "Immediately", "2 weeks notice", etc.
+    
+    // Status and Timestamps
+    private String status = "pending";
+    private LocalDateTime appliedAt = LocalDateTime.now();
+    private LocalDateTime lastUpdated = LocalDateTime.now();
 
     // Getters and setters
     public String getId() { return id; }
@@ -38,12 +46,6 @@ public class Application {
 
     public String getJobId() { return jobId; }
     public void setJobId(String jobId) { this.jobId = jobId; }
-
-    public String getApplicantEmail() { return applicantEmail; }
-    public void setApplicantEmail(String applicantEmail) { this.applicantEmail = applicantEmail; }
-
-    public String getApplicantId() { return applicantId; }
-    public void setApplicantId(String applicantId) { this.applicantId = applicantId; }
 
     public String getJobTitle() { return jobTitle; }
     public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
@@ -57,27 +59,17 @@ public class Application {
     public String getJobDescription() { return jobDescription; }
     public void setJobDescription(String jobDescription) { this.jobDescription = jobDescription; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { 
-        this.status = status;
-        this.lastUpdated = LocalDateTime.now();
-    }
+    public String getApplicantEmail() { return applicantEmail; }
+    public void setApplicantEmail(String applicantEmail) { this.applicantEmail = applicantEmail; }
 
-    public LocalDateTime getAppliedAt() { return appliedAt; }
-    public void setAppliedAt(LocalDateTime appliedAt) { this.appliedAt = appliedAt; }
+    public String getApplicantId() { return applicantId; }
+    public void setApplicantId(String applicantId) { this.applicantId = applicantId; }
 
-    public LocalDateTime getLastUpdated() { return lastUpdated; }
-    public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }
-
-    // Getters and setters for application form fields
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
-
-    public String getCoverLetter() { return coverLetter; }
-    public void setCoverLetter(String coverLetter) { this.coverLetter = coverLetter; }
 
     public String getResumeFileName() { return resumeFileName; }
     public void setResumeFileName(String resumeFileName) { this.resumeFileName = resumeFileName; }
@@ -91,6 +83,9 @@ public class Application {
     public Long getResumeFileSize() { return resumeFileSize; }
     public void setResumeFileSize(Long resumeFileSize) { this.resumeFileSize = resumeFileSize; }
 
+    public String getCoverLetter() { return coverLetter; }
+    public void setCoverLetter(String coverLetter) { this.coverLetter = coverLetter; }
+
     public String getLinkedInUrl() { return linkedInUrl; }
     public void setLinkedInUrl(String linkedInUrl) { this.linkedInUrl = linkedInUrl; }
 
@@ -102,5 +97,17 @@ public class Application {
 
     public String getAvailability() { return availability; }
     public void setAvailability(String availability) { this.availability = availability; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { 
+        this.status = status;
+        this.lastUpdated = LocalDateTime.now();
+    }
+
+    public LocalDateTime getAppliedAt() { return appliedAt; }
+    public void setAppliedAt(LocalDateTime appliedAt) { this.appliedAt = appliedAt; }
+
+    public LocalDateTime getLastUpdated() { return lastUpdated; }
+    public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }
 }
 

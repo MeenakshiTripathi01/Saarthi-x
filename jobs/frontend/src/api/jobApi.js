@@ -109,26 +109,79 @@ export const updateApplicationStatus = async (applicationId, status) => {
   }
 };
 
-// Record job application (add to tracker)
-export const recordJobApplication = async (jobData) => {
+// Record job application (add to tracker with full form data)
+export const recordJobApplication = async (applicationData) => {
   try {
     const response = await axios.post(
       'http://localhost:8080/api/applications',
+      applicationData,
       {
-        jobId: jobData.id,
-        jobTitle: jobData.title,
-        company: jobData.company || "Company confidential",
-        location: jobData.location || "Location not specified",
-        jobDescription: jobData.description || "",
-        status: 'pending',
-      },
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error recording job application:', error);
+    throw error;
+  }
+};
+
+// Profile API functions
+export const getUserProfile = async () => {
+  try {
+    const response = await axios.get(
+      'http://localhost:8080/api/profile',
       {
         withCredentials: true,
       }
     );
     return response.data;
   } catch (error) {
-    console.error('Error recording job application:', error);
+    if (error.response?.status === 404) {
+      return null; // Profile doesn't exist yet
+    }
+    console.error('Error fetching user profile:', error);
+    throw error;
+  }
+};
+
+export const saveUserProfile = async (profileData) => {
+  try {
+    const response = await axios.post(
+      'http://localhost:8080/api/profile',
+      profileData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error saving user profile:', error);
+    throw error;
+  }
+};
+
+export const updateUserProfile = async (profileData) => {
+  try {
+    const response = await axios.put(
+      'http://localhost:8080/api/profile',
+      profileData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating user profile:', error);
     throw error;
   }
 };
