@@ -96,8 +96,28 @@ export default function JobList() {
   };
 
   // Get unique locations and companies from jobs
-  const locations = ["All", ...new Set(jobs.map((job) => job.location))];
-  const companies = ["All", ...new Set(jobs.map((job) => job.company).filter(Boolean))];
+  // Normalize and deduplicate locations
+  const uniqueLocations = new Set();
+  jobs.forEach((job) => {
+    if (job.location && job.location.trim()) {
+      uniqueLocations.add(job.location.trim());
+    }
+  });
+  const locations = ["All", ...Array.from(uniqueLocations).sort()];
+
+  // Normalize and deduplicate companies (case-insensitive)
+  const companyMap = new Map();
+  jobs.forEach((job) => {
+    if (job.company && job.company.trim()) {
+      const normalized = job.company.trim();
+      const lowerKey = normalized.toLowerCase();
+      // Keep the first occurrence with original casing
+      if (!companyMap.has(lowerKey)) {
+        companyMap.set(lowerKey, normalized);
+      }
+    }
+  });
+  const companies = ["All", ...Array.from(companyMap.values()).sort((a, b) => a.localeCompare(b))];
 
   // Filter jobs based on search query, source, location, and company
   const filteredJobs = jobs.filter((job) => {
@@ -190,38 +210,43 @@ export default function JobList() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="mb-10 animate-fadeIn">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 tracking-tight">
             Job Opportunities
           </h1>
-          <p className="mt-2 text-gray-600 text-sm">
+          <p className="mt-2 text-gray-600 text-base font-light">
             Explore positions from Saarthix and partner organizations.
           </p>
         </div>
 
         {/* Search and Filter Bar */}
-        <div className="mb-8 bg-white rounded-lg border border-gray-200 p-5">
+        <div className="mb-10 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 animate-fadeIn">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             {/* Search Bar - Left Side */}
             <div className="relative flex-1 max-w-md">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
               <input
                 type="text"
                 placeholder="Search by job title..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                className="w-full rounded-xl border border-gray-300 bg-white pl-12 pr-4 py-3 text-sm text-gray-900 placeholder-gray-500 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
               />
             </div>
 
             {/* Filter Options - Right Side */}
-            <div className="flex gap-2 flex-wrap items-end">
+            <div className="flex gap-3 flex-wrap items-end">
               {/* Source Filter */}
               <select
                 value={filterSource}
                 onChange={(e) => setFilterSource(e.target.value)}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                className="rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
               >
                 <option value="All">All Sources</option>
                 <option value="Local">Local</option>
@@ -232,7 +257,7 @@ export default function JobList() {
               <select
                 value={filterLocation}
                 onChange={(e) => setFilterLocation(e.target.value)}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                className="rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
               >
                 {locations.map((location) => (
                   <option key={location} value={location}>
@@ -245,7 +270,7 @@ export default function JobList() {
               <select
                 value={filterCompany}
                 onChange={(e) => setFilterCompany(e.target.value)}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                className="rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
               >
                 {companies.map((company) => (
                   <option key={company} value={company}>
@@ -258,7 +283,7 @@ export default function JobList() {
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-900 transition disabled:cursor-not-allowed"
+                className="rounded-xl border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-900 transition-all duration-200 disabled:cursor-not-allowed shadow-sm hover:shadow-md disabled:shadow-none"
                 title="Refresh jobs list"
               >
                 {refreshing ? (
@@ -275,9 +300,11 @@ export default function JobList() {
 
         {/* Results Counter */}
         {(searchQuery || filterSource !== "All" || filterLocation !== "All" || filterCompany !== "All") && (
-          <p className="mb-4 text-sm text-gray-600">
-            Found <span className="font-semibold text-gray-900">{filteredJobs.length}</span> job{filteredJobs.length !== 1 ? "s" : ""} matching your filters
-          </p>
+          <div className="mb-6 bg-white rounded-xl border border-gray-200 px-5 py-3 shadow-sm animate-fadeIn">
+            <p className="text-sm text-gray-700 font-medium">
+              Found <span className="font-bold text-gray-900 text-base">{filteredJobs.length}</span> job{filteredJobs.length !== 1 ? "s" : ""} matching your filters
+            </p>
+          </div>
         )}
 
         {error ? (
@@ -293,36 +320,52 @@ export default function JobList() {
             <p className="text-gray-600 text-sm">No jobs match your search criteria. Try adjusting your filters.</p>
           </div>
         ) : (
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {filteredJobs.map((job) => (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredJobs.map((job, index) => (
               <div
                 key={job.id}
-                className="flex h-full flex-col rounded-lg border border-gray-200 bg-white p-6 transition hover:border-gray-300 hover:shadow-md"
+                className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-7 transition-all duration-300 hover:border-gray-300 hover:shadow-xl hover-lift animate-fadeIn"
+                style={{ animationDelay: `${index * 0.05}s` }}
               >
                 <div className="flex-1">
-                  <div className="mb-4 flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-600 bg-gray-100 px-2.5 py-1 rounded">
+                  <div className="mb-5 flex items-center justify-between">
+                    <span className={`text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg ${
+                      job.source === 'Local' 
+                        ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' 
+                        : 'text-blue-700 bg-blue-50 border border-blue-200'
+                    }`}>
                       {job.source}
                     </span>
                   </div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                  <h2 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 leading-tight">
                     {job.title}
                   </h2>
-                  <p className="text-gray-700 font-medium text-sm mb-1">
-                    {job.company || "Company confidential"}
-                  </p>
-                  <p className="text-sm text-gray-600 mb-4">
-                    {job.location || "Location not specified"}
-                  </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <p className="text-gray-800 font-semibold text-sm">
+                      {job.company || "Company confidential"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 mb-5">
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="text-sm text-gray-600">
+                      {job.location || "Location not specified"}
+                    </p>
+                  </div>
                   {job.description && (
-                    <p className="line-clamp-2 text-sm text-gray-600">
+                    <p className="line-clamp-3 text-sm text-gray-600 leading-relaxed">
                       {job.description}
                     </p>
                   )}
                 </div>
                 <button
                   onClick={() => handleViewDetails(job)}
-                  className="mt-6 w-full rounded-md bg-gray-800 hover:bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition"
+                  className="mt-6 w-full rounded-xl bg-gray-900 hover:bg-gray-800 px-4 py-3 text-sm font-semibold text-white transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5"
                 >
                   View Details
                 </button>
@@ -333,11 +376,11 @@ export default function JobList() {
       </div>
 
       {selectedJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="relative w-full max-w-3xl rounded-lg bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-2xl animate-slideIn border border-gray-100">
             <button
               onClick={closeModal}
-              className="absolute right-4 top-4 text-3xl text-gray-400 hover:text-gray-600 transition"
+              className="absolute right-5 top-5 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-all duration-200 flex items-center justify-center text-xl font-light shadow-sm hover:shadow-md"
               aria-label="Close"
             >
               ×
@@ -436,10 +479,10 @@ export default function JobList() {
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                     <button
                       onClick={() => handleApply(selectedJob, jobDetails)}
-                      className={`flex-1 rounded-md px-6 py-3 text-sm font-semibold transition ${
+                      className={`flex-1 rounded-xl px-6 py-3.5 text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 ${
                         isAuthenticated
-                          ? "bg-gray-800 text-white hover:bg-gray-900"
-                          : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                          ? "bg-gray-900 text-white hover:bg-gray-800"
+                          : "bg-gray-300 text-gray-600 cursor-not-allowed shadow-none hover:translate-y-0"
                       }`}
                       disabled={!isAuthenticated}
                     >
@@ -451,7 +494,7 @@ export default function JobList() {
                         href={jobDetails.job_apply_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 rounded-md border border-gray-400 px-6 py-3 text-center text-sm font-semibold text-gray-900 transition hover:bg-gray-50"
+                        className="flex-1 rounded-xl border-2 border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 px-6 py-3.5 text-center text-sm font-semibold text-gray-900 transition-all duration-200 shadow-sm hover:shadow-md"
                       >
                         View Original
                       </a>

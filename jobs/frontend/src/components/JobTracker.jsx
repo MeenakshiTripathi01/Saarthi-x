@@ -125,60 +125,74 @@ export default function JobTracker() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-10 animate-fadeIn">
           <button
             onClick={() => navigate("/")}
-            className="mb-4 text-gray-600 hover:text-gray-900 font-medium flex items-center gap-2 text-sm"
+            className="mb-5 text-gray-600 hover:text-gray-900 font-semibold flex items-center gap-2 text-sm transition-colors duration-200 group"
           >
-            ← Back to Dashboard
+            <span className="group-hover:-translate-x-1 transition-transform duration-200">←</span> Back to Dashboard
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Application Tracker</h1>
-          <p className="mt-2 text-gray-600 text-sm">Monitor the status of your job applications</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 tracking-tight">Application Tracker</h1>
+          <p className="mt-2 text-gray-600 text-base font-light">Monitor the status of your job applications</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 rounded-lg bg-rose-50 border border-rose-200 p-4 text-rose-700 text-sm">
+          <div className="mb-8 rounded-xl bg-rose-50 border border-rose-200 p-5 text-rose-700 text-sm font-medium shadow-sm animate-fadeIn">
             {error}
           </div>
         )}
 
         {/* Applications List */}
         {filteredApplications.length === 0 ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
-            <h3 className="font-semibold text-lg text-gray-900 mb-2">No applications found</h3>
+          <div className="rounded-2xl border border-gray-200 bg-white p-16 text-center shadow-sm animate-fadeIn">
+            <div className="text-5xl mb-4">📋</div>
+            <h3 className="font-bold text-xl text-gray-900 mb-3">No applications found</h3>
             {applications.length === 0 ? (
               <>
-                <p className="text-sm text-gray-600 mb-6">You haven't applied to any positions yet.</p>
+                <p className="text-base text-gray-600 mb-8 font-light">You haven't applied to any positions yet.</p>
                 <button
                   onClick={() => navigate("/apply-jobs")}
-                  className="px-6 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-medium transition text-sm"
+                  className="px-8 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5"
                 >
                   Browse Job Opportunities
                 </button>
               </>
             ) : (
-              <p className="text-sm text-gray-600">Try adjusting your filters</p>
+              <p className="text-base text-gray-600 font-light">Try adjusting your filters</p>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredApplications.map((app) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredApplications.map((app, index) => (
               <div
                 key={app.id}
                 onClick={() => setSelectedApplication(app)}
-                className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition cursor-pointer p-5"
+                className="bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xl transition-all duration-300 cursor-pointer p-6 hover-lift animate-fadeIn"
+                style={{ animationDelay: `${index * 0.05}s` }}
               >
-                <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate text-sm mb-1">{app.jobTitle || "Job Title"}</h3>
-                    <p className="text-gray-700 font-medium text-xs mb-3">{app.company || "Company"}</p>
+                    <h3 className="font-bold text-lg text-gray-900 truncate mb-2 leading-tight">{app.jobTitle || "Job Title"}</h3>
+                    <div className="flex items-center gap-2 mb-4">
+                      <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      <p className="text-gray-700 font-semibold text-sm">{app.company || "Company"}</p>
+                    </div>
                   </div>
                 </div>
-                <span className={`inline-block px-2.5 py-1.5 rounded text-xs font-semibold border ${statusColors[app.status] || "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                <span className={`inline-block px-4 py-2 rounded-xl text-xs font-bold ${
+                  app.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                  app.status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                  app.status === 'rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                  app.status === 'interview' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                  app.status === 'offer' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                  'bg-gray-50 text-gray-700 border border-gray-200'
+                }`}>
                   {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
                 </span>
               </div>
@@ -188,11 +202,11 @@ export default function JobTracker() {
 
         {/* Application Details Modal */}
         {selectedApplication && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="w-full max-w-2xl bg-white rounded-lg shadow-xl p-6 sm:p-8 max-h-[80vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 sm:p-10 max-h-[80vh] overflow-y-auto border border-gray-100 animate-slideIn">
               <button
                 onClick={() => setSelectedApplication(null)}
-                className="absolute right-6 top-6 text-2xl text-gray-400 hover:text-gray-600"
+                className="absolute right-6 top-6 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-all duration-200 flex items-center justify-center text-xl font-light shadow-sm hover:shadow-md"
               >
                 ×
               </button>
@@ -203,7 +217,14 @@ export default function JobTracker() {
                     <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedApplication.jobTitle}</h2>
                     <p className="text-gray-700 font-semibold">{selectedApplication.company}</p>
                   </div>
-                  <span className={`px-4 py-2 rounded-lg font-semibold border text-xs whitespace-nowrap ${statusColors[selectedApplication.status] || "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                  <span className={`px-5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap ${
+                    selectedApplication.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                    selectedApplication.status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                    selectedApplication.status === 'rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                    selectedApplication.status === 'interview' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                    selectedApplication.status === 'offer' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                    'bg-gray-50 text-gray-700 border border-gray-200'
+                  }`}>
                     {selectedApplication.status.toUpperCase()}
                   </span>
                 </div>
@@ -261,13 +282,13 @@ export default function JobTracker() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setSelectedApplication(null)}
-                  className="flex-1 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 font-semibold py-2.5 px-6 transition text-sm"
+                  className="flex-1 rounded-xl border-2 border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 text-gray-900 font-semibold py-3 px-6 transition-all duration-200 text-sm shadow-sm hover:shadow-md"
                 >
                   Close
                 </button>
                 <button
                   onClick={() => navigate("/apply-jobs")}
-                  className="flex-1 rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2.5 px-6 transition text-sm"
+                  className="flex-1 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 px-6 transition-all duration-200 text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5"
                 >
                   Browse More Jobs
                 </button>
