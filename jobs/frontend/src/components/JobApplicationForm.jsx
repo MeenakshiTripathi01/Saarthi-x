@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { recordJobApplication, getUserProfile } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 
@@ -209,16 +210,51 @@ export default function JobApplicationForm({ job, onClose, onSuccess }) {
 
       await recordJobApplication(applicationData);
       
+      // Show success toast notification
+      toast.success('Application submitted successfully!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      
       if (onSuccess) {
         onSuccess();
       }
       
-      alert('✅ Application submitted successfully!');
       onClose();
     } catch (err) {
       console.error('Error submitting application:', err);
       const errorMessage = err.response?.data?.message || err.response?.data || err.message || 'Failed to submit application';
       setError(errorMessage);
+      
+      // Check if user already applied to this job
+      const isAlreadyApplied = 
+        err.response?.status === 400 && 
+        (errorMessage.includes('already applied') || errorMessage.includes('already applied to this job'));
+      
+      if (isAlreadyApplied) {
+        toast.warning('You have already applied to this job!', {
+          position: "top-right",
+          autoClose: 4000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      } else {
+        // Show error toast for other errors
+        toast.error(errorMessage, {
+          position: "top-right",
+          autoClose: 4000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
