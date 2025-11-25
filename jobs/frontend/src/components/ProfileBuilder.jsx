@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { getUserProfile, saveUserProfile } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 
@@ -231,6 +232,31 @@ export default function ProfileBuilder() {
       await saveUserProfile(profileData);
       setSuccess(true);
       console.log('Profile saved successfully to MongoDB');
+      
+      // Show toast notification based on whether profile was created or updated
+      if (profileLoaded) {
+        toast.success('Profile updated successfully!', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      } else {
+        toast.success('Profile created successfully!', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      }
+      
+      // Update profileLoaded state after successful save
+      setProfileLoaded(true);
+      
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
@@ -283,11 +309,6 @@ export default function ProfileBuilder() {
           </div>
         )}
 
-        {success && (
-          <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-700 text-sm">
-            ✅ Profile saved successfully to MongoDB!
-          </div>
-        )}
 
         {profileLoaded && !success && (
           <div className="mb-6 rounded-md border border-blue-200 bg-blue-50 p-4 text-blue-700 text-sm">
