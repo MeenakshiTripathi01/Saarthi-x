@@ -185,3 +185,85 @@ export const updateUserProfile = async (profileData) => {
     throw error;
   }
 };
+
+// Industry API functions
+export const getMyPostedJobs = async () => {
+  try {
+    const response = await axios.get(
+      'http://localhost:8080/api/applications/my-jobs',
+      {
+        withCredentials: true,
+      }
+    );
+    console.log('getMyPostedJobs response:', response);
+    console.log('Response data:', response.data);
+    console.log('Response data type:', typeof response.data);
+    
+    // Handle both direct array and wrapped response
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else if (response.data && Array.isArray(response.data.data)) {
+      return response.data.data;
+    } else if (typeof response.data === 'string') {
+      // If backend returns a string error message
+      console.error('Backend returned string:', response.data);
+      throw new Error(response.data);
+    } else {
+      console.warn('Unexpected response format:', response.data);
+      return [];
+    }
+  } catch (error) {
+    console.error('Error fetching posted jobs:', error);
+    console.error('Error response:', error.response);
+    console.error('Error response data:', error.response?.data);
+    console.error('Error response status:', error.response?.status);
+    
+    // Re-throw with more context
+    if (error.response) {
+      // Handle string error messages from backend
+      let errorMsg = error.response.data;
+      if (typeof errorMsg === 'string') {
+        throw new Error(errorMsg);
+      } else if (errorMsg?.message) {
+        throw new Error(errorMsg.message);
+      } else {
+        throw new Error(error.response.statusText || `Server error: ${error.response.status}`);
+      }
+    }
+    throw error;
+  }
+};
+
+export const getApplicationsByJobId = async (jobId) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8080/api/applications/job/${jobId}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching applications for job:', error);
+    throw error;
+  }
+};
+
+export const updateApplicationStatusByIndustry = async (applicationId, status) => {
+  try {
+    const response = await axios.put(
+      `http://localhost:8080/api/applications/${applicationId}/status`,
+      { status },
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating application status:', error);
+    throw error;
+  }
+};

@@ -1,9 +1,11 @@
 package com.saarthix.jobs.controller;
 
 import com.saarthix.jobs.model.Application;
+import com.saarthix.jobs.model.Job;
 import com.saarthix.jobs.model.ResumeAndDetails;
 import com.saarthix.jobs.model.User;
 import com.saarthix.jobs.repository.ApplicationRepository;
+import com.saarthix.jobs.repository.JobRepository;
 import com.saarthix.jobs.repository.ResumeAndDetailsRepository;
 import com.saarthix.jobs.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
@@ -23,13 +25,16 @@ public class ApplicationController {
     private final ApplicationRepository applicationRepository;
     private final ResumeAndDetailsRepository resumeAndDetailsRepository;
     private final UserRepository userRepository;
+    private final JobRepository jobRepository;
 
     public ApplicationController(ApplicationRepository applicationRepository, 
                                 ResumeAndDetailsRepository resumeAndDetailsRepository,
-                                UserRepository userRepository) {
+                                UserRepository userRepository,
+                                JobRepository jobRepository) {
         this.applicationRepository = applicationRepository;
         this.resumeAndDetailsRepository = resumeAndDetailsRepository;
         this.userRepository = userRepository;
+        this.jobRepository = jobRepository;
     }
 
     /**
@@ -82,11 +87,33 @@ public class ApplicationController {
                 return ResponseEntity.badRequest().body("Job ID is required");
             }
 
+            // Log the jobId being used
+            System.out.println("=========================================");
+            System.out.println("CREATING APPLICATION");
+            System.out.println("Job ID from request: " + jobId);
+            System.out.println("Applicant Email: " + user.getEmail());
+            System.out.println("Applicant ID: " + user.getId());
+            
+            // Verify the job exists
+            Optional<Job> jobOpt = jobRepository.findById(jobId);
+            if (jobOpt.isPresent()) {
+                Job job = jobOpt.get();
+                System.out.println("Job found in database:");
+                System.out.println("  - Job Title: " + job.getTitle());
+                System.out.println("  - Company: " + job.getCompany());
+                System.out.println("  - Industry ID: " + job.getIndustryId());
+            } else {
+                System.out.println("WARNING: Job not found in database with ID: " + jobId);
+                System.out.println("This might be an external job or the ID format is different");
+            }
+
             // Check if already applied
             Optional<Application> existingApp = applicationRepository.findByJobIdAndApplicantEmail(jobId, user.getEmail());
             if (existingApp.isPresent()) {
+                System.out.println("Application already exists for this job and user");
                 return ResponseEntity.status(400).body("You have already applied to this job");
             }
+            System.out.println("No existing application found, creating new one");
 
             // Create new application
             Application application = new Application();
@@ -214,21 +241,184 @@ public class ApplicationController {
     }
 
     /**
-     * Update application status
+     * Get all jobs posted by the current industry user with application counts
+     * IMPORTANT: This must be defined BEFORE @PutMapping("/{id}") to avoid path conflict
      */
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateApplicationStatus(
-            @PathVariable String id,
-            @RequestBody Map<String, String> body,
-            Authentication auth) {
+    @GetMapping("/my-jobs")
+    public ResponseEntity<?> getMyPostedJobs(Authentication auth) {
         // Check authentication
         if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Must be logged in to update applications");
+            return ResponseEntity.status(401).body("Must be logged in to view your jobs");
         }
 
         User user = resolveUserFromOAuth(auth);
         if (user == null) {
             return ResponseEntity.status(401).body("User not found");
+        }
+
+        // Check if user is INDUSTRY type
+        if (!"INDUSTRY".equals(user.getUserType())) {
+            return ResponseEntity.status(403).body("Only INDUSTRY users can view their posted jobs");
+        }
+
+        // Get all jobs posted by this industry user
+        List<Job> jobs = jobRepository.findByIndustryId(user.getId());
+        
+        // Log for debugging
+        System.out.println("=========================================");
+        System.out.println("GET /api/applications/my-jobs");
+        System.out.println("User ID: " + user.getId());
+        System.out.println("User Email: " + user.getEmail());
+        System.out.println("User Type: " + user.getUserType());
+        System.out.println("Found " + jobs.size() + " jobs for industry user");
+        System.out.println("=========================================");
+        
+        // If no jobs found, check for backward compatibility (jobs without industryId)
+        if (jobs.isEmpty()) {
+            List<Job> allJobs = jobRepository.findAll();
+            System.out.println("Total jobs in database: " + allJobs.size());
+            
+            // For backward compatibility: if jobs were created before industryId was added,
+            // try to match by postedBy field (if it contains user email or name)
+            List<Job> matchedJobs = allJobs.stream()
+                .filter(job -> {
+                    if (job.getIndustryId() == null || job.getIndustryId().isEmpty()) {
+                        // Try to match by postedBy field
+                        String postedBy = job.getPostedBy();
+                        return postedBy != null && 
+                               (postedBy.equals(user.getEmail()) || 
+                                postedBy.equals(user.getName()));
+                    }
+                    return false;
+                })
+                .toList();
+            
+            if (!matchedJobs.isEmpty()) {
+                System.out.println("Found " + matchedJobs.size() + " jobs by backward compatibility matching");
+                // Update these jobs with the industryId for future queries
+                for (Job job : matchedJobs) {
+                    job.setIndustryId(user.getId());
+                    jobRepository.save(job);
+                }
+                jobs = matchedJobs;
+            }
+        }
+
+        return ResponseEntity.ok(jobs);
+    }
+
+    /**
+     * Get applications for a specific job (for industry users who posted the job)
+     * IMPORTANT: This must be defined BEFORE @GetMapping("/by-email/{email}") to avoid path conflict
+     */
+    @GetMapping("/job/{jobId}")
+    public ResponseEntity<?> getApplicationsByJobId(
+            @PathVariable String jobId,
+            Authentication auth) {
+        // Check authentication
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(401).body("Must be logged in to view applications");
+        }
+
+        User user = resolveUserFromOAuth(auth);
+        if (user == null) {
+            return ResponseEntity.status(401).body("User not found");
+        }
+
+        // Check if user is INDUSTRY type
+        if (!"INDUSTRY".equals(user.getUserType())) {
+            return ResponseEntity.status(403).body("Only INDUSTRY users can view job applications");
+        }
+
+        // Verify the job exists and belongs to this industry user
+        Optional<Job> jobOpt = jobRepository.findById(jobId);
+        if (jobOpt.isEmpty()) {
+            return ResponseEntity.status(404).body("Job not found");
+        }
+
+        Job job = jobOpt.get();
+        if (!user.getId().equals(job.getIndustryId())) {
+            return ResponseEntity.status(403).body("You can only view applications for your own jobs");
+        }
+
+        // Get all applications for this job
+        List<Application> applications = applicationRepository.findByJobId(jobId);
+        
+        // Also check for applications that might have been created with different job ID formats
+        // (e.g., if job ID was stored differently)
+        if (applications.isEmpty()) {
+            // Get all applications and filter by job title and company as fallback
+            List<Application> allApplications = applicationRepository.findAll();
+            List<Application> matchedApplications = allApplications.stream()
+                .filter(app -> {
+                    // Match by job title and company if jobId doesn't match
+                    boolean titleMatch = job.getTitle() != null && 
+                                       app.getJobTitle() != null && 
+                                       job.getTitle().equalsIgnoreCase(app.getJobTitle());
+                    boolean companyMatch = job.getCompany() != null && 
+                                          app.getCompany() != null && 
+                                          job.getCompany().equalsIgnoreCase(app.getCompany());
+                    return titleMatch && companyMatch;
+                })
+                .toList();
+            
+            if (!matchedApplications.isEmpty()) {
+                System.out.println("Found " + matchedApplications.size() + " applications by title/company matching");
+                // Update these applications with the correct jobId
+                for (Application app : matchedApplications) {
+                    if (!jobId.equals(app.getJobId())) {
+                        app.setJobId(jobId);
+                        applicationRepository.save(app);
+                    }
+                }
+                applications = matchedApplications;
+            }
+        }
+        
+        // Log for debugging
+        System.out.println("=========================================");
+        System.out.println("GET /api/applications/job/" + jobId);
+        System.out.println("Job Title: " + job.getTitle());
+        System.out.println("Company: " + job.getCompany());
+        System.out.println("Industry User ID: " + user.getId());
+        System.out.println("Job Industry ID: " + job.getIndustryId());
+        System.out.println("Found " + applications.size() + " applications for this job");
+        if (!applications.isEmpty()) {
+            System.out.println("Application IDs: " + applications.stream()
+                .map(Application::getId)
+                .toList());
+            System.out.println("Application Job IDs: " + applications.stream()
+                .map(Application::getJobId)
+                .toList());
+        }
+        System.out.println("=========================================");
+        
+        return ResponseEntity.ok(applications);
+    }
+
+    /**
+     * Update application status (for industry users)
+     * Industry users can update status of applications for their posted jobs
+     * IMPORTANT: This must be defined BEFORE @GetMapping("/by-email/{email}") to avoid path conflict
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateApplicationStatusByIndustry(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        // Check authentication
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(401).body("Must be logged in to update application status");
+        }
+
+        User user = resolveUserFromOAuth(auth);
+        if (user == null) {
+            return ResponseEntity.status(401).body("User not found");
+        }
+
+        // Check if user is INDUSTRY type
+        if (!"INDUSTRY".equals(user.getUserType())) {
+            return ResponseEntity.status(403).body("Only INDUSTRY users can update application status");
         }
 
         Optional<Application> appOpt = applicationRepository.findById(id);
@@ -237,23 +427,53 @@ public class ApplicationController {
         }
 
         Application application = appOpt.get();
-
-        // Verify user owns the application
-        if (!user.getEmail().equals(application.getApplicantEmail())) {
-            return ResponseEntity.status(403).body("You can only update your own applications");
+        
+        // Verify the job belongs to this industry user
+        Optional<Job> jobOpt = jobRepository.findById(application.getJobId());
+        if (jobOpt.isEmpty()) {
+            return ResponseEntity.status(404).body("Job not found for this application");
         }
 
+        Job job = jobOpt.get();
+        if (!user.getId().equals(job.getIndustryId())) {
+            return ResponseEntity.status(403).body("You can only update status for applications to your own jobs");
+        }
+        
         String newStatus = body.get("status");
-        if (newStatus != null) {
-            // Validate status
-            List<String> validStatuses = List.of("pending", "accepted", "rejected", "interview", "offer");
-            if (!validStatuses.contains(newStatus.toLowerCase())) {
-                return ResponseEntity.badRequest().body("Invalid status. Must be one of: " + validStatuses);
-            }
-            application.setStatus(newStatus.toLowerCase());
+        if (newStatus == null || newStatus.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Status is required");
         }
 
+        // Validate status - expanded status list
+        List<String> validStatuses = List.of(
+            "pending", 
+            "resume_viewed", 
+            "call_scheduled", 
+            "interview_scheduled", 
+            "offer_sent", 
+            "accepted", 
+            "rejected"
+        );
+        if (!validStatuses.contains(newStatus.toLowerCase())) {
+            return ResponseEntity.badRequest().body("Invalid status. Must be one of: " + validStatuses);
+        }
+        
+        // Update status and lastUpdated timestamp
+        application.setStatus(newStatus.toLowerCase());
         Application updated = applicationRepository.save(application);
+        
+        // Log for debugging
+        System.out.println("=========================================");
+        System.out.println("PUT /api/applications/" + id + "/status");
+        System.out.println("Application ID: " + updated.getId());
+        System.out.println("Job ID: " + updated.getJobId());
+        System.out.println("Job Title: " + updated.getJobTitle());
+        System.out.println("Applicant: " + updated.getApplicantEmail());
+        System.out.println("Old Status: " + (application.getStatus() != null ? application.getStatus() : "N/A"));
+        System.out.println("New Status: " + updated.getStatus());
+        System.out.println("Updated By: " + user.getEmail() + " (Industry User)");
+        System.out.println("=========================================");
+        
         return ResponseEntity.ok(updated);
     }
 
