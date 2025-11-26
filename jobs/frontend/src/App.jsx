@@ -11,6 +11,7 @@ import JobTracker from './components/JobTracker';
 import RoleSelection from './components/RoleSelection';
 import EditProfile from './components/EditProfile';
 import ProfileBuilder from './components/ProfileBuilder';
+import IndustryApplications from './components/IndustryApplications';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
             <Route path="/job-tracker" element={<JobTracker />} />
             <Route path="/edit-profile" element={<EditProfile />} />
             <Route path="/build-profile" element={<ProfileBuilder />} />
+            <Route path="/manage-applications" element={<IndustryApplications />} />
           </Routes>
           <ToastContainer
             position="top-right"

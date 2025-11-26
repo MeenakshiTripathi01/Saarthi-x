@@ -11,5 +11,6 @@ public interface ApplicationRepository extends MongoRepository<Application, Stri
     List<Application> findByApplicantEmail(String applicantEmail);
     List<Application> findByApplicantId(String applicantId);
     Optional<Application> findByJobIdAndApplicantEmail(String jobId, String applicantEmail);
+    List<Application> findByJobId(String jobId);  // For industry users to see all applications for a job
 }
 

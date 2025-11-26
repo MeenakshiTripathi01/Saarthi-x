@@ -14,10 +14,29 @@ export default function JobTracker() {
 
   const statusColors = {
     pending: "bg-amber-50 border-amber-200 text-amber-800",
+    resume_viewed: "bg-blue-50 border-blue-200 text-blue-800",
+    call_scheduled: "bg-purple-50 border-purple-200 text-purple-800",
+    interview_scheduled: "bg-indigo-50 border-indigo-200 text-indigo-800",
+    offer_sent: "bg-green-50 border-green-200 text-green-800",
     accepted: "bg-emerald-50 border-emerald-200 text-emerald-800",
     rejected: "bg-rose-50 border-rose-200 text-rose-800",
-    interview: "bg-blue-50 border-blue-200 text-blue-800",
-    offer: "bg-violet-50 border-violet-200 text-violet-800",
+    interview: "bg-blue-50 border-blue-200 text-blue-800", // Keep for backward compatibility
+    offer: "bg-violet-50 border-violet-200 text-violet-800", // Keep for backward compatibility
+  };
+
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      pending: "Pending",
+      resume_viewed: "Resume Viewed",
+      call_scheduled: "Call Scheduled",
+      interview_scheduled: "Interview Scheduled",
+      offer_sent: "Offer Sent",
+      accepted: "Accepted",
+      rejected: "Rejected",
+      interview: "Interview", // Keep for backward compatibility
+      offer: "Offer", // Keep for backward compatibility
+    };
+    return statusMap[status] || status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const loadApplications = async () => {
@@ -185,15 +204,8 @@ export default function JobTracker() {
                     </div>
                   </div>
                 </div>
-                <span className={`inline-block px-4 py-2 rounded-xl text-xs font-bold ${
-                  app.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                  app.status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                  app.status === 'rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
-                  app.status === 'interview' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                  app.status === 'offer' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
-                  'bg-gray-50 text-gray-700 border border-gray-200'
-                }`}>
-                  {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                <span className={`inline-block px-4 py-2 rounded-xl text-xs font-bold border ${statusColors[app.status] || "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                  {getStatusLabel(app.status)}
                 </span>
               </div>
             ))}
@@ -217,15 +229,8 @@ export default function JobTracker() {
                     <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedApplication.jobTitle}</h2>
                     <p className="text-gray-700 font-semibold">{selectedApplication.company}</p>
                   </div>
-                  <span className={`px-5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap ${
-                    selectedApplication.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                    selectedApplication.status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                    selectedApplication.status === 'rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
-                    selectedApplication.status === 'interview' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                    selectedApplication.status === 'offer' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
-                    'bg-gray-50 text-gray-700 border border-gray-200'
-                  }`}>
-                    {selectedApplication.status.toUpperCase()}
+                  <span className={`px-5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap border ${statusColors[selectedApplication.status] || "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                    {getStatusLabel(selectedApplication.status)}
                   </span>
                 </div>
 
@@ -244,7 +249,7 @@ export default function JobTracker() {
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <p className="text-xs text-gray-600 font-medium mb-1">Status</p>
                   <p className="font-semibold text-gray-900 text-sm">
-                    {selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)}
+                    {getStatusLabel(selectedApplication.status)}
                   </p>
                 </div>
                 {selectedApplication.salary && (
