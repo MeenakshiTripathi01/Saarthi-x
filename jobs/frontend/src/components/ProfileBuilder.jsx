@@ -278,54 +278,74 @@ export default function ProfileBuilder() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-50">
         <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-600 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600 text-sm">Loading...</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900"></div>
+          <p className="mt-4 text-gray-600 text-sm font-medium">Loading your profile...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-10 animate-fadeIn">
           <button
             onClick={() => navigate('/')}
-            className="mb-4 text-gray-600 hover:text-gray-900 font-medium flex items-center gap-2 text-sm"
+            className="mb-6 text-gray-600 hover:text-gray-900 font-semibold flex items-center gap-2 text-sm transition-colors duration-200 group"
           >
-            ← Back to Dashboard
+            <span className="group-hover:-translate-x-1 transition-transform duration-200">←</span> Back to Dashboard
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Build Your Profile</h1>
-          <p className="mt-2 text-gray-600 text-sm">
-            Create your profile to quickly apply to jobs. Your information will be saved and can be used to auto-fill application forms.
-          </p>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center shadow-sm">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">Build Your Profile</h1>
+              <p className="mt-2 text-gray-600 text-base font-light">
+                Create your profile to quickly apply to jobs. Your information will be saved and can be used to auto-fill application forms.
+              </p>
+            </div>
+          </div>
         </div>
 
         {error && (
-          <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-5 text-red-700 text-sm font-medium shadow-sm animate-fadeIn">
             {error}
           </div>
         )}
 
-
         {profileLoaded && !success && (
-          <div className="mb-6 rounded-md border border-blue-200 bg-blue-50 p-4 text-blue-700 text-sm">
-            ℹ️ Your profile data has been loaded from the database. You can update any fields and save again.
+          <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-5 text-blue-700 text-sm font-medium shadow-sm animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Your profile data has been loaded from the database. You can update any fields and save again.</span>
+            </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-8 space-y-8">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 shadow-lg p-8 md:p-10 space-y-10 animate-fadeIn">
           {/* Personal Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
-              Personal Information
-            </h3>
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Personal Information
+              </h3>
+            </div>
             
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="fullName" className="block text-sm font-semibold text-gray-900 mb-2">
                   Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -335,12 +355,12 @@ export default function ProfileBuilder() {
                   value={formData.fullName}
                   onChange={handleInputChange}
                   required
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                 />
               </div>
 
               <div>
-                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="phoneNumber" className="block text-sm font-semibold text-gray-900 mb-2">
                   Phone Number
                 </label>
                 <input
@@ -349,12 +369,12 @@ export default function ProfileBuilder() {
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                 />
               </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="md:col-span-2">
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2">
                   Email
                 </label>
                 <input
@@ -363,21 +383,28 @@ export default function ProfileBuilder() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                 />
               </div>
             </div>
           </div>
 
           {/* Professional Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
-              Professional Information
-            </h3>
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Professional Information
+              </h3>
+            </div>
             
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="currentPosition" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="currentPosition" className="block text-sm font-semibold text-gray-900 mb-2">
                   Current Position
                 </label>
                 <input
@@ -386,13 +413,13 @@ export default function ProfileBuilder() {
                   name="currentPosition"
                   value={formData.currentPosition}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                   placeholder="e.g., Software Engineer"
                 />
               </div>
 
               <div>
-                <label htmlFor="currentCompany" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="currentCompany" className="block text-sm font-semibold text-gray-900 mb-2">
                   Current Company
                 </label>
                 <input
@@ -401,12 +428,12 @@ export default function ProfileBuilder() {
                   name="currentCompany"
                   value={formData.currentCompany}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                 />
               </div>
 
               <div>
-                <label htmlFor="experience" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="experience" className="block text-sm font-semibold text-gray-900 mb-2">
                   Years of Experience
                 </label>
                 <input
@@ -415,14 +442,14 @@ export default function ProfileBuilder() {
                   name="experience"
                   value={formData.experience}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                   placeholder="e.g., 3-5 years"
                 />
               </div>
 
               <div>
-                <label htmlFor="skillsInput" className="block text-sm font-medium text-gray-700 mb-1">
-                  Skills (comma-separated)
+                <label htmlFor="skillsInput" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Skills <span className="text-gray-500 font-normal text-xs">(comma-separated)</span>
                 </label>
                 <input
                   type="text"
@@ -430,14 +457,14 @@ export default function ProfileBuilder() {
                   name="skillsInput"
                   value={skillsInput}
                   onChange={handleSkillsChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                   placeholder="e.g., Java, React, MongoDB, Spring Boot"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="summary" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="summary" className="block text-sm font-semibold text-gray-900 mb-2">
                 Professional Summary
               </label>
               <textarea
@@ -445,22 +472,30 @@ export default function ProfileBuilder() {
                 name="summary"
                 value={formData.summary}
                 onChange={handleInputChange}
-                rows={4}
-                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 resize-none"
+                rows={5}
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none shadow-sm hover:shadow-md"
                 placeholder="Brief summary of your professional background..."
               />
             </div>
           </div>
 
           {/* Location Preferences */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
-              Location Preferences
-            </h3>
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Location Preferences
+              </h3>
+            </div>
             
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="currentLocation" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="currentLocation" className="block text-sm font-semibold text-gray-900 mb-2">
                   Current Location
                 </label>
                 <input
@@ -469,12 +504,12 @@ export default function ProfileBuilder() {
                   name="currentLocation"
                   value={formData.currentLocation}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                 />
               </div>
 
               <div>
-                <label htmlFor="preferredLocation" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="preferredLocation" className="block text-sm font-semibold text-gray-900 mb-2">
                   Preferred Location
                 </label>
                 <input
@@ -483,12 +518,12 @@ export default function ProfileBuilder() {
                   name="preferredLocation"
                   value={formData.preferredLocation}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                 />
               </div>
 
               <div>
-                <label htmlFor="workPreference" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="workPreference" className="block text-sm font-semibold text-gray-900 mb-2">
                   Work Preference
                 </label>
                 <select
@@ -496,7 +531,7 @@ export default function ProfileBuilder() {
                   name="workPreference"
                   value={formData.workPreference}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                 >
                   <option value="Remote">Remote</option>
                   <option value="On-site">On-site</option>
@@ -505,30 +540,39 @@ export default function ProfileBuilder() {
               </div>
 
               <div className="flex items-center pt-8">
-                <input
-                  type="checkbox"
-                  id="willingToRelocate"
-                  name="willingToRelocate"
-                  checked={formData.willingToRelocate}
-                  onChange={handleInputChange}
-                  className="h-4 w-4 text-gray-800 focus:ring-gray-500 border-gray-300 rounded"
-                />
-                <label htmlFor="willingToRelocate" className="ml-2 block text-sm text-gray-700">
-                  Willing to relocate
-                </label>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="willingToRelocate"
+                    name="willingToRelocate"
+                    checked={formData.willingToRelocate}
+                    onChange={handleInputChange}
+                    className="h-5 w-5 text-gray-900 focus:ring-gray-500 border-gray-300 rounded cursor-pointer transition-all"
+                  />
+                  <label htmlFor="willingToRelocate" className="ml-3 block text-sm font-semibold text-gray-900 cursor-pointer">
+                    Willing to relocate
+                  </label>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Contact & Links */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
-              Contact & Links
-            </h3>
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Contact & Links
+              </h3>
+            </div>
             
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="linkedInUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="linkedInUrl" className="block text-sm font-semibold text-gray-900 mb-2">
                   LinkedIn URL
                 </label>
                 <input
@@ -537,12 +581,13 @@ export default function ProfileBuilder() {
                   name="linkedInUrl"
                   value={formData.linkedInUrl}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
+                  placeholder="https://linkedin.com/in/yourprofile"
                 />
               </div>
 
               <div>
-                <label htmlFor="portfolioUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="portfolioUrl" className="block text-sm font-semibold text-gray-900 mb-2">
                   Portfolio URL
                 </label>
                 <input
@@ -551,12 +596,13 @@ export default function ProfileBuilder() {
                   name="portfolioUrl"
                   value={formData.portfolioUrl}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
+                  placeholder="https://yourportfolio.com"
                 />
               </div>
 
               <div>
-                <label htmlFor="githubUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="githubUrl" className="block text-sm font-semibold text-gray-900 mb-2">
                   GitHub URL
                 </label>
                 <input
@@ -565,12 +611,13 @@ export default function ProfileBuilder() {
                   name="githubUrl"
                   value={formData.githubUrl}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
+                  placeholder="https://github.com/username"
                 />
               </div>
 
               <div>
-                <label htmlFor="websiteUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="websiteUrl" className="block text-sm font-semibold text-gray-900 mb-2">
                   Website URL
                 </label>
                 <input
@@ -579,27 +626,35 @@ export default function ProfileBuilder() {
                   name="websiteUrl"
                   value={formData.websiteUrl}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
+                  placeholder="https://yourwebsite.com"
                 />
               </div>
             </div>
           </div>
 
           {/* Resume Upload */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
-              Resume
-            </h3>
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Resume
+              </h3>
+            </div>
             
             {!resume ? (
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition ${
+                className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 ${
                   isDragging
-                    ? 'border-gray-800 bg-gray-50'
-                    : 'border-gray-300 hover:border-gray-400'
+                    ? 'border-gray-900 bg-gray-50 shadow-lg'
+                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
                 }`}
               >
                 <input
@@ -611,42 +666,46 @@ export default function ProfileBuilder() {
                   id="resume-upload"
                 />
                 <label htmlFor="resume-upload" className="cursor-pointer">
-                  <svg
-                    className="mx-auto h-12 w-12 text-gray-400 mb-4"
-                    stroke="currentColor"
-                    fill="none"
-                    viewBox="0 0 48 48"
-                  >
-                    <path
-                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <p className="text-sm text-gray-600 mb-2">
-                    <span className="font-semibold text-gray-900">Click to upload</span> or drag and drop
+                  <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <svg
+                      className="h-8 w-8 text-gray-600"
+                      stroke="currentColor"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-base text-gray-700 mb-2 font-semibold">
+                    <span className="text-gray-900">Click to upload</span> or drag and drop
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm text-gray-500">
                     PDF, DOC, DOCX, or TXT (MAX. 5MB)
                   </p>
                 </label>
               </div>
             ) : (
-              <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+              <div className="border-2 border-gray-200 rounded-2xl p-6 bg-gradient-to-br from-gray-50 to-white shadow-sm">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <svg className="h-8 w-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                      <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-bold text-gray-900 mb-1">
                         {resume.name}
                         {resume.isFromProfile && (
-                          <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">Loaded from Profile</span>
+                          <span className="ml-2 text-xs bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg font-semibold border border-emerald-200">Loaded from Profile</span>
                         )}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-600 font-medium">
                         {formatFileSize(resume.size || 0)}
                         {resume.isFromProfile && ' • Saved in your profile'}
                       </p>
@@ -658,7 +717,7 @@ export default function ProfileBuilder() {
                       setResume(null);
                       if (fileInputRef.current) fileInputRef.current.value = '';
                     }}
-                    className="text-red-600 hover:text-red-800 text-sm font-medium"
+                    className="text-red-600 hover:text-red-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-red-50 transition-all duration-200"
                   >
                     Remove
                   </button>
@@ -668,14 +727,21 @@ export default function ProfileBuilder() {
           </div>
 
           {/* Additional Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
-              Additional Information
-            </h3>
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Additional Information
+              </h3>
+            </div>
             
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="availability" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="availability" className="block text-sm font-semibold text-gray-900 mb-2">
                   Availability
                 </label>
                 <select
@@ -683,7 +749,7 @@ export default function ProfileBuilder() {
                   name="availability"
                   value={formData.availability}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                 >
                   <option value="Immediately">Immediately</option>
                   <option value="1 week notice">1 week notice</option>
@@ -694,8 +760,8 @@ export default function ProfileBuilder() {
               </div>
 
               <div>
-                <label htmlFor="expectedSalary" className="block text-sm font-medium text-gray-700 mb-1">
-                  Expected Salary (Optional)
+                <label htmlFor="expectedSalary" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Expected Salary <span className="text-gray-500 font-normal text-xs">(Optional)</span>
                 </label>
                 <input
                   type="text"
@@ -703,13 +769,13 @@ export default function ProfileBuilder() {
                   name="expectedSalary"
                   value={formData.expectedSalary}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                   placeholder="e.g., $50,000 - $70,000"
                 />
               </div>
 
               <div>
-                <label htmlFor="education" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="education" className="block text-sm font-semibold text-gray-900 mb-2">
                   Education
                 </label>
                 <input
@@ -718,13 +784,13 @@ export default function ProfileBuilder() {
                   name="education"
                   value={formData.education}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                   placeholder="e.g., Bachelor's in Computer Science"
                 />
               </div>
 
               <div>
-                <label htmlFor="certifications" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="certifications" className="block text-sm font-semibold text-gray-900 mb-2">
                   Certifications
                 </label>
                 <input
@@ -733,15 +799,15 @@ export default function ProfileBuilder() {
                   name="certifications"
                   value={formData.certifications}
                   onChange={handleInputChange}
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
                   placeholder="e.g., AWS Certified, PMP"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="coverLetterTemplate" className="block text-sm font-medium text-gray-700 mb-1">
-                Cover Letter Template (Optional)
+              <label htmlFor="coverLetterTemplate" className="block text-sm font-semibold text-gray-900 mb-2">
+                Cover Letter Template <span className="text-gray-500 font-normal text-xs">(Optional)</span>
               </label>
               <textarea
                 id="coverLetterTemplate"
@@ -749,26 +815,26 @@ export default function ProfileBuilder() {
                 value={formData.coverLetterTemplate}
                 onChange={handleInputChange}
                 rows={6}
-                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 resize-none"
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none shadow-sm hover:shadow-md"
                 placeholder="Default cover letter template that can be used when applying to jobs..."
               />
             </div>
           </div>
 
           {/* Submit Button */}
-          <div className="flex gap-4 pt-4 border-t border-gray-200">
+          <div className="flex gap-4 pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={() => navigate('/')}
               disabled={saving}
-              className="flex-1 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-900 font-semibold py-3 px-6 transition disabled:cursor-not-allowed text-sm"
+              className="flex-1 rounded-xl border-2 border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 disabled:bg-gray-100 disabled:border-gray-200 text-gray-900 font-semibold py-3.5 px-6 transition-all duration-200 disabled:cursor-not-allowed text-sm shadow-sm hover:shadow-md"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 rounded-md bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 text-white font-semibold py-3 px-6 transition disabled:cursor-not-allowed text-sm"
+              className="flex-1 rounded-xl bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white font-semibold py-3.5 px-6 transition-all duration-200 disabled:cursor-not-allowed text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:transform-none"
             >
               {saving ? (
                 <span className="flex items-center justify-center gap-2">
