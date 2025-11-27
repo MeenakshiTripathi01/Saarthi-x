@@ -23,7 +23,7 @@ export default function JobList() {
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [jobToApply, setJobToApply] = useState(null);
 
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isIndustry } = useAuth();
 
   // Define loadJobs outside useEffect so it can be called manually
   const loadJobs = async () => {
@@ -497,49 +497,52 @@ export default function JobList() {
                     )}
                   </div>
 
-                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                    {selectedJob.source === "External" ? (
-                      // For external jobs, show button to apply on company website
-                      <>
-                        <button
-                          onClick={() => handleApply(selectedJob, jobDetails)}
-                          className="flex-1 rounded-xl bg-blue-600 text-white hover:bg-blue-700 px-6 py-3.5 text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 flex items-center justify-center gap-2"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                          Apply on Company Website
-                        </button>
-                        {jobDetails?.job_apply_link && (
-                          <a
-                            href={jobDetails.job_apply_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 rounded-xl border-2 border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 px-6 py-3.5 text-center text-sm font-semibold text-gray-900 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+                  {/* Only show Apply buttons if user is not an industry user */}
+                  {!isIndustry && (
+                    <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                      {selectedJob.source === "External" ? (
+                        // For external jobs, show button to apply on company website
+                        <>
+                          <button
+                            onClick={() => handleApply(selectedJob, jobDetails)}
+                            className="flex-1 rounded-xl bg-blue-600 text-white hover:bg-blue-700 px-6 py-3.5 text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 flex items-center justify-center gap-2"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
-                            View Original Posting
-                          </a>
-                        )}
-                      </>
-                    ) : (
-                      // For local jobs, show application form button
-                      <button
-                        onClick={() => handleApply(selectedJob, jobDetails)}
-                        className={`flex-1 rounded-xl px-6 py-3.5 text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 ${
-                          isAuthenticated
-                            ? "bg-gray-900 text-white hover:bg-gray-800"
-                            : "bg-gray-300 text-gray-600 cursor-not-allowed shadow-none hover:translate-y-0"
-                        }`}
-                        disabled={!isAuthenticated}
-                      >
-                        {isAuthenticated ? "Apply Now" : "Sign in to Apply"}
-                      </button>
-                    )}
-                  </div>
+                            Apply on Company Website
+                          </button>
+                          {jobDetails?.job_apply_link && (
+                            <a
+                              href={jobDetails.job_apply_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 rounded-xl border-2 border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 px-6 py-3.5 text-center text-sm font-semibold text-gray-900 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              View Original Posting
+                            </a>
+                          )}
+                        </>
+                      ) : (
+                        // For local jobs, show application form button
+                        <button
+                          onClick={() => handleApply(selectedJob, jobDetails)}
+                          className={`flex-1 rounded-xl px-6 py-3.5 text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 ${
+                            isAuthenticated
+                              ? "bg-gray-900 text-white hover:bg-gray-800"
+                              : "bg-gray-300 text-gray-600 cursor-not-allowed shadow-none hover:translate-y-0"
+                          }`}
+                          disabled={!isAuthenticated}
+                        >
+                          {isAuthenticated ? "Apply Now" : "Sign in to Apply"}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>
