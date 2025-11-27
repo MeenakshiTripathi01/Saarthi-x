@@ -1,19 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchNotifications, getUnreadCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../api/notificationApi';
 import { useAuth } from '../context/AuthContext';
 
 export default function NotificationCenter() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const location = useLocation();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Fetch notifications and unread count
-  const loadNotifications = async () => {
+  // Fetch notifications and unread count - memoized to avoid recreating on every render
+  const loadNotifications = useCallback(async () => {
+    // Don't load if not authenticated
+    if (!isAuthenticated || !user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
     try {
       setLoading(true);
       const [notifs, count] = await Promise.all([
@@ -24,22 +32,79 @@ export default function NotificationCenter() {
       setUnreadCount(count);
     } catch (error) {
       console.error('Error loading notifications:', error);
+      // On error, still try to set empty arrays to avoid stale data
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, user]);
 
-  // Load notifications on mount
+  // Load notifications when user becomes available or changes
   useEffect(() => {
-    loadNotifications();
-    
+    // Wait for auth to finish loading
+    if (authLoading) {
+      return;
+    }
+
+    // Only load if authenticated
+    if (isAuthenticated && user) {
+      // Load immediately when user is authenticated
+      loadNotifications();
+    } else {
+      // Clear notifications if not authenticated
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  }, [isAuthenticated, user, authLoading, loadNotifications]); // Reload when auth state changes
+
+  // Set up polling interval for notifications (only when authenticated)
+  useEffect(() => {
+    if (!isAuthenticated || !user || authLoading) {
+      return;
+    }
+
     // Poll for new notifications every 30 seconds
     const interval = setInterval(() => {
       loadNotifications();
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated, user, authLoading, loadNotifications]);
+
+  // Reload notifications when window becomes visible (user returns to tab)
+  useEffect(() => {
+    if (!isAuthenticated || !user || authLoading) {
+      return;
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Reload notifications when user returns to the tab
+        loadNotifications();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isAuthenticated, user, authLoading, loadNotifications]);
+
+  // Reload notifications when navigating to industry pages (manage-applications, post-jobs, etc.)
+  useEffect(() => {
+    if (!isAuthenticated || !user || authLoading) {
+      return;
+    }
+
+    // Reload notifications when navigating to industry-specific pages
+    const industryRoutes = ['/manage-applications', '/post-jobs'];
+    if (industryRoutes.some(route => location.pathname === route)) {
+      // Small delay to ensure page has loaded
+      const timer = setTimeout(() => {
+        loadNotifications();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, isAuthenticated, user, authLoading, loadNotifications]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -58,12 +123,12 @@ export default function NotificationCenter() {
     };
   }, [isOpen]);
 
-  // Reload notifications when dropdown opens
+  // Reload notifications when dropdown opens (only if authenticated)
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isAuthenticated && user) {
       loadNotifications();
     }
-  }, [isOpen]);
+  }, [isOpen, isAuthenticated, user]);
 
   const handleNotificationClick = async (notification, e) => {
     // Prevent navigation if clicking the delete button
