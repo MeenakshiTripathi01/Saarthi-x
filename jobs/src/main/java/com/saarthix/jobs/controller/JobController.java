@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
+import com.saarthix.jobs.service.EmailService;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,11 +23,13 @@ public class JobController {
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
     private final ApplicationRepository applicationRepository;
+    private final EmailService emailService;
 
-    public JobController(JobRepository jobRepository, UserRepository userRepository, ApplicationRepository applicationRepository) {
+    public JobController(JobRepository jobRepository, UserRepository userRepository, ApplicationRepository applicationRepository, EmailService emailService) {
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
         this.applicationRepository = applicationRepository;
+        this.emailService = emailService;
     }
 
     // ✅ GET all jobs (public - no auth required)
@@ -168,6 +171,8 @@ public class JobController {
         application.setStatus("pending");
 
         Application saved = applicationRepository.save(application);
+
+        emailService.sendApplicationConfirmation(user, job, saved);
         
         // Log detailed information about the saved application
         System.out.println("=========================================");

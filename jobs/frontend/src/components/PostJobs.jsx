@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 import { loginWithGoogle } from "../api/authApi";
 
@@ -17,7 +18,6 @@ export default function PostJobs() {
     maxSalary: "",
   });
   const [submitting, setSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -56,7 +56,18 @@ export default function PostJobs() {
       );
 
       console.log("Job Posted Successfully:", response.data);
-      setSuccessMessage("✅ Job posted successfully! Redirecting to jobs page...");
+      
+      // Show success toast
+      toast.success("Job posted successfully! Redirecting to jobs page...", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
+      });
       
       // Reset form
       setFormData({
@@ -75,7 +86,25 @@ export default function PostJobs() {
       }, 2000);
     } catch (error) {
       console.error("Error posting job:", error);
-      alert(error.response?.data?.message || "Failed to post job. Please try again.");
+      
+      // Show error toast
+      let errorMessage = "Failed to post job. Please try again.";
+      if (error.response?.data) {
+        errorMessage = typeof error.response.data === 'string' 
+          ? error.response.data 
+          : error.response.data.message || errorMessage;
+      }
+      
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -195,13 +224,6 @@ export default function PostJobs() {
             Fill out the form to post a new job opportunity
           </p>
         </div>
-
-        {/* Success Message */}
-        {successMessage && (
-          <div className="mb-6 rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-emerald-700 text-sm">
-            {successMessage}
-          </div>
-        )}
 
         {/* Form */}
         <div className="bg-white rounded-lg border border-gray-200 p-8">
