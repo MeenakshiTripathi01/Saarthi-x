@@ -15,7 +15,7 @@ export default function NotificationCenter() {
   const [toastNotifications, setToastNotifications] = useState([]);
   const previousNotificationIdsRef = useRef(new Set());
   const previousUserTypeRef = useRef(null); // Track previous userType to detect role selection
-  const notificationsShownAfterRoleSelectionRef = useRef(false); // Track if notifications were shown after role selection
+  const notificationsShownOnDashboardRef = useRef(new Set()); // Track which dashboard pages have shown notifications
   const dropdownRef = useRef(null);
 
   // Show toast notification
@@ -61,10 +61,13 @@ export default function NotificationCenter() {
         if (unreadNotifs.length > 0) {
           // Show the most recent unread notification as a toast
           const mostRecentUnread = unreadNotifs[0];
+          console.log(`[NOTIFICATION] Showing unread notification as toast:`, mostRecentUnread);
           // Small delay to ensure page/DOM is ready, but fast enough to appear immediately after role selection
           setTimeout(() => {
             showToastNotification(mostRecentUnread);
-          }, 400); // Reduced delay for faster appearance after role selection
+          }, 500); // Delay to ensure page is ready, especially for industry routes
+        } else {
+          console.log(`[NOTIFICATION] No unread notifications found for ${user?.userType}`);
         }
       }
       
@@ -112,36 +115,14 @@ export default function NotificationCenter() {
 
     // Only load if authenticated
     if (isAuthenticated && user) {
-      const currentUserType = user?.userType;
-      const previousUserType = previousUserTypeRef.current;
-      
-      // Detect if user just selected a role (userType changed from null/undefined to a valid role)
-      const roleJustSelected = previousUserType === null && currentUserType && 
-                               (currentUserType === 'APPLICANT' || currentUserType === 'INDUSTRY');
-      
-      // Update the ref for next comparison
-      previousUserTypeRef.current = currentUserType;
-      
-      if (roleJustSelected) {
-        // User just selected their role - immediately show notifications with sound
-        console.log(`[NOTIFICATION] Role just selected: ${currentUserType}, showing notifications immediately`);
-        notificationsShownAfterRoleSelectionRef.current = true; // Mark that we've shown notifications after role selection
-        // Load immediately without delay - notifications will show as soon as they're fetched
-        loadNotifications(true); // Pass true to show unread notifications as toasts with sound
-        
-        // Reset the flag after navigation to avoid blocking future notifications
-        setTimeout(() => {
-          notificationsShownAfterRoleSelectionRef.current = false;
-        }, 2000);
-      } else {
-        // Normal load when user is authenticated
-        loadNotifications();
-      }
+      // Normal load when user is authenticated (no automatic toast display)
+      loadNotifications();
     } else {
       // Clear notifications if not authenticated
       setNotifications([]);
       setUnreadCount(0);
       previousUserTypeRef.current = null; // Reset when not authenticated
+      notificationsShownOnDashboardRef.current.clear(); // Reset dashboard tracking
     }
   }, [isAuthenticated, user, authLoading, loadNotifications]); // Reload when auth state changes
 
@@ -237,25 +218,34 @@ export default function NotificationCenter() {
     }
   }, [isAuthenticated, user, location.pathname, notifications.length]);
 
-  // Show notifications immediately after role selection and on relevant page navigation
+  // Show notifications only once on dashboard pages (/apply-jobs for applicants, /post-jobs for industry)
   useEffect(() => {
     if (!isAuthenticated || !user || authLoading) {
       return;
     }
 
-    // Define routes where notifications should appear as toasts
-    const applicantRoutes = ['/apply-jobs', '/job-tracker'];
-    const industryRoutes = ['/manage-applications', '/post-jobs'];
-    const allRelevantRoutes = [...applicantRoutes, ...industryRoutes];
+    // Define dashboard routes where notifications should appear as toasts
+    const applicantDashboard = '/apply-jobs';
+    const industryDashboard = '/post-jobs';
     
-    if (allRelevantRoutes.some(route => location.pathname === route)) {
-      // Show unread notifications as toasts when navigating to relevant pages
-      // Skip if notifications were already shown after role selection (to avoid duplicates)
-      if (!notificationsShownAfterRoleSelectionRef.current) {
+    // Check if user is on their dashboard page
+    const isApplicantOnDashboard = user.userType === 'APPLICANT' && location.pathname === applicantDashboard;
+    const isIndustryOnDashboard = user.userType === 'INDUSTRY' && location.pathname === industryDashboard;
+    
+    if (isApplicantOnDashboard || isIndustryOnDashboard) {
+      const dashboardRoute = isApplicantOnDashboard ? applicantDashboard : industryDashboard;
+      
+      // Only show notifications once per session on the dashboard
+      if (!notificationsShownOnDashboardRef.current.has(dashboardRoute)) {
+        console.log(`[NOTIFICATION] Showing notifications on dashboard: ${dashboardRoute}, userType: ${user?.userType}`);
+        notificationsShownOnDashboardRef.current.add(dashboardRoute);
+        
         const timer = setTimeout(() => {
-          loadNotifications(true); // Pass true to show unread toasts
-        }, 600);
+          loadNotifications(true); // Pass true to show unread toasts with sound
+        }, 800); // Delay to ensure page is fully loaded before showing notifications
         return () => clearTimeout(timer);
+      } else {
+        console.log(`[NOTIFICATION] Notifications already shown on dashboard: ${dashboardRoute}, skipping`);
       }
     }
   }, [location.pathname, isAuthenticated, user, authLoading, loadNotifications]);
