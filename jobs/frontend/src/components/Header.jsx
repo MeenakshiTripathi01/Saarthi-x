@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { loginWithGoogle, logout } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
+import NotificationCenter from './NotificationCenter';
 
 export default function Header() {
   const { user, loading, clearAuth } = useAuth();
@@ -71,7 +72,12 @@ export default function Header() {
             {loading ? (
               <div className="text-gray-500 text-sm">Loading...</div>
             ) : user ? (
-              <div className="relative" ref={dropdownRef}>
+              <>
+                {/* Notification Center */}
+                <NotificationCenter />
+                
+                {/* User Dropdown */}
+                <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-gray-300 rounded-xl p-1.5 transition-all duration-200 hover:bg-gray-50"
@@ -135,7 +141,8 @@ export default function Header() {
                     </button>
                   </div>
                 )}
-              </div>
+                </div>
+              </>
             ) : (
               <button
                 onClick={handleLogin}

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { getMyPostedJobs, getApplicationsByJobId, updateApplicationStatusByIndustry } from '../api/jobApi';
 
 export default function IndustryApplications() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, isIndustry, loading: authLoading } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
@@ -53,6 +54,19 @@ export default function IndustryApplications() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isIndustry, authLoading, navigate]);
+
+  // Handle location state to auto-select job when navigating from notification
+  useEffect(() => {
+    if (location.state?.selectedJobId && jobs.length > 0) {
+      const jobToSelect = jobs.find(job => job.id === location.state.selectedJobId);
+      if (jobToSelect && (!selectedJob || selectedJob.id !== jobToSelect.id)) {
+        handleJobSelect(jobToSelect);
+        // Clear location state to prevent re-selecting on re-render
+        window.history.replaceState({}, document.title);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, jobs]);
 
   const loadJobs = async () => {
     try {

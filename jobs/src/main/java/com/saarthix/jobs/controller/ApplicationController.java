@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
+import com.saarthix.jobs.service.NotificationService;
 
 import java.util.List;
 import java.util.Map;
@@ -26,15 +27,18 @@ public class ApplicationController {
     private final ResumeAndDetailsRepository resumeAndDetailsRepository;
     private final UserRepository userRepository;
     private final JobRepository jobRepository;
+    private final NotificationService notificationService;
 
     public ApplicationController(ApplicationRepository applicationRepository, 
                                 ResumeAndDetailsRepository resumeAndDetailsRepository,
                                 UserRepository userRepository,
-                                JobRepository jobRepository) {
+                                JobRepository jobRepository,
+                                NotificationService notificationService) {
         this.applicationRepository = applicationRepository;
         this.resumeAndDetailsRepository = resumeAndDetailsRepository;
         this.userRepository = userRepository;
         this.jobRepository = jobRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -186,6 +190,9 @@ public class ApplicationController {
             resumeAndDetails.setStatus((String) applicationData.getOrDefault("status", "pending"));
             
             ResumeAndDetails savedResume = resumeAndDetailsRepository.save(resumeAndDetails);
+            
+            // Create notification for industry user about new application
+            notificationService.createNewApplicationNotification(saved);
             
             // Log detailed information about the saved application
             System.out.println("=========================================");
@@ -458,9 +465,17 @@ public class ApplicationController {
             return ResponseEntity.badRequest().body("Invalid status. Must be one of: " + validStatuses);
         }
         
+        // Store old status before updating
+        String oldStatus = application.getStatus();
+        
         // Update status and lastUpdated timestamp
         application.setStatus(newStatus.toLowerCase());
         Application updated = applicationRepository.save(application);
+        
+        // Create notification for applicant about status update (only if status actually changed)
+        if (oldStatus == null || !oldStatus.equalsIgnoreCase(newStatus.toLowerCase())) {
+            notificationService.createStatusUpdateNotification(updated, oldStatus, newStatus.toLowerCase());
+        }
         
         // Log for debugging
         System.out.println("=========================================");
@@ -469,7 +484,7 @@ public class ApplicationController {
         System.out.println("Job ID: " + updated.getJobId());
         System.out.println("Job Title: " + updated.getJobTitle());
         System.out.println("Applicant: " + updated.getApplicantEmail());
-        System.out.println("Old Status: " + (application.getStatus() != null ? application.getStatus() : "N/A"));
+        System.out.println("Old Status: " + (oldStatus != null ? oldStatus : "N/A"));
         System.out.println("New Status: " + updated.getStatus());
         System.out.println("Updated By: " + user.getEmail() + " (Industry User)");
         System.out.println("=========================================");
