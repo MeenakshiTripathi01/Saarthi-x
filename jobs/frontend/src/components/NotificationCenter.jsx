@@ -14,6 +14,8 @@ export default function NotificationCenter() {
   const [loading, setLoading] = useState(false);
   const [toastNotifications, setToastNotifications] = useState([]);
   const previousNotificationIdsRef = useRef(new Set());
+  const previousUserTypeRef = useRef(null); // Track previous userType to detect role selection
+  const notificationsShownAfterRoleSelectionRef = useRef(false); // Track if notifications were shown after role selection
   const dropdownRef = useRef(null);
 
   // Show toast notification
@@ -23,7 +25,7 @@ export default function NotificationCenter() {
   }, []);
 
   // Fetch notifications and unread count - memoized to avoid recreating on every render
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (showUnreadToasts = false) => {
     // Don't load if not authenticated
     if (!isAuthenticated || !user) {
       setNotifications([]);
@@ -38,18 +40,31 @@ export default function NotificationCenter() {
         getUnreadCount()
       ]);
       
-      // Detect new notifications
+      // Detect new notifications (arrived during polling)
       if (previousNotificationIdsRef.current.size > 0) {
         const currentIds = new Set(notifs.map(n => n.id));
         const newNotifications = notifs.filter(n => 
           !previousNotificationIdsRef.current.has(n.id) && !n.read
         );
         
-        // Show toast for new notifications
+        // Show toast for new notifications (arrived after initial load)
         if (newNotifications.length > 0) {
           // Show only the most recent new notification
           const latestNewNotification = newNotifications[0];
           showToastNotification(latestNewNotification);
+        }
+      }
+      
+      // If showUnreadToasts is true (after role selection or page navigation), show all unread notifications
+      if (showUnreadToasts) {
+        const unreadNotifs = notifs.filter(n => !n.read);
+        if (unreadNotifs.length > 0) {
+          // Show the most recent unread notification as a toast
+          const mostRecentUnread = unreadNotifs[0];
+          // Small delay to ensure page/DOM is ready, but fast enough to appear immediately after role selection
+          setTimeout(() => {
+            showToastNotification(mostRecentUnread);
+          }, 400); // Reduced delay for faster appearance after role selection
         }
       }
       
@@ -97,12 +112,36 @@ export default function NotificationCenter() {
 
     // Only load if authenticated
     if (isAuthenticated && user) {
-      // Load immediately when user is authenticated
-      loadNotifications();
+      const currentUserType = user?.userType;
+      const previousUserType = previousUserTypeRef.current;
+      
+      // Detect if user just selected a role (userType changed from null/undefined to a valid role)
+      const roleJustSelected = previousUserType === null && currentUserType && 
+                               (currentUserType === 'APPLICANT' || currentUserType === 'INDUSTRY');
+      
+      // Update the ref for next comparison
+      previousUserTypeRef.current = currentUserType;
+      
+      if (roleJustSelected) {
+        // User just selected their role - immediately show notifications with sound
+        console.log(`[NOTIFICATION] Role just selected: ${currentUserType}, showing notifications immediately`);
+        notificationsShownAfterRoleSelectionRef.current = true; // Mark that we've shown notifications after role selection
+        // Load immediately without delay - notifications will show as soon as they're fetched
+        loadNotifications(true); // Pass true to show unread notifications as toasts with sound
+        
+        // Reset the flag after navigation to avoid blocking future notifications
+        setTimeout(() => {
+          notificationsShownAfterRoleSelectionRef.current = false;
+        }, 2000);
+      } else {
+        // Normal load when user is authenticated
+        loadNotifications();
+      }
     } else {
       // Clear notifications if not authenticated
       setNotifications([]);
       setUnreadCount(0);
+      previousUserTypeRef.current = null; // Reset when not authenticated
     }
   }, [isAuthenticated, user, authLoading, loadNotifications]); // Reload when auth state changes
 
@@ -137,22 +176,103 @@ export default function NotificationCenter() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isAuthenticated, user, authLoading, loadNotifications]);
 
-  // Reload notifications when navigating to industry pages (manage-applications, post-jobs, etc.)
+  // Auto-mark notifications as read when navigating to relevant pages
+  const autoMarkNotificationsAsRead = useCallback(async () => {
+    if (!isAuthenticated || !user || !notifications.length) {
+      return;
+    }
+
+    try {
+      // For applicants on job-tracker page: mark application_status_update notifications as read
+      if (user.userType === 'APPLICANT' && location.pathname === '/job-tracker') {
+        const unreadStatusNotifications = notifications.filter(
+          n => !n.read && n.type === 'application_status_update'
+        );
+        
+        if (unreadStatusNotifications.length > 0) {
+          // Mark all application status update notifications as read
+          await Promise.all(
+            unreadStatusNotifications.map(n => markNotificationAsRead(n.id))
+          );
+          
+          // Update local state
+          setNotifications(prev =>
+            prev.map(n =>
+              unreadStatusNotifications.some(un => un.id === n.id)
+                ? { ...n, read: true }
+                : n
+            )
+          );
+          
+          setUnreadCount(prev => Math.max(0, prev - unreadStatusNotifications.length));
+        }
+      }
+      
+      // For industry users on manage-applications page: mark new_application notifications as read
+      if (user.userType === 'INDUSTRY' && location.pathname === '/manage-applications') {
+        const unreadApplicationNotifications = notifications.filter(
+          n => !n.read && n.type === 'new_application'
+        );
+        
+        if (unreadApplicationNotifications.length > 0) {
+          // Mark all new application notifications as read
+          await Promise.all(
+            unreadApplicationNotifications.map(n => markNotificationAsRead(n.id))
+          );
+          
+          // Update local state
+          setNotifications(prev =>
+            prev.map(n =>
+              unreadApplicationNotifications.some(un => un.id === n.id)
+                ? { ...n, read: true }
+                : n
+            )
+          );
+          
+          setUnreadCount(prev => Math.max(0, prev - unreadApplicationNotifications.length));
+        }
+      }
+    } catch (error) {
+      console.error('Error auto-marking notifications as read:', error);
+    }
+  }, [isAuthenticated, user, location.pathname, notifications.length]);
+
+  // Show notifications immediately after role selection and on relevant page navigation
   useEffect(() => {
     if (!isAuthenticated || !user || authLoading) {
       return;
     }
 
-    // Reload notifications when navigating to industry-specific pages
+    // Define routes where notifications should appear as toasts
+    const applicantRoutes = ['/apply-jobs', '/job-tracker'];
     const industryRoutes = ['/manage-applications', '/post-jobs'];
-    if (industryRoutes.some(route => location.pathname === route)) {
-      // Small delay to ensure page has loaded
-      const timer = setTimeout(() => {
-        loadNotifications();
-      }, 500);
-      return () => clearTimeout(timer);
+    const allRelevantRoutes = [...applicantRoutes, ...industryRoutes];
+    
+    if (allRelevantRoutes.some(route => location.pathname === route)) {
+      // Show unread notifications as toasts when navigating to relevant pages
+      // Skip if notifications were already shown after role selection (to avoid duplicates)
+      if (!notificationsShownAfterRoleSelectionRef.current) {
+        const timer = setTimeout(() => {
+          loadNotifications(true); // Pass true to show unread toasts
+        }, 600);
+        return () => clearTimeout(timer);
+      }
     }
   }, [location.pathname, isAuthenticated, user, authLoading, loadNotifications]);
+
+  // Auto-mark notifications as read when navigating to relevant pages
+  useEffect(() => {
+    if (!isAuthenticated || !user || authLoading || !notifications.length) {
+      return;
+    }
+
+    // Auto-mark as read after a short delay to ensure page has loaded
+    const timer = setTimeout(() => {
+      autoMarkNotificationsAsRead();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname, isAuthenticated, user, authLoading, notifications.length, autoMarkNotificationsAsRead]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
