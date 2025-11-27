@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchNotifications, getUnreadCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../api/notificationApi';
 import { useAuth } from '../context/AuthContext';
+import NotificationToast from './NotificationToast';
 
 export default function NotificationCenter() {
   const navigate = useNavigate();
@@ -11,7 +12,15 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [toastNotifications, setToastNotifications] = useState([]);
+  const previousNotificationIdsRef = useRef(new Set());
   const dropdownRef = useRef(null);
+
+  // Show toast notification
+  const showToastNotification = useCallback((notification) => {
+    const toastId = Date.now();
+    setToastNotifications(prev => [...prev, { id: toastId, notification }]);
+  }, []);
 
   // Fetch notifications and unread count - memoized to avoid recreating on every render
   const loadNotifications = useCallback(async () => {
@@ -28,6 +37,25 @@ export default function NotificationCenter() {
         fetchNotifications(),
         getUnreadCount()
       ]);
+      
+      // Detect new notifications
+      if (previousNotificationIdsRef.current.size > 0) {
+        const currentIds = new Set(notifs.map(n => n.id));
+        const newNotifications = notifs.filter(n => 
+          !previousNotificationIdsRef.current.has(n.id) && !n.read
+        );
+        
+        // Show toast for new notifications
+        if (newNotifications.length > 0) {
+          // Show only the most recent new notification
+          const latestNewNotification = newNotifications[0];
+          showToastNotification(latestNewNotification);
+        }
+      }
+      
+      // Update previous notification IDs
+      previousNotificationIdsRef.current = new Set(notifs.map(n => n.id));
+      
       setNotifications(notifs);
       setUnreadCount(count);
     } catch (error) {
@@ -38,7 +66,27 @@ export default function NotificationCenter() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, showToastNotification]);
+
+  // Close toast notification
+  const closeToast = useCallback((toastId) => {
+    setToastNotifications(prev => prev.filter(toast => toast.id !== toastId));
+  }, []);
+
+  // Handle marking notification as read from toast
+  const handleToastMarkRead = useCallback(async (notificationId) => {
+    try {
+      await markNotificationAsRead(notificationId);
+      setNotifications(prev =>
+        prev.map(n =>
+          n.id === notificationId ? { ...n, read: true } : n
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  }, []);
 
   // Load notifications when user becomes available or changes
   useEffect(() => {
@@ -237,8 +285,22 @@ export default function NotificationCenter() {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Bell Icon Button */}
+    <>
+      {/* Toast Notifications Container */}
+      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none">
+        {toastNotifications.map((toast) => (
+          <div key={toast.id} className="pointer-events-auto">
+            <NotificationToast
+              notification={toast.notification}
+              onClose={() => closeToast(toast.id)}
+              onMarkRead={handleToastMarkRead}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="relative" ref={dropdownRef}>
+        {/* Bell Icon Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
@@ -363,7 +425,8 @@ export default function NotificationCenter() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
