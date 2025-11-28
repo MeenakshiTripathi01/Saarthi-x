@@ -145,6 +145,12 @@ public class UserController {
             if (!newUserType.equals("APPLICANT") && !newUserType.equals("INDUSTRY")) {
                 return ResponseEntity.badRequest().body("Invalid user type. Must be APPLICANT or INDUSTRY");
             }
+            
+            // Restrict applicants from changing their role - only industry users can change
+            if ("APPLICANT".equals(user.getUserType()) && !newUserType.equals(user.getUserType())) {
+                return ResponseEntity.status(403).body("Applicants cannot change their role. Please contact support if you need assistance.");
+            }
+            
             user.setUserType(newUserType);
         }
 

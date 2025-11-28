@@ -22,12 +22,19 @@ export default function Dashboard() {
       localStorage.removeItem('redirectRoute');
       
       // Route based on redirectRoute
-      if (redirectRoute === 'role-selection') {
-        // Route to role selection page (for editing role)
-        const email = user.email;
-        const name = user.name;
-        const picture = user.picture;
-        navigate(`/choose-role?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}&picture=${encodeURIComponent(picture || '')}`);
+      if (redirectRoute === 'role-selection' || redirectRoute === 'edit-profile') {
+        // Only allow industry users to change their role
+        if (isApplicant) {
+          // Applicants cannot change their role - redirect to apply-jobs
+          console.log('[DASHBOARD] Applicant attempted to change role - redirecting to apply-jobs');
+          navigate('/apply-jobs');
+        } else if (isIndustry) {
+          // Industry users can change their role - go to edit profile
+          navigate('/edit-profile');
+        } else {
+          // User without a role - allow role selection via edit profile
+          navigate('/edit-profile');
+        }
       } else if (redirectRoute === 'apply-jobs') {
         // Route to applicant dashboard
         navigate('/apply-jobs');

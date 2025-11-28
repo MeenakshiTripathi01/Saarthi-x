@@ -8,7 +8,6 @@ import Dashboard from './components/Dashboard';
 import JobList from './components/JobList';
 import PostJobs from './components/PostJobs';
 import JobTracker from './components/JobTracker';
-import RoleSelection from './components/RoleSelection';
 import EditProfile from './components/EditProfile';
 import ProfileBuilder from './components/ProfileBuilder';
 import IndustryApplications from './components/IndustryApplications';
@@ -21,7 +20,6 @@ function App() {
           <Header />
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/choose-role" element={<RoleSelection />} />
             <Route path="/apply-jobs" element={<JobList />} />
             <Route path="/post-jobs" element={<PostJobs />} />
             <Route path="/job-tracker" element={<JobTracker />} />

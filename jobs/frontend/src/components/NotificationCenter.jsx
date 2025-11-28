@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchNotifications, getUnreadCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../api/notificationApi';
 import { useAuth } from '../context/AuthContext';
 import NotificationToast from './NotificationToast';
+import { initializeAudioOnInteraction, initializeAudioContext } from '../utils/soundUtils';
 
 export default function NotificationCenter() {
   const navigate = useNavigate();
@@ -17,6 +18,14 @@ export default function NotificationCenter() {
   const previousUserTypeRef = useRef(null); // Track previous userType to detect role selection
   const notificationsShownOnDashboardRef = useRef(new Set()); // Track which dashboard pages have shown notifications
   const dropdownRef = useRef(null);
+
+  // Initialize audio on component mount for user interaction
+  useEffect(() => {
+    console.log('[NOTIFICATION_CENTER] Initializing audio on interaction');
+    initializeAudioOnInteraction();
+    // Also initialize audio context immediately if possible
+    initializeAudioContext();
+  }, []);
 
   // Show toast notification
   const showToastNotification = useCallback((notification) => {
@@ -55,17 +64,24 @@ export default function NotificationCenter() {
         }
       }
       
-      // If showUnreadToasts is true (after role selection or page navigation), show all unread notifications
+      // If showUnreadToasts is true (after login, role selection, or page navigation), show all unread notifications
       if (showUnreadToasts) {
         const unreadNotifs = notifs.filter(n => !n.read);
         if (unreadNotifs.length > 0) {
-          // Show the most recent unread notification as a toast
+          // Show the most recent unread notification as a toast with sound
           const mostRecentUnread = unreadNotifs[0];
-          console.log(`[NOTIFICATION] Showing unread notification as toast:`, mostRecentUnread);
-          // Small delay to ensure page/DOM is ready, but fast enough to appear immediately after role selection
-          setTimeout(() => {
-            showToastNotification(mostRecentUnread);
-          }, 500); // Delay to ensure page is ready, especially for industry routes
+          console.log(`[NOTIFICATION] Showing unread notification as toast with sound:`, mostRecentUnread);
+          // Show immediately - the toast component will handle sound playback
+          showToastNotification(mostRecentUnread);
+          
+          // If there are more unread notifications, show them with slight delays
+          if (unreadNotifs.length > 1) {
+            unreadNotifs.slice(1, 3).forEach((notif, index) => {
+              setTimeout(() => {
+                showToastNotification(notif);
+              }, (index + 1) * 2000); // Show additional notifications 2 seconds apart
+            });
+          }
         } else {
           console.log(`[NOTIFICATION] No unread notifications found for ${user?.userType}`);
         }
@@ -106,6 +122,9 @@ export default function NotificationCenter() {
     }
   }, []);
 
+  // Track if this is the first load after authentication
+  const isFirstLoadAfterAuthRef = useRef(true);
+
   // Load notifications when user becomes available or changes
   useEffect(() => {
     // Wait for auth to finish loading
@@ -115,16 +134,32 @@ export default function NotificationCenter() {
 
     // Only load if authenticated
     if (isAuthenticated && user) {
-      // Normal load when user is authenticated (no automatic toast display)
-      loadNotifications();
+      // On first load after authentication, show unread notifications and play sound once
+      if (isFirstLoadAfterAuthRef.current) {
+        isFirstLoadAfterAuthRef.current = false;
+        console.log('[NOTIFICATION] First load after authentication - showing unread notifications');
+        // Small delay to ensure page is ready and audio context can be activated
+        setTimeout(() => {
+          loadNotifications(true); // Pass true to show unread toasts
+        }, 500);
+      } else {
+        // Normal load for subsequent updates (no automatic toast display)
+        loadNotifications();
+      }
     } else {
       // Clear notifications if not authenticated
       setNotifications([]);
       setUnreadCount(0);
       previousUserTypeRef.current = null; // Reset when not authenticated
       notificationsShownOnDashboardRef.current.clear(); // Reset dashboard tracking
+      isFirstLoadAfterAuthRef.current = true; // Reset for next login
     }
   }, [isAuthenticated, user, authLoading, loadNotifications]); // Reload when auth state changes
+
+  // Handle bell click to toggle dropdown
+  const handleBellClick = useCallback(() => {
+    setIsOpen(prev => !prev);
+  }, []);
 
   // Set up polling interval for notifications (only when authenticated)
   useEffect(() => {
@@ -412,7 +447,7 @@ export default function NotificationCenter() {
       <div className="relative" ref={dropdownRef}>
         {/* Bell Icon Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleBellClick}
         className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
         aria-label="Notifications"
       >

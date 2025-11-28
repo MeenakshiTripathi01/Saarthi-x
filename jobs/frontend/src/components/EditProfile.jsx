@@ -13,8 +13,16 @@ export default function EditProfile() {
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/');
+      return;
     }
-  }, [loading, isAuthenticated, navigate]);
+    
+    // Prevent applicants from changing their role
+    if (isAuthenticated && user?.userType === 'APPLICANT') {
+      console.log('[EDIT_PROFILE] Applicant attempted to change role - redirecting to apply-jobs');
+      navigate('/apply-jobs');
+      return;
+    }
+  }, [loading, isAuthenticated, navigate, user]);
 
   useEffect(() => {
     if (user?.userType) {
@@ -23,6 +31,12 @@ export default function EditProfile() {
   }, [user]);
 
   const handleSave = async () => {
+    // Prevent applicants from changing their role
+    if (user?.userType === 'APPLICANT') {
+      setError('Applicants cannot change their role. Please contact support if you need assistance.');
+      return;
+    }
+    
     if (!selectedUserType) {
       setError('Please select a user type');
       return;
