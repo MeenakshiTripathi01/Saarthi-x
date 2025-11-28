@@ -9,15 +9,19 @@ import { useAuth } from '../context/AuthContext';
 export default function RoleSelection() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { updateAuth } = useAuth();
+  const { updateAuth, user: currentUser } = useAuth();
   
-  const email = searchParams.get('email');
-  const name = searchParams.get('name');
-  const pictureUrl = searchParams.get('picture');
+  const email = searchParams.get('email') || currentUser?.email;
+  const name = searchParams.get('name') || currentUser?.name;
+  const pictureUrl = searchParams.get('picture') || currentUser?.picture;
   const intent = searchParams.get('intent'); // 'applicant' or 'industry'
 
-  // Pre-select role based on intent or localStorage
+  // Pre-select role based on current user role, intent, or localStorage
   const getInitialRole = () => {
+    // First, check if user already has a role (for editing existing users)
+    if (currentUser?.userType) {
+      return currentUser.userType;
+    }
     // Check URL intent parameter
     if (intent === 'industry') return 'INDUSTRY';
     if (intent === 'applicant') return 'APPLICANT';
@@ -33,12 +37,12 @@ export default function RoleSelection() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // If no email in query params, redirect to home
-    if (!email) {
+    // If no email in query params and no current user from auth context, redirect to home
+    if (!email && !currentUser?.email) {
       navigate('/');
       return;
     }
-  }, [email, navigate]);
+  }, [email, currentUser, navigate]);
 
   // Auto-submit if role was pre-selected by intent
   useEffect(() => {
@@ -56,40 +60,131 @@ export default function RoleSelection() {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8080/api/user/save-role', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          name: name || email.split('@')[0],
-          pictureUrl,
-          userType: roleToSubmit,
-        }),
-      });
+      const userEmail = email || currentUser?.email;
+      const userName = name || currentUser?.name || userEmail?.split('@')[0];
+      const userPicture = pictureUrl || currentUser?.picture;
+      
+      // Check if user already exists and has a role - use update-profile endpoint
+      const isExistingUserWithRole = currentUser?.userType != null && currentUser.userType !== '';
+      
+      let response;
+      
+      if (isExistingUserWithRole) {
+        // Existing user with role - use update-profile endpoint
+        response = await fetch('http://localhost:8080/api/user/update-profile', {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userType: roleToSubmit,
+          }),
+        });
+      } else {
+        // New user or user without role - try save-role first
+        response = await fetch('http://localhost:8080/api/user/save-role', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            name: userName,
+            pictureUrl: userPicture,
+            userType: roleToSubmit,
+          }),
+        });
+        
+        // If save-role fails because user already has a role, try update-profile
+        if (!response.ok) {
+          const errorText = await response.text();
+          if (errorText.includes("already has a role") || errorText.includes("User already registered")) {
+            // User exists with a role, use update-profile instead
+            response = await fetch('http://localhost:8080/api/user/update-profile', {
+              method: 'PUT',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userType: roleToSubmit,
+              }),
+            });
+          }
+        }
+      }
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save role');
+        const errorText = await response.text();
+        let errorMessage = 'Failed to save role';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorData || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Clear loginIntent from localStorage after role is saved
+      localStorage.removeItem('loginIntent');
+      console.log(`[ROLE_SELECTION] Cleared loginIntent after saving role: ${roleToSubmit}`);
+
+      // Parse response - update-profile returns UserResponse, save-role returns string
+      let updatedUserData;
+      
+      // Check if we used update-profile endpoint (returns JSON) or save-role (returns string)
+      const contentType = response.headers.get("content-type");
+      const isUpdateProfileResponse = contentType && contentType.includes("application/json");
+      
+      if (isUpdateProfileResponse) {
+        // update-profile endpoint returns UserResponse object
+        const userResponse = await response.json();
+        updatedUserData = {
+          authenticated: true,
+          name: userResponse.name,
+          email: userResponse.email,
+          picture: userResponse.picture,
+          userType: userResponse.userType,
+        };
+      } else {
+        // save-role endpoint returns a string message, construct user data from request
+        await response.text(); // Read the response to clear it
+        updatedUserData = {
+          authenticated: true,
+          name: userName,
+          email: userEmail,
+          picture: userPicture,
+          userType: roleToSubmit,
+        };
       }
 
       // Update auth context with new user info
-      updateAuth({
-        authenticated: true,
-        name: name || email.split('@')[0],
-        email,
-        picture: pictureUrl,
-        userType: roleToSubmit,
-      });
+      updateAuth(updatedUserData);
 
-      // Redirect based on role
-      if (roleToSubmit === 'APPLICANT') {
+      // Redirect based on redirectRoute if available, otherwise based on role
+      const redirectRoute = localStorage.getItem('redirectRoute');
+      if (redirectRoute === 'apply-jobs') {
         navigate('/apply-jobs');
-      } else {
+      } else if (redirectRoute === 'post-jobs') {
         navigate('/post-jobs');
+      } else if (redirectRoute === 'role-selection') {
+        // Stay on role selection page (for editing)
+        // Could refresh to show updated role
+        window.location.reload();
+      } else {
+        // Default redirect based on role
+        if (roleToSubmit === 'APPLICANT') {
+          navigate('/apply-jobs');
+        } else {
+          navigate('/post-jobs');
+        }
       }
+      
+      // Clear redirectRoute after using it
+      localStorage.removeItem('redirectRoute');
     } catch (err) {
       console.error('Error saving role:', err);
       setError(err.message || 'An error occurred. Please try again.');
@@ -108,9 +203,13 @@ export default function RoleSelection() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Saarthix Jobs</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          {currentUser?.userType ? 'Update Your Role' : 'Welcome to Saarthix Jobs'}
+        </h1>
         <p className="text-gray-600 mb-8">
-          Hi {name || email.split('@')[0]}, please choose your role to get started.
+          {currentUser?.userType 
+            ? `Hi ${name || email?.split('@')[0]}, you can change your role here.`
+            : `Hi ${name || email?.split('@')[0]}, please choose your role to get started.`}
         </p>
 
         {error && (

@@ -10,6 +10,10 @@ export default function Header() {
   const dropdownRef = useRef(null);
 
   const handleLogin = () => {
+    // Clear any previous login intent and set redirect to role selection/edit page
+    localStorage.removeItem('loginIntent');
+    localStorage.removeItem('redirectRoute');
+    localStorage.setItem('redirectRoute', 'role-selection'); // Route to role selection/edit page
     loginWithGoogle();
   };
 

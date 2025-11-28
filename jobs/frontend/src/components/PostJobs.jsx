@@ -18,9 +18,53 @@ export default function PostJobs() {
     maxSalary: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [salaryError, setSalaryError] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Handle salary validation
+    if (name === "minSalary" || name === "maxSalary") {
+      const numValue = value === "" ? "" : parseFloat(value);
+      
+      if (name === "minSalary") {
+        // When minimum salary changes, validate against maximum
+        setFormData((prev) => {
+          const newData = {
+            ...prev,
+            [name]: value,
+          };
+          
+          // Check if maxSalary exists and is less than new minSalary
+          if (newData.maxSalary && numValue !== "" && parseFloat(newData.maxSalary) < numValue) {
+            setSalaryError("Maximum salary cannot be less than minimum salary");
+          } else {
+            setSalaryError("");
+          }
+          
+          return newData;
+        });
+      } else if (name === "maxSalary") {
+        // When maximum salary changes, validate against minimum
+        setFormData((prev) => {
+          const newData = {
+            ...prev,
+            [name]: value,
+          };
+          
+          // Check if maxSalary is less than minSalary
+          if (newData.minSalary && numValue !== "" && numValue < parseFloat(newData.minSalary)) {
+            setSalaryError("Maximum salary cannot be less than minimum salary");
+          } else {
+            setSalaryError("");
+          }
+          
+          return newData;
+        });
+        return; // Early return since we already set formData above
+      }
+    }
+    
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -35,7 +79,23 @@ export default function PostJobs() {
       return;
     }
 
+    // Validate salary range before submission
+    if (formData.minSalary && formData.maxSalary) {
+      const minSalary = parseFloat(formData.minSalary);
+      const maxSalary = parseFloat(formData.maxSalary);
+      
+      if (maxSalary < minSalary) {
+        setSalaryError("Maximum salary cannot be less than minimum salary");
+        toast.error("Please fix the salary range before submitting", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+    }
+
     setSubmitting(true);
+    setSalaryError(""); // Clear any error before submitting
     try {
       const jobData = {
         title: formData.title,
@@ -309,6 +369,7 @@ export default function PostJobs() {
                   value={formData.minSalary}
                   onChange={handleChange}
                   placeholder="e.g., 500000"
+                  min="0"
                   className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
                 />
               </div>
@@ -321,9 +382,32 @@ export default function PostJobs() {
                   name="maxSalary"
                   value={formData.maxSalary}
                   onChange={handleChange}
+                  onBlur={(e) => {
+                    // When user leaves the field, validate and reset if invalid
+                    if (formData.minSalary && formData.maxSalary) {
+                      const minSalary = parseFloat(formData.minSalary);
+                      const maxSalary = parseFloat(formData.maxSalary);
+                      if (!isNaN(minSalary) && !isNaN(maxSalary) && maxSalary < minSalary) {
+                        // Reset to minimum salary if invalid
+                        setFormData(prev => ({
+                          ...prev,
+                          maxSalary: formData.minSalary
+                        }));
+                        setSalaryError("");
+                      }
+                    }
+                  }}
                   placeholder="e.g., 1500000"
-                  className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  min={formData.minSalary || "0"}
+                  className={`w-full rounded-md border px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:outline-none focus:ring-1 ${
+                    salaryError 
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50" 
+                      : "border-gray-300 bg-white focus:border-gray-400 focus:ring-gray-400"
+                  }`}
                 />
+                {salaryError && (
+                  <p className="mt-1 text-sm text-red-600">{salaryError}</p>
+                )}
               </div>
             </div>
 
