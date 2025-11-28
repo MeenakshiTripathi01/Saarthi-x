@@ -5,7 +5,38 @@ import { loginWithGoogle } from "../api/authApi";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { isAuthenticated, isIndustry, isApplicant, user } = useAuth();
+  const { isAuthenticated, isIndustry, isApplicant, user, loading: authLoading } = useAuth();
+
+  // Handle routing after OAuth login based on redirectRoute
+  React.useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading || !isAuthenticated || !user) {
+      return;
+    }
+
+    // Check if user has a redirectRoute set (from login button clicks)
+    const redirectRoute = localStorage.getItem('redirectRoute');
+    
+    if (redirectRoute) {
+      // Clear the redirectRoute
+      localStorage.removeItem('redirectRoute');
+      
+      // Route based on redirectRoute
+      if (redirectRoute === 'role-selection') {
+        // Route to role selection page (for editing role)
+        const email = user.email;
+        const name = user.name;
+        const picture = user.picture;
+        navigate(`/choose-role?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}&picture=${encodeURIComponent(picture || '')}`);
+      } else if (redirectRoute === 'apply-jobs') {
+        // Route to applicant dashboard
+        navigate('/apply-jobs');
+      } else if (redirectRoute === 'post-jobs') {
+        // Route to industry dashboard
+        navigate('/post-jobs');
+      }
+    }
+  }, [isAuthenticated, user, authLoading, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 flex items-center justify-center px-4 py-16">
@@ -43,8 +74,12 @@ export default function Dashboard() {
           <div
             onClick={() => {
               if (!isAuthenticated) {
-                // Not logged in - save intent and login
-                sessionStorage.setItem('loginIntent', 'applicant');
+                // Not logged in - clear any previous intent and save applicant intent
+                localStorage.removeItem('loginIntent');
+                localStorage.removeItem('redirectRoute');
+                localStorage.setItem('loginIntent', 'applicant');
+                localStorage.setItem('redirectRoute', 'apply-jobs'); // Route to applicant dashboard
+                console.log('[DASHBOARD] Setting loginIntent to: applicant, redirectRoute to: apply-jobs');
                 loginWithGoogle();
               } else {
                 // Already logged in - go to jobs
@@ -78,8 +113,12 @@ export default function Dashboard() {
             <div
               onClick={() => {
                 if (!isAuthenticated) {
-                  // Not logged in - save intent as INDUSTRY and login
-                  sessionStorage.setItem('loginIntent', 'industry');
+                  // Not logged in - clear any previous intent and save industry intent
+                  localStorage.removeItem('loginIntent');
+                  localStorage.removeItem('redirectRoute');
+                  localStorage.setItem('loginIntent', 'industry');
+                  localStorage.setItem('redirectRoute', 'post-jobs'); // Route to industry dashboard
+                  console.log('[DASHBOARD] Setting loginIntent to: industry, redirectRoute to: post-jobs');
                   loginWithGoogle();
                 } else if (isIndustry) {
                   // Already logged in as INDUSTRY - go to posting form

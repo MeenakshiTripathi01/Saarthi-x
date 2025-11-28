@@ -41,7 +41,18 @@ public class UserController {
         // Check if user already exists
         User existingUser = userRepository.findByEmail(req.email()).orElse(null);
         if (existingUser != null) {
-            return ResponseEntity.badRequest().body("User already registered");
+            // If user exists but has no role set, allow updating the role
+            if (existingUser.getUserType() == null || existingUser.getUserType().isEmpty()) {
+                existingUser.setUserType(req.userType());
+                existingUser.setName(req.name() != null ? req.name() : existingUser.getName());
+                if (req.pictureUrl() != null && !req.pictureUrl().isEmpty()) {
+                    existingUser.setPictureUrl(req.pictureUrl());
+                }
+                userRepository.save(existingUser);
+                return ResponseEntity.ok("User role updated to " + req.userType());
+            }
+            // User already has a role - should use update-profile endpoint instead
+            return ResponseEntity.badRequest().body("User already has a role. Use update-profile endpoint to change it.");
         }
 
         // Create new user with selected role
