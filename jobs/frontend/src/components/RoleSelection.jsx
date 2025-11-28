@@ -42,6 +42,13 @@ export default function RoleSelection() {
       navigate('/');
       return;
     }
+    
+    // Prevent applicants from changing their role
+    if (currentUser?.userType === 'APPLICANT') {
+      console.log('[ROLE_SELECTION] Applicant attempted to change role - redirecting to apply-jobs');
+      navigate('/apply-jobs');
+      return;
+    }
   }, [email, currentUser, navigate]);
 
   // Auto-submit if role was pre-selected by intent
@@ -60,6 +67,13 @@ export default function RoleSelection() {
     setError(null);
 
     try {
+      // Prevent applicants from changing their role
+      if (currentUser?.userType === 'APPLICANT') {
+        setError('Applicants cannot change their role. Please contact support if you need assistance.');
+        setLoading(false);
+        return;
+      }
+      
       const userEmail = email || currentUser?.email;
       const userName = name || currentUser?.name || userEmail?.split('@')[0];
       const userPicture = pictureUrl || currentUser?.picture;

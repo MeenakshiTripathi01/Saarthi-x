@@ -2,77 +2,32 @@ import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { markNotificationAsRead } from '../api/notificationApi';
+import { playNotificationSound, initializeAudioContext } from '../utils/soundUtils';
 
 export default function NotificationToast({ notification, onClose, onMarkRead }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const timeoutRef = useRef(null);
+  const soundPlayedRef = useRef(false);
 
-  // Play notification sound - unique ascending three-tone chime
+  // Play notification sound immediately when toast appears (synchronous)
   useEffect(() => {
-    const playNotificationSound = async () => {
-      try {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) return;
+    // Only play sound once when the toast first appears
+    if (!soundPlayedRef.current) {
+      soundPlayedRef.current = true;
+      
+      // Initialize audio context first (synchronous)
+      initializeAudioContext();
+      
+      // Play sound immediately without any delays - fire and forget
+      playNotificationSound(true).catch(() => {
+        // Silently fail - don't log errors to avoid console spam
+      });
+    }
+  }, []);
 
-        const audioContext = new AudioContextClass();
-        
-        // Resume audio context if suspended (needed for autoplay policies)
-        if (audioContext.state === 'suspended') {
-          await audioContext.resume();
-        }
-
-        const now = audioContext.currentTime;
-        
-        // Create a pleasant ascending three-tone chime pattern (distinctive notification sound)
-        // Musical notes: C5 - E5 - G5 (major triad - pleasant and recognizable)
-        const frequencies = [523.25, 659.25, 783.99]; // C5, E5, G5
-        
-        frequencies.forEach((freq, index) => {
-          const oscillator = audioContext.createOscillator();
-          const gainNode = audioContext.createGain();
-          
-          oscillator.connect(gainNode);
-          gainNode.connect(audioContext.destination);
-          
-          oscillator.frequency.value = freq;
-          oscillator.type = 'sine'; // Pure tone for clarity
-          
-          // Each tone starts with a slight delay (ascending pattern)
-          const startTime = now + (index * 0.08); // 80ms apart
-          const duration = 0.15; // 150ms per tone
-          
-          // Smooth attack and decay
-          gainNode.gain.setValueAtTime(0, startTime);
-          gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.03);
-          gainNode.gain.linearRampToValueAtTime(0.25, startTime + 0.08);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-          
-          oscillator.start(startTime);
-          oscillator.stop(startTime + duration);
-        });
-        
-        // Clean up after all sounds complete
-        setTimeout(() => {
-          try {
-            if (audioContext.state !== 'closed') {
-              audioContext.close();
-            }
-          } catch (e) {
-            // Ignore cleanup errors
-          }
-        }, 500);
-        
-      } catch (error) {
-        // Silently fail if audio can't be played (autoplay restrictions, etc.)
-        console.log('Notification sound unavailable:', error.message);
-      }
-    };
-
-    // Play sound when toast appears
-    playNotificationSound();
-
-    // Auto-close after 5 seconds
+  // Auto-close after 5 seconds
+  useEffect(() => {
     timeoutRef.current = setTimeout(() => {
       onClose();
     }, 5000);

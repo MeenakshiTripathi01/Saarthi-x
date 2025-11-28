@@ -10,10 +10,9 @@ export default function Header() {
   const dropdownRef = useRef(null);
 
   const handleLogin = () => {
-    // Clear any previous login intent and set redirect to role selection/edit page
+    // Clear any previous login intent
     localStorage.removeItem('loginIntent');
     localStorage.removeItem('redirectRoute');
-    localStorage.setItem('redirectRoute', 'role-selection'); // Route to role selection/edit page
     loginWithGoogle();
   };
 
@@ -111,17 +110,19 @@ export default function Header() {
                       <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>
                       <p className="text-xs text-gray-600 truncate mt-1">{user.email}</p>
                     </div>
-                    <Link
-                      to="/edit-profile"
-                      onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-3 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 group"
-                    >
-                      <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      <span className="font-medium">Edit Profile</span>
-                    </Link>
+                    {user?.userType === 'INDUSTRY' && (
+                      <Link
+                        to="/edit-profile"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 group"
+                      >
+                        <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        <span className="font-medium">Edit Role</span>
+                      </Link>
+                    )}
                     {user?.userType === 'APPLICANT' && (
                       <Link
                         to="/build-profile"
