@@ -2,10 +2,12 @@ package com.saarthix.jobs.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Document(collection = "user_profiles")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UserProfile {
     @Id
     private String id;
@@ -24,15 +26,17 @@ public class UserProfile {
     private Long resumeFileSize;
     
     // Professional Information
-    private String currentPosition;
-    private String currentCompany;
-    private String experience;      // Years of experience
+    private String currentPosition;  // Keep for backward compatibility
+    private String currentCompany;   // Keep for backward compatibility
+    private String experience;       // Years of experience
+    private List<ProfessionalExperience> professionalExperiences;  // Multiple professional experiences
     private List<String> skills;    // List of skills
     private String summary;         // Professional summary/bio
     
     // Location Preferences
     private String currentLocation;
-    private String preferredLocation;
+    private List<String> preferredLocations;  // Multiple preferred locations
+    private String preferredLocation;  // Keep for backward compatibility
     private String workPreference;  // Remote, On-site, Hybrid
     private Boolean willingToRelocate;
     
@@ -48,8 +52,13 @@ public class UserProfile {
     private String coverLetterTemplate;  // Default cover letter template
     
     // Education (optional)
-    private String education;
-    private String certifications;
+    private String education;  // Keep for backward compatibility
+    private List<EducationEntry> educationEntries;  // Multiple education entries (Class 12th, Graduation, etc.)
+    private String certifications;  // Keep for backward compatibility
+    private List<CertificationFile> certificationFiles;  // Multiple certification files
+    
+    // Hobbies & Interests
+    private List<String> hobbies;
     
     // Timestamps
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -107,6 +116,9 @@ public class UserProfile {
     public String getPreferredLocation() { return preferredLocation; }
     public void setPreferredLocation(String preferredLocation) { this.preferredLocation = preferredLocation; }
 
+    public List<String> getPreferredLocations() { return preferredLocations; }
+    public void setPreferredLocations(List<String> preferredLocations) { this.preferredLocations = preferredLocations; }
+
     public String getWorkPreference() { return workPreference; }
     public void setWorkPreference(String workPreference) { this.workPreference = workPreference; }
 
@@ -137,13 +149,130 @@ public class UserProfile {
     public String getEducation() { return education; }
     public void setEducation(String education) { this.education = education; }
 
+    public List<EducationEntry> getEducationEntries() { return educationEntries; }
+    public void setEducationEntries(List<EducationEntry> educationEntries) { this.educationEntries = educationEntries; }
+
     public String getCertifications() { return certifications; }
     public void setCertifications(String certifications) { this.certifications = certifications; }
+
+    public List<CertificationFile> getCertificationFiles() { return certificationFiles; }
+    public void setCertificationFiles(List<CertificationFile> certificationFiles) { this.certificationFiles = certificationFiles; }
+
+    public List<ProfessionalExperience> getProfessionalExperiences() { return professionalExperiences; }
+    public void setProfessionalExperiences(List<ProfessionalExperience> professionalExperiences) { this.professionalExperiences = professionalExperiences; }
+
+    public List<String> getHobbies() { return hobbies; }
+    public void setHobbies(List<String> hobbies) { this.hobbies = hobbies; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public LocalDateTime getLastUpdated() { return lastUpdated; }
     public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }
+
+    // Inner class for Professional Experience
+    public static class ProfessionalExperience {
+        // Empty constructor for MongoDB
+        public ProfessionalExperience() {}
+        private String jobTitle;
+        private String company;
+        private String startDate;
+        private String endDate;
+        private Boolean isCurrentJob;
+        private String description;
+
+        // Getters and setters
+        public String getJobTitle() { return jobTitle; }
+        public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
+
+        public String getCompany() { return company; }
+        public void setCompany(String company) { this.company = company; }
+
+        public String getStartDate() { return startDate; }
+        public void setStartDate(String startDate) { this.startDate = startDate; }
+
+        public String getEndDate() { return endDate; }
+        public void setEndDate(String endDate) { this.endDate = endDate; }
+
+        public Boolean getIsCurrentJob() { return isCurrentJob; }
+        public void setIsCurrentJob(Boolean isCurrentJob) { this.isCurrentJob = isCurrentJob; }
+
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+    }
+
+    // Inner class for Education Entry
+    public static class EducationEntry {
+        // Empty constructor for MongoDB
+        public EducationEntry() {}
+        private String level;  // "Class 12th", "Graduation", "Post Graduation", etc.
+        private String degree;  // "B.Tech", "B.Sc", "M.Tech", etc.
+        private String institution;
+        private String board;  // For Class 12th
+        private String passingYear;
+        private String percentage;
+        private String stream;  // Science, Commerce, Arts, etc.
+
+        // Getters and setters
+        public String getLevel() { return level; }
+        public void setLevel(String level) { this.level = level; }
+
+        public String getDegree() { return degree; }
+        public void setDegree(String degree) { this.degree = degree; }
+
+        public String getInstitution() { return institution; }
+        public void setInstitution(String institution) { this.institution = institution; }
+
+        public String getBoard() { return board; }
+        public void setBoard(String board) { this.board = board; }
+
+        public String getPassingYear() { return passingYear; }
+        public void setPassingYear(String passingYear) { this.passingYear = passingYear; }
+
+        public String getPercentage() { return percentage; }
+        public void setPercentage(String percentage) { this.percentage = percentage; }
+
+        public String getStream() { return stream; }
+        public void setStream(String stream) { this.stream = stream; }
+    }
+
+    // Inner class for Certification File
+    public static class CertificationFile {
+        // Empty constructor for MongoDB
+        public CertificationFile() {}
+        private String name;
+        private String fileName;
+        private String fileType;
+        private String fileBase64;
+        private Long fileSize;
+        private String issuingOrganization;
+        private String issueDate;
+        private String expiryDate;
+
+        // Getters and setters
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+
+        public String getFileName() { return fileName; }
+        public void setFileName(String fileName) { this.fileName = fileName; }
+
+        public String getFileType() { return fileType; }
+        public void setFileType(String fileType) { this.fileType = fileType; }
+
+        public String getFileBase64() { return fileBase64; }
+        public void setFileBase64(String fileBase64) { this.fileBase64 = fileBase64; }
+
+        public Long getFileSize() { return fileSize; }
+        public void setFileSize(Long fileSize) { this.fileSize = fileSize; }
+
+        public String getIssuingOrganization() { return issuingOrganization; }
+        public void setIssuingOrganization(String issuingOrganization) { this.issuingOrganization = issuingOrganization; }
+
+        public String getIssueDate() { return issueDate; }
+        public void setIssueDate(String issueDate) { this.issueDate = issueDate; }
+
+        public String getExpiryDate() { return expiryDate; }
+        public void setExpiryDate(String expiryDate) { this.expiryDate = expiryDate; }
+    }
 }
 
