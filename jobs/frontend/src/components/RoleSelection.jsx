@@ -183,8 +183,9 @@ export default function RoleSelection() {
         }
       }
       
-      // Clear redirectRoute after using it
+      // Clear redirectRoute and loginIntent after using it
       localStorage.removeItem('redirectRoute');
+      localStorage.removeItem('loginIntent');
     } catch (err) {
       console.error('Error saving role:', err);
       setError(err.message || 'An error occurred. Please try again.');

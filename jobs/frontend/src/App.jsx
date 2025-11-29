@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
+import Login from './components/Login';
 import JobList from './components/JobList';
 import PostJobs from './components/PostJobs';
 import JobTracker from './components/JobTracker';
@@ -21,6 +22,7 @@ function App() {
           <Header />
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/choose-role" element={<RoleSelection />} />
             <Route path="/apply-jobs" element={<JobList />} />
             <Route path="/post-jobs" element={<PostJobs />} />
