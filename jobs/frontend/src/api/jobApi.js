@@ -267,3 +267,39 @@ export const updateApplicationStatusByIndustry = async (applicationId, status) =
     throw error;
   }
 };
+
+// Update a job (INDUSTRY users only)
+export const updateJob = async (jobId, jobData) => {
+  try {
+    const response = await axios.put(
+      `http://localhost:8080/api/jobs/${jobId}`,
+      jobData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating job:', error);
+    throw error;
+  }
+};
+
+// Delete a job (INDUSTRY users only)
+export const deleteJob = async (jobId) => {
+  try {
+    const response = await axios.delete(
+      `http://localhost:8080/api/jobs/${jobId}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting job:', error);
+    throw error;
+  }
+};
