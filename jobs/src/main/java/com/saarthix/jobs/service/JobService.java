@@ -40,6 +40,7 @@ public class JobService {
             job.setPostedBy(updatedJob.getPostedBy());
             job.setActive(updatedJob.isActive());
             job.setSkills(updatedJob.getSkills());
+            job.setIndustry(updatedJob.getIndustry());
             job.setEmploymentType(updatedJob.getEmploymentType());
             job.setJobMinSalary(updatedJob.getJobMinSalary());
             job.setJobMaxSalary(updatedJob.getJobMaxSalary());

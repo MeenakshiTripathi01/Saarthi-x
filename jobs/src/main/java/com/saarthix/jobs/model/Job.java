@@ -17,6 +17,7 @@ public class Job {
     private String location;
     private String postedBy;
     private String industryId;           // NEW: User ID of the INDUSTRY user who posted
+    private String industry;             // Industry type (e.g., Technology, Healthcare, Finance)
     private List<String> skills;         // Skills required for this job
     private String employmentType;       // Employment type (Full-time, Part-time, etc.)
     private Integer jobMinSalary;        // Minimum salary
@@ -46,6 +47,9 @@ public class Job {
 
     public String getIndustryId() { return industryId; }
     public void setIndustryId(String industryId) { this.industryId = industryId; }
+
+    public String getIndustry() { return industry; }
+    public void setIndustry(String industry) { this.industry = industry; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

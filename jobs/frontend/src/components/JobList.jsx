@@ -209,6 +209,9 @@ export default function JobList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterRole, setFilterRole] = useState("All");
+  const [filterIndustry, setFilterIndustry] = useState("All");
+  const [filterSkill, setFilterSkill] = useState("All");
   const [filterSource, setFilterSource] = useState("All");
   const [filterLocation, setFilterLocation] = useState("All");
   const [filterCompany, setFilterCompany] = useState("All");
@@ -252,10 +255,12 @@ export default function JobList() {
         description: job.description,
         company: job.company,
         location: job.location || "Remote",
+        industry: job.industry || "General",
         source: "Local",
         raw: {
           ...job,
           skills: job.skills || [],
+          industry: job.industry || "General",
           employmentType: job.employmentType,
           jobMinSalary: job.jobMinSalary,
           jobMaxSalary: job.jobMaxSalary,
@@ -264,12 +269,26 @@ export default function JobList() {
         },
       }));
 
+      // Helper function to extract industry from job title
+      const extractIndustryFromTitle = (title) => {
+        if (!title) return "General";
+        const titleLower = title.toLowerCase();
+        if (titleLower.includes('software') || titleLower.includes('developer') || titleLower.includes('tech')) return 'Technology';
+        if (titleLower.includes('nurse') || titleLower.includes('medical') || titleLower.includes('healthcare')) return 'Healthcare';
+        if (titleLower.includes('finance') || titleLower.includes('accountant') || titleLower.includes('bank')) return 'Finance';
+        if (titleLower.includes('teacher') || titleLower.includes('education') || titleLower.includes('instructor')) return 'Education';
+        if (titleLower.includes('marketing') || titleLower.includes('sales')) return 'Marketing & Sales';
+        if (titleLower.includes('engineer') && !titleLower.includes('software')) return 'Engineering';
+        return 'General';
+      };
+
       const rapidJobs = (Array.isArray(externalJobs) ? externalJobs : []).map((job) => ({
         id: job.job_id,
         title: job.job_title,
         description: job.job_description,
         company: job.employer_name,
         location: [job.job_city, job.job_country].filter(Boolean).join(", "),
+        industry: extractIndustryFromTitle(job.job_title),
         source: "External",
         raw: job,
       }));
@@ -302,8 +321,44 @@ export default function JobList() {
     await loadJobs();
   };
 
-  // Get unique locations and companies from jobs
-  // Normalize and deduplicate locations
+  // Get unique values for filters
+  // Roles (job titles)
+  const uniqueRoles = new Set();
+  jobs.forEach((job) => {
+    if (job.title && job.title.trim()) {
+      // Extract key role from title (first 2-3 words typically)
+      const words = job.title.trim().split(/\s+/);
+      const role = words.slice(0, 3).join(' '); // Take first 3 words as role
+      if (role.length > 0) {
+        uniqueRoles.add(role);
+      }
+    }
+  });
+  const roles = ["All", ...Array.from(uniqueRoles).sort()];
+
+  // Industries
+  const uniqueIndustries = new Set();
+  jobs.forEach((job) => {
+    if (job.industry && job.industry.trim()) {
+      uniqueIndustries.add(job.industry.trim());
+    }
+  });
+  const industries = ["All", ...Array.from(uniqueIndustries).sort()];
+
+  // Skills/Education
+  const uniqueSkills = new Set();
+  jobs.forEach((job) => {
+    if (job.raw?.skills && Array.isArray(job.raw.skills)) {
+      job.raw.skills.forEach(skill => {
+        if (skill && skill.trim()) {
+          uniqueSkills.add(skill.trim());
+        }
+      });
+    }
+  });
+  const skills = ["All", ...Array.from(uniqueSkills).sort()];
+
+  // Locations
   const uniqueLocations = new Set();
   jobs.forEach((job) => {
     if (job.location && job.location.trim()) {
@@ -312,13 +367,12 @@ export default function JobList() {
   });
   const locations = ["All", ...Array.from(uniqueLocations).sort()];
 
-  // Normalize and deduplicate companies (case-insensitive)
+  // Companies
   const companyMap = new Map();
   jobs.forEach((job) => {
     if (job.company && job.company.trim()) {
       const normalized = job.company.trim();
       const lowerKey = normalized.toLowerCase();
-      // Keep the first occurrence with original casing
       if (!companyMap.has(lowerKey)) {
         companyMap.set(lowerKey, normalized);
       }
@@ -326,13 +380,35 @@ export default function JobList() {
   });
   const companies = ["All", ...Array.from(companyMap.values()).sort((a, b) => a.localeCompare(b))];
 
-  // Filter jobs based on search query, source, location, and company
+  // Filter jobs based on all filters
   const filteredJobs = jobs.filter((job) => {
-    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase());
+    // Search query matches title or description
+    const matchesSearch = !searchQuery || 
+      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (job.description && job.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    // Role filter - check if job title contains the selected role
+    const matchesRole = filterRole === "All" || 
+      job.title.toLowerCase().includes(filterRole.toLowerCase());
+    
+    // Industry filter
+    const matchesIndustry = filterIndustry === "All" || 
+      (job.industry && job.industry.toLowerCase() === filterIndustry.toLowerCase());
+    
+    // Skills/Education filter
+    const matchesSkill = filterSkill === "All" || 
+      (job.raw?.skills && Array.isArray(job.raw.skills) && 
+       job.raw.skills.some(skill => 
+         skill && skill.toLowerCase().includes(filterSkill.toLowerCase())
+       ));
+    
+    // Other filters
     const matchesSource = filterSource === "All" || job.source === filterSource;
     const matchesLocation = filterLocation === "All" || job.location === filterLocation;
     const matchesCompany = filterCompany === "All" || job.company === filterCompany;
-    return matchesSearch && matchesSource && matchesLocation && matchesCompany;
+    
+    return matchesSearch && matchesRole && matchesIndustry && matchesSkill && 
+           matchesSource && matchesLocation && matchesCompany;
   });
 
   useEffect(() => {
@@ -449,91 +525,202 @@ export default function JobList() {
           </p>
         </div>
 
-        {/* Search and Filter Bar */}
-        <div className="mb-10 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 animate-fadeIn">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            {/* Search Bar - Left Side */}
-            <div className="relative flex-1 max-w-md">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        {/* Main Filter Section - Prominent at Top */}
+        <div className="mb-10 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl border-2 border-blue-200 shadow-lg p-8 animate-fadeIn">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
               </div>
-              <input
-                type="text"
-                placeholder="Search by job title..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white pl-12 pr-4 py-3 text-sm text-gray-900 placeholder-gray-500 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
-              />
+              Filter Jobs
+            </h2>
+            <p className="text-gray-600 text-sm">Find your perfect opportunity by filtering jobs below</p>
+          </div>
+
+          {/* Primary Filters - Role, Industry, Skills */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* Filter by Role */}
+            <div className="bg-white rounded-xl border-2 border-blue-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Filter by Role
+              </label>
+              <select
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="All">All Roles</option>
+                {roles.filter(r => r !== "All").map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Filter Options - Right Side */}
-            <div className="flex gap-3 flex-wrap items-end">
-              {/* Source Filter */}
+            {/* Filter by Industry */}
+            <div className="bg-white rounded-xl border-2 border-indigo-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Filter by Industry
+              </label>
               <select
-                value={filterSource}
-                onChange={(e) => setFilterSource(e.target.value)}
-                className="rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
+                value={filterIndustry}
+                onChange={(e) => setFilterIndustry(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               >
-                <option value="All">All Sources</option>
-                <option value="Local">Local</option>
-                <option value="External">External</option>
-              </select>
-
-              {/* Location Filter */}
-              <select
-                value={filterLocation}
-                onChange={(e) => setFilterLocation(e.target.value)}
-                className="rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
-              >
-                {locations.map((location) => (
-                  <option key={location} value={location}>
-                    {location === "All" ? "All Locations" : location}
+                <option value="All">All Industries</option>
+                {industries.filter(i => i !== "All").map((industry) => (
+                  <option key={industry} value={industry}>
+                    {industry}
                   </option>
                 ))}
               </select>
+            </div>
 
-              {/* Company Filter */}
+            {/* Filter by Skills/Education */}
+            <div className="bg-white rounded-xl border-2 border-purple-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                Filter by Skills/Education
+              </label>
               <select
-                value={filterCompany}
-                onChange={(e) => setFilterCompany(e.target.value)}
-                className="rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-sm hover:shadow-md"
+                value={filterSkill}
+                onChange={(e) => setFilterSkill(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
               >
-                {companies.map((company) => (
-                  <option key={company} value={company}>
-                    {company === "All" ? "All Companies" : company}
+                <option value="All">All Skills</option>
+                {skills.filter(s => s !== "All").slice(0, 50).map((skill) => (
+                  <option key={skill} value={skill}>
+                    {skill}
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
 
-              {/* Refresh Button */}
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="rounded-xl border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-900 transition-all duration-200 disabled:cursor-not-allowed shadow-sm hover:shadow-md disabled:shadow-none"
-                title="Refresh jobs list"
-              >
-                {refreshing ? (
-                  <span className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-600 border-t-transparent"></div>
-                  </span>
-                ) : (
-                  "Refresh"
+          {/* Secondary Filters and Search - Collapsible/Compact */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              {/* Search Bar */}
+              <div className="relative flex-1 max-w-md">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search by job title or description..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                />
+              </div>
+
+              {/* Additional Filters */}
+              <div className="flex gap-3 flex-wrap items-end">
+                <select
+                  value={filterLocation}
+                  onChange={(e) => setFilterLocation(e.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                >
+                  <option value="All">All Locations</option>
+                  {locations.filter(l => l !== "All").map((location) => (
+                    <option key={location} value={location}>{location}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterSource}
+                  onChange={(e) => setFilterSource(e.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                >
+                  <option value="All">All Sources</option>
+                  <option value="Local">Local</option>
+                  <option value="External">External</option>
+                </select>
+
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-900 transition-all duration-200 disabled:cursor-not-allowed"
+                  title="Refresh jobs list"
+                >
+                  {refreshing ? (
+                    <span className="flex items-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-600 border-t-transparent"></div>
+                    </span>
+                  ) : (
+                    "Refresh"
+                  )}
+                </button>
+
+                {/* Clear Filters Button */}
+                {(filterRole !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+                  searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All") && (
+                  <button
+                    onClick={() => {
+                      setFilterRole("All");
+                      setFilterIndustry("All");
+                      setFilterSkill("All");
+                      setSearchQuery("");
+                      setFilterLocation("All");
+                      setFilterSource("All");
+                      setFilterCompany("All");
+                    }}
+                    className="rounded-lg border border-red-300 bg-red-50 hover:bg-red-100 px-4 py-2.5 text-sm font-semibold text-red-700 transition-all duration-200"
+                  >
+                    Clear Filters
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Results Counter */}
-        {(searchQuery || filterSource !== "All" || filterLocation !== "All" || filterCompany !== "All") && (
-          <div className="mb-6 bg-white rounded-xl border border-gray-200 px-5 py-3 shadow-sm animate-fadeIn">
-            <p className="text-sm text-gray-700 font-medium">
-              Found <span className="font-bold text-gray-900 text-base">{filteredJobs.length}</span> job{filteredJobs.length !== 1 ? "s" : ""} matching your filters
-            </p>
+        <div className={`mb-6 rounded-xl border px-5 py-4 shadow-sm animate-fadeIn ${
+          (filterRole !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+           searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All")
+            ? "bg-blue-50 border-blue-200"
+            : "bg-white border-gray-200"
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                (filterRole !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+                 searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All")
+                  ? "bg-blue-600"
+                  : "bg-gray-600"
+              }`}>
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {filteredJobs.length} Job{filteredJobs.length !== 1 ? "s" : ""} Available
+                </p>
+                <p className="text-xs text-gray-600">
+                  {(filterRole !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+                    searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All")
+                    ? "Matching your selected filters"
+                    : "Browse all available opportunities"}
+                </p>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
 
         {error ? (
           <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-rose-700 text-sm">
