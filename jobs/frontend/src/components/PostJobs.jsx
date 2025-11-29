@@ -13,6 +13,7 @@ export default function PostJobs() {
     description: "",
     company: "",
     location: "",
+    industry: "",
     employmentType: "",
     minSalary: "",
     maxSalary: "",
@@ -103,6 +104,7 @@ export default function PostJobs() {
         description: formData.description,
         company: formData.company,
         location: formData.location,
+        industry: formData.industry || "General",
         employmentType: formData.employmentType,
         jobMinSalary: formData.minSalary ? parseInt(formData.minSalary) : null,
         jobMaxSalary: formData.maxSalary ? parseInt(formData.maxSalary) : null,
@@ -140,6 +142,7 @@ export default function PostJobs() {
         description: "",
         company: "",
         location: "",
+        industry: "",
         employmentType: "",
         minSalary: "",
         maxSalary: "",
@@ -340,6 +343,29 @@ export default function PostJobs() {
                 required
                 className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
               />
+            </div>
+
+            {/* Industry */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Industry *
+              </label>
+              <select
+                name="industry"
+                value={formData.industry}
+                onChange={handleChange}
+                required
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+              >
+                <option value="">Select Industry</option>
+                <option value="Technology">Technology</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Finance">Finance</option>
+                <option value="Education">Education</option>
+                <option value="Marketing & Sales">Marketing & Sales</option>
+                <option value="Engineering">Engineering</option>
+                <option value="General">General</option>
+              </select>
             </div>
 
             {/* Employment Type */}

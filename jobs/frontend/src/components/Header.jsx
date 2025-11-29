@@ -1,13 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { loginWithGoogle, logout } from '../api/authApi';
+import { getUserProfile } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 import NotificationCenter from './NotificationCenter';
 
 export default function Header() {
-  const { user, loading, clearAuth } = useAuth();
+  const { user, loading, clearAuth, isAuthenticated } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [hasProfile, setHasProfile] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(false);
   const dropdownRef = useRef(null);
+  const location = useLocation();
 
   const handleLogin = () => {
     // Clear any previous login intent
@@ -20,6 +24,42 @@ export default function Header() {
     logout(clearAuth);
     setDropdownOpen(false);
   };
+
+  // Check if profile exists for APPLICANT users
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (isAuthenticated && user?.userType === 'APPLICANT' && !checkingProfile) {
+        setCheckingProfile(true);
+        try {
+          const profile = await getUserProfile();
+          setHasProfile(profile !== null && profile !== undefined);
+        } catch (error) {
+          if (error.response?.status !== 404) {
+            console.error('Error checking profile:', error);
+          }
+          setHasProfile(false);
+        } finally {
+          setCheckingProfile(false);
+        }
+      }
+    };
+
+    checkProfile();
+  }, [isAuthenticated, user, location.pathname]);
+
+  // Listen for profile save events (from ProfileBuilder)
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      if (isAuthenticated && user?.userType === 'APPLICANT') {
+        getUserProfile().then(profile => {
+          setHasProfile(profile !== null && profile !== undefined);
+        }).catch(() => setHasProfile(false));
+      }
+    };
+
+    window.addEventListener('profileSaved', handleProfileUpdate);
+    return () => window.removeEventListener('profileSaved', handleProfileUpdate);
+  }, [isAuthenticated, user]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -110,7 +150,7 @@ export default function Header() {
                       <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>
                       <p className="text-xs text-gray-600 truncate mt-1">{user.email}</p>
                     </div>
-                    <Link
+                    {/* <Link
                       to="/edit-profile"
                       onClick={() => setDropdownOpen(false)}
                       className="flex items-center gap-3 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 group"
@@ -120,18 +160,44 @@ export default function Header() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                       <span className="font-medium">Edit Profile</span>
-                    </Link>
+                    </Link> */}
                     {user?.userType === 'APPLICANT' && (
-                      <Link
-                        to="/build-profile"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 group"
-                      >
-                        <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span className="font-medium">Build Profile</span>
-                      </Link>
+                      hasProfile ? (
+                        <>
+                          <Link
+                            to="/view-profile"
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center gap-3 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 group"
+                          >
+                            <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <span className="font-medium">View Profile</span>
+                          </Link>
+                          {/* <Link
+                            to="/build-profile"
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center gap-3 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 group border-t border-gray-100"
+                          >
+                            <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span className="font-medium">Edit Profile</span>
+                          </Link> */}
+                        </>
+                      ) : (
+                        <Link
+                          to="/build-profile"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-3 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 group"
+                        >
+                          <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span className="font-medium">Build Profile</span>
+                        </Link>
+                      )
                     )}
                     <button
                       onClick={handleLogout}

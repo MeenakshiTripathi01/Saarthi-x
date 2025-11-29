@@ -150,6 +150,12 @@ export const getUserProfile = async () => {
 
 export const saveUserProfile = async (profileData) => {
   try {
+    console.log('Sending profile data to backend:', {
+      url: 'http://localhost:8080/api/profile',
+      dataKeys: Object.keys(profileData),
+      hasResume: !!profileData.resumeBase64
+    });
+    
     const response = await axios.post(
       'http://localhost:8080/api/profile',
       profileData,
@@ -160,9 +166,20 @@ export const saveUserProfile = async (profileData) => {
         },
       }
     );
+    
+    console.log('Profile save response:', {
+      status: response.status,
+      data: response.data
+    });
+    
     return response.data;
   } catch (error) {
     console.error('Error saving user profile:', error);
+    console.error('Error response:', error.response);
+    if (error.response) {
+      console.error('Error status:', error.response.status);
+      console.error('Error data:', error.response.data);
+    }
     throw error;
   }
 };
