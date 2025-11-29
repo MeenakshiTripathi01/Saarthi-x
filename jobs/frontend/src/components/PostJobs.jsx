@@ -16,6 +16,7 @@ export default function PostJobs() {
     employmentType: "",
     minSalary: "",
     maxSalary: "",
+    skills: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [salaryError, setSalaryError] = useState("");
@@ -103,8 +104,12 @@ export default function PostJobs() {
         company: formData.company,
         location: formData.location,
         employmentType: formData.employmentType,
-        job_min_salary: formData.minSalary ? parseInt(formData.minSalary) : null,
-        job_max_salary: formData.maxSalary ? parseInt(formData.maxSalary) : null,
+        jobMinSalary: formData.minSalary ? parseInt(formData.minSalary) : null,
+        jobMaxSalary: formData.maxSalary ? parseInt(formData.maxSalary) : null,
+        jobSalaryCurrency: "USD", // Default currency
+        skills: formData.skills
+          ? formData.skills.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+          : [],
       };
 
       const response = await axios.post(
@@ -138,6 +143,7 @@ export default function PostJobs() {
         employmentType: "",
         minSalary: "",
         maxSalary: "",
+        skills: "",
       });
 
       // Redirect to apply-jobs after 2 seconds
@@ -409,6 +415,24 @@ export default function PostJobs() {
                   <p className="mt-1 text-sm text-red-600">{salaryError}</p>
                 )}
               </div>
+            </div>
+
+            {/* Skills Required */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Required Skills
+              </label>
+              <input
+                type="text"
+                name="skills"
+                value={formData.skills}
+                onChange={handleChange}
+                placeholder="e.g., JavaScript, React, Node.js, Python (comma-separated)"
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Enter skills separated by commas
+              </p>
             </div>
 
             {/* Job Description */}

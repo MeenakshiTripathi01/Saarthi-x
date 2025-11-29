@@ -39,6 +39,11 @@ public class JobService {
             job.setLocation(updatedJob.getLocation());
             job.setPostedBy(updatedJob.getPostedBy());
             job.setActive(updatedJob.isActive());
+            job.setSkills(updatedJob.getSkills());
+            job.setEmploymentType(updatedJob.getEmploymentType());
+            job.setJobMinSalary(updatedJob.getJobMinSalary());
+            job.setJobMaxSalary(updatedJob.getJobMaxSalary());
+            job.setJobSalaryCurrency(updatedJob.getJobSalaryCurrency());
             return jobRepository.save(job);
         }).orElseThrow(() -> new RuntimeException("Job not found with id: " + id));
     }

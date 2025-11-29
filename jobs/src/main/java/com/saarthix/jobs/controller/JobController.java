@@ -47,27 +47,54 @@ public class JobController {
     // ✅ POST a new job (INDUSTRY users only)
     @PostMapping
     public ResponseEntity<?> createJob(@RequestBody Job job, Authentication auth) {
-        // Check if user is authenticated via OAuth
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Must be logged in to post jobs");
+        try {
+            // Log the received job data for debugging
+            System.out.println("=== Received Job Data ===");
+            System.out.println("Title: " + job.getTitle());
+            System.out.println("Company: " + job.getCompany());
+            System.out.println("Location: " + job.getLocation());
+            System.out.println("Description: " + (job.getDescription() != null ? job.getDescription().substring(0, Math.min(50, job.getDescription().length())) + "..." : "null"));
+            System.out.println("Skills: " + job.getSkills());
+            System.out.println("Employment Type: " + job.getEmploymentType());
+            System.out.println("Min Salary: " + job.getJobMinSalary());
+            System.out.println("Max Salary: " + job.getJobMaxSalary());
+            System.out.println("========================");
+            
+            // Check if user is authenticated via OAuth
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(401).body("Must be logged in to post jobs");
+            }
+
+            // Get user from OAuth principal
+            User user = resolveUserFromOAuth(auth);
+            if (user == null) {
+                return ResponseEntity.status(401).body("User not found");
+            }
+
+            // Check if user is INDUSTRY type
+            if (!"INDUSTRY".equals(user.getUserType())) {
+                return ResponseEntity.status(403).body("Only INDUSTRY users can post jobs. Current type: " + user.getUserType());
+            }
+
+            // Set the user/industry who posted the job
+            job.setIndustryId(user.getId());
+            // Ensure createdAt is set if not provided
+            if (job.getCreatedAt() == null) {
+                job.setCreatedAt(java.time.LocalDateTime.now());
+            }
+            // Ensure active is set
+            if (!job.isActive() && job.getId() == null) {
+                job.setActive(true);
+            }
+            
+            Job savedJob = jobRepository.save(job);
+            return ResponseEntity.ok(savedJob);
+        } catch (Exception e) {
+            // Log the error for debugging
+            System.err.println("Error creating job: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(400).body("Error creating job: " + e.getMessage());
         }
-
-        // Get user from OAuth principal
-        User user = resolveUserFromOAuth(auth);
-        if (user == null) {
-            return ResponseEntity.status(401).body("User not found");
-        }
-
-        // Check if user is INDUSTRY type
-        if (!"INDUSTRY".equals(user.getUserType())) {
-            return ResponseEntity.status(403).body("Only INDUSTRY users can post jobs. Current type: " + user.getUserType());
-        }
-
-        // Set the user/industry who posted the job
-        job.setIndustryId(user.getId());
-        jobRepository.save(job);
-
-        return ResponseEntity.ok(job);
     }
 
     // ✅ PUT update a job (INDUSTRY users only)
@@ -100,6 +127,11 @@ public class JobController {
         job.setCompany(updatedJob.getCompany());
         job.setLocation(updatedJob.getLocation());
         job.setActive(updatedJob.isActive());
+        job.setSkills(updatedJob.getSkills());
+        job.setEmploymentType(updatedJob.getEmploymentType());
+        job.setJobMinSalary(updatedJob.getJobMinSalary());
+        job.setJobMaxSalary(updatedJob.getJobMaxSalary());
+        job.setJobSalaryCurrency(updatedJob.getJobSalaryCurrency());
 
         return ResponseEntity.ok(jobRepository.save(job));
     }
