@@ -52,6 +52,7 @@ export default function JobBuilder() {
   const [skillsInput, setSkillsInput] = useState('');
   const [showSkillsSuggestions, setShowSkillsSuggestions] = useState(false);
   const [salaryError, setSalaryError] = useState('');
+  const [savedJobId, setSavedJobId] = useState(null); // Track saved draft job ID
 
   // Check if editing existing job
   const editingJobId = location.state?.jobId || null;
@@ -103,6 +104,8 @@ export default function JobBuilder() {
           active: job.active !== undefined ? job.active : true
         });
         setSkillsInput('');
+        // Set savedJobId when loading an existing job
+        setSavedJobId(job.id);
       }
     } catch (err) {
       console.error('Error loading job:', err);
@@ -211,33 +214,116 @@ export default function JobBuilder() {
     }));
   };
 
+  const handleSave = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent multiple simultaneous saves
+    if (saving) return;
+    
+    // For saving as draft, silently save without validation or toasts
+    setSaving(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      const jobData = {
+        title: formData.title || '',
+        description: formData.description || '',
+        company: formData.company || '',
+        location: formData.location || '',
+        industry: formData.industry || 'General',
+        employmentType: formData.employmentType || '',
+        jobMinSalary: formData.minSalary ? parseInt(formData.minSalary) : null,
+        jobMaxSalary: formData.maxSalary ? parseInt(formData.maxSalary) : null,
+        jobSalaryCurrency: formData.jobSalaryCurrency || 'USD',
+        skills: formData.skills || [],
+        active: false // Save as draft (inactive)
+      };
+
+      let response;
+      // Use savedJobId if we've already saved a draft, otherwise use editingJobId
+      const jobIdToUpdate = savedJobId || editingJobId;
+      
+      if (jobIdToUpdate) {
+        // Update existing job
+        response = await axios.put(
+          `http://localhost:8080/api/jobs/${jobIdToUpdate}`,
+          jobData,
+          { withCredentials: true }
+        );
+      } else {
+        // Create new draft job
+        response = await axios.post(
+          'http://localhost:8080/api/jobs',
+          jobData,
+          { withCredentials: true }
+        );
+        // Store the ID of the newly created draft job
+        if (response.data && response.data.id) {
+          setSavedJobId(response.data.id);
+        }
+      }
+
+      console.log('Job saved as draft');
+      
+      // Automatically move to next section
+      const currentTabIndex = JOB_TABS.findIndex(tab => tab.id === activeTab);
+      if (currentTabIndex < JOB_TABS.length - 1) {
+        setActiveTab(JOB_TABS[currentTabIndex + 1].id);
+      }
+    } catch (err) {
+      console.error('Error saving job:', err);
+      // No toast for draft save errors
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     
-    // Validate required fields
-    if (!formData.title || !formData.company || !formData.location) {
-      toast.error('Please fill in all required basic information fields');
-      setActiveTab('basic');
-      return;
-    }
+    // Prevent multiple simultaneous submissions
+    if (saving) return;
     
-    if (!formData.description || !formData.industry || !formData.employmentType) {
-      toast.error('Please fill in all required job details');
-      setActiveTab('details');
-      return;
-    }
+    // Check for missing required fields
+    const missingFields = [];
+    if (!formData.title) missingFields.push('Job Title');
+    if (!formData.company) missingFields.push('Company Name');
+    if (!formData.location) missingFields.push('Location');
+    if (!formData.description) missingFields.push('Job Description');
+    if (!formData.industry) missingFields.push('Industry');
+    if (!formData.employmentType) missingFields.push('Employment Type');
 
-    // Validate salary range
+    // Validate salary range if both are provided
     if (formData.minSalary && formData.maxSalary) {
       const minSalary = parseFloat(formData.minSalary);
       const maxSalary = parseFloat(formData.maxSalary);
       
       if (maxSalary < minSalary) {
         setSalaryError('Maximum salary cannot be less than minimum salary');
-        setActiveTab('compensation');
-        toast.error('Please fix the salary range before submitting');
+        toast.error('Please fill in all required details about the job', {
+          position: "top-right",
+          autoClose: 5000,
+        });
         return;
       }
+    }
+
+    // Show toast if any required fields are missing
+    if (missingFields.length > 0) {
+      toast.error('Please fill in all required details about the job', {
+        position: "top-right",
+        autoClose: 5000,
+      });
+      // Navigate to the first section with missing fields
+      if (!formData.title || !formData.company || !formData.location) {
+        setActiveTab('basic');
+      } else if (!formData.description || !formData.industry || !formData.employmentType) {
+        setActiveTab('details');
+      }
+      return;
     }
 
     setSaving(true);
@@ -256,46 +342,49 @@ export default function JobBuilder() {
         jobMaxSalary: formData.maxSalary ? parseInt(formData.maxSalary) : null,
         jobSalaryCurrency: formData.jobSalaryCurrency || 'USD',
         skills: formData.skills || [],
-        active: formData.active
+        active: true // Post as active job
       };
 
       let response;
-      if (editingJobId) {
+      // Use savedJobId if we've saved a draft, otherwise use editingJobId
+      const jobIdToUpdate = savedJobId || editingJobId;
+      
+      if (jobIdToUpdate) {
+        // Update existing job (convert draft to active or update active job)
         response = await axios.put(
-          `http://localhost:8080/api/jobs/${editingJobId}`,
+          `http://localhost:8080/api/jobs/${jobIdToUpdate}`,
           jobData,
           { withCredentials: true }
         );
-        toast.success('Job updated successfully!', {
-          position: "top-right",
-          autoClose: 3000,
-        });
       } else {
+        // Create new active job
         response = await axios.post(
           'http://localhost:8080/api/jobs',
           jobData,
           { withCredentials: true }
         );
-        toast.success('Job posted successfully!', {
-          position: "top-right",
-          autoClose: 3000,
-        });
       }
 
-      console.log('Job saved successfully:', response.data);
-      setSuccess(true);
+      console.log('Job posted successfully:', response.data);
+      
+      // Show success toast
+      toast.success('Job posted successfully!', {
+        position: "top-right",
+        autoClose: 3000,
+      });
       
       setTimeout(() => {
         navigate('/manage-applications');
       }, 2000);
     } catch (err) {
-      console.error('Error saving job:', err);
+      console.error('Error posting job:', err);
       const errorMessage = err.response?.data?.message || 
                           err.response?.data || 
                           err.message || 
-                          'Failed to save job. Please check your connection and try again.';
+                          'Failed to post job. Please check your connection and try again.';
       setError(errorMessage);
-      toast.error(errorMessage, {
+      // Show error toast for missing details
+      toast.error('Please fill in all required details about the job', {
         position: "top-right",
         autoClose: 5000,
       });
@@ -398,7 +487,19 @@ export default function JobBuilder() {
         </div>
 
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+        <form 
+          onSubmit={(e) => {
+            // Only submit if on last section (compensation)
+            if (activeTab === 'compensation') {
+              handleSubmit(e);
+            } else {
+              e.preventDefault();
+              // On other tabs, save and move to next section when Enter is pressed
+              handleSave(e);
+            }
+          }}
+          className="bg-white rounded-xl border border-gray-200 shadow-sm p-8"
+        >
           {/* Basic Information Tab */}
           {activeTab === 'basic' && (
             <div className="space-y-6">
@@ -475,6 +576,13 @@ export default function JobBuilder() {
                   placeholder="Describe the job responsibilities, requirements, and benefits..."
                   rows="10"
                   required
+                  onKeyDown={(e) => {
+                    // Allow Ctrl+Enter or Cmd+Enter to submit, but regular Enter should create new line
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      handleSave(e);
+                    }
+                  }}
                   className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100 resize-none"
                 />
               </div>
@@ -670,7 +778,7 @@ export default function JobBuilder() {
             </div>
           )}
 
-          {/* Submit Button */}
+          {/* Action Buttons */}
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
             <button
               type="button"
@@ -680,20 +788,44 @@ export default function JobBuilder() {
               Cancel
             </button>
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-lg transition-colors text-sm disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-            >
-              {saving ? (
-                <span className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  {editingJobId ? 'Updating...' : 'Posting...'}
-                </span>
-              ) : (
-                editingJobId ? 'Update Job' : 'Post Job'
+            <div className="flex gap-3">
+              {/* Save Button - Show on all sections except last */}
+              {activeTab !== 'compensation' && (
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-6 py-3 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors text-sm disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                >
+                  {saving ? (
+                    <span className="flex items-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      Saving...
+                    </span>
+                  ) : (
+                    'Save'
+                  )}
+                </button>
               )}
-            </button>
+
+              {/* Post Job Button - Show only on last section */}
+              {activeTab === 'compensation' && (
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-lg transition-colors text-sm disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                >
+                  {saving ? (
+                    <span className="flex items-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      {editingJobId ? 'Updating...' : 'Posting...'}
+                    </span>
+                  ) : (
+                    editingJobId ? 'Update Job' : 'Post Job'
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </div>

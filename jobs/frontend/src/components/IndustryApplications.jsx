@@ -16,11 +16,13 @@ export default function IndustryApplications() {
   const [error, setError] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [editingJob, setEditingJob] = useState(null);
-  const [editFormData, setEditFormData] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [jobToDelete, setJobToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Search and filter states
+  const [jobSearchQuery, setJobSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [applicationSearchQuery, setApplicationSearchQuery] = useState('');
 
   // Status options with descriptions
   const statusOptions = [
@@ -44,20 +46,15 @@ export default function IndustryApplications() {
   };
 
   useEffect(() => {
-    console.log('IndustryApplications useEffect:', { isAuthenticated, isIndustry, authLoading });
     if (!authLoading) {
       if (!isAuthenticated || !isIndustry) {
-        console.log('Not authenticated or not industry, redirecting...');
         navigate('/');
         return;
       }
-      // Only load jobs if authenticated and is industry
       if (isAuthenticated && isIndustry) {
-        console.log('Loading jobs...');
         loadJobs();
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isIndustry, authLoading, navigate]);
 
   // Handle location state to auto-select job when navigating from notification
@@ -66,42 +63,35 @@ export default function IndustryApplications() {
       const jobToSelect = jobs.find(job => job.id === location.state.selectedJobId);
       if (jobToSelect && (!selectedJob || selectedJob.id !== jobToSelect.id)) {
         handleJobSelect(jobToSelect);
-        // Clear location state to prevent re-selecting on re-render
         window.history.replaceState({}, document.title);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, jobs]);
+
+  // Load application counts for all jobs
+  useEffect(() => {
+    if (jobs.length > 0 && !selectedJob) {
+      loadAllApplicationCounts();
+    }
+  }, [jobs]);
 
   const loadJobs = async () => {
     try {
       setLoading(true);
       setError(null);
       const allJobs = await getMyPostedJobs();
-      console.log('Loaded all jobs:', allJobs);
       
       if (!Array.isArray(allJobs)) {
-        console.error('Invalid data format:', allJobs);
         setError('Invalid response format from server');
         return;
       }
 
-      // Show all posted jobs, regardless of whether they have applications
-      console.log(`Found ${allJobs.length} total posted jobs`);
       setJobs(allJobs);
     } catch (err) {
       console.error('Error loading jobs:', err);
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response,
-        status: err.response?.status,
-        data: err.response?.data,
-      });
-      
       let errorMessage = 'Failed to load your posted jobs';
       
       if (err.response) {
-        // Handle different error response formats
         if (typeof err.response.data === 'string') {
           errorMessage = err.response.data;
         } else if (err.response.data?.message) {
@@ -110,23 +100,33 @@ export default function IndustryApplications() {
           errorMessage = 'Authentication required. Please log in again.';
         } else if (err.response.status === 403) {
           errorMessage = 'Access denied. Only INDUSTRY users can view their posted jobs.';
-        } else if (err.response.status === 404) {
-          errorMessage = 'Endpoint not found. Please check if the backend server is running.';
-        } else {
-          errorMessage = `Server error (${err.response.status}): ${err.response.statusText || 'Unknown error'}`;
         }
-      } else if (err.message) {
-        errorMessage = err.message;
       }
       
       setError(errorMessage);
-      toast.error(`Error: ${errorMessage}`, {
-        position: "top-right",
-        autoClose: 5000,
-      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadAllApplicationCounts = async () => {
+    // Load application counts for all jobs in parallel
+    const countPromises = jobs.map(async (job) => {
+      try {
+        const apps = await getApplicationsByJobId(job.id);
+        return { jobId: job.id, count: apps.length };
+      } catch {
+        return { jobId: job.id, count: 0 };
+      }
+    });
+    
+    const counts = await Promise.all(countPromises);
+    setJobs(prevJobs => 
+      prevJobs.map(job => {
+        const countData = counts.find(c => c.jobId === job.id);
+        return { ...job, applicationCount: countData?.count || 0 };
+      })
+    );
   };
 
   const loadApplications = async (jobId) => {
@@ -146,30 +146,28 @@ export default function IndustryApplications() {
   const handleJobSelect = (job) => {
     setSelectedJob(job);
     setSelectedApplication(null);
+    setStatusFilter('All');
+    setApplicationSearchQuery('');
     loadApplications(job.id);
   };
 
   const handleStatusUpdate = async (applicationId, newStatus) => {
     try {
       setUpdatingStatus(true);
-      console.log('Updating status:', { applicationId, newStatus });
       
       const updated = await updateApplicationStatusByIndustry(applicationId, newStatus);
-      console.log('Status update response:', updated);
       
-      // Update local state with the response from server
       setApplications(prev => prev.map(app => 
         app.id === applicationId ? { ...app, ...updated, status: newStatus } : app
       ));
       
-      // Update selected application if it's the one being updated
       if (selectedApplication?.id === applicationId) {
         setSelectedApplication(prev => ({ ...prev, ...updated, status: newStatus }));
       }
 
-      // Reload applications to ensure we have the latest data
       if (selectedJob) {
         await loadApplications(selectedJob.id);
+        await loadJobs(); // Refresh job list to update counts
       }
 
       const statusLabel = statusOptions.find(s => s.value === newStatus)?.label || newStatus;
@@ -179,26 +177,14 @@ export default function IndustryApplications() {
       });
     } catch (err) {
       console.error('Error updating status:', err);
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response,
-        status: err.response?.status,
-        data: err.response?.data,
-      });
-      
       let errorMessage = 'Failed to update status';
       if (err.response) {
         if (typeof err.response.data === 'string') {
           errorMessage = err.response.data;
         } else if (err.response.data?.message) {
           errorMessage = err.response.data.message;
-        } else {
-          errorMessage = `Server error: ${err.response.status}`;
         }
-      } else if (err.message) {
-        errorMessage = err.message;
       }
-      
       toast.error(errorMessage, {
         position: "top-right",
         autoClose: 5000,
@@ -218,7 +204,6 @@ export default function IndustryApplications() {
     }
 
     try {
-      // Convert base64 to blob
       const byteCharacters = atob(application.resumeBase64);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -227,7 +212,6 @@ export default function IndustryApplications() {
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: application.resumeFileType || 'application/pdf' });
 
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -251,57 +235,7 @@ export default function IndustryApplications() {
   };
 
   const handleEditJob = (job) => {
-    // Navigate to JobBuilder with job ID for editing
     navigate('/post-jobs', { state: { jobId: job.id } });
-  };
-
-  const handleEditFormChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setEditFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
-
-  const handleUpdateJob = async (e) => {
-    e.preventDefault();
-    if (!editingJob) return;
-
-    setIsSubmitting(true);
-    try {
-      await updateJob(editingJob.id, editFormData);
-      toast.success('Job updated successfully', {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      
-      // Reload jobs list
-      await loadJobs();
-      
-      // If the updated job was selected, reload its applications
-      if (selectedJob?.id === editingJob.id) {
-        await loadApplications(editingJob.id);
-      }
-      
-      setEditingJob(null);
-      setEditFormData({});
-    } catch (err) {
-      console.error('Error updating job:', err);
-      let errorMessage = 'Failed to update job';
-      if (err.response) {
-        if (typeof err.response.data === 'string') {
-          errorMessage = err.response.data;
-        } else if (err.response.data?.message) {
-          errorMessage = err.response.data.message;
-        }
-      }
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 5000,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleDeleteClick = (job) => {
@@ -319,13 +253,11 @@ export default function IndustryApplications() {
         autoClose: 3000,
       });
       
-      // If the deleted job was selected, clear selection
       if (selectedJob?.id === jobToDelete.id) {
         setSelectedJob(null);
         setApplications([]);
       }
       
-      // Reload jobs list
       await loadJobs();
       setJobToDelete(null);
     } catch (err) {
@@ -347,6 +279,37 @@ export default function IndustryApplications() {
     }
   };
 
+  // Filter jobs based on search
+  const filteredJobs = jobs.filter(job => {
+    if (!jobSearchQuery) return true;
+    const query = jobSearchQuery.toLowerCase();
+    return (
+      job.title?.toLowerCase().includes(query) ||
+      job.company?.toLowerCase().includes(query) ||
+      job.location?.toLowerCase().includes(query)
+    );
+  });
+
+  // Filter applications based on search and status
+  const filteredApplications = applications.filter(app => {
+    const matchesSearch = !applicationSearchQuery || 
+      app.fullName?.toLowerCase().includes(applicationSearchQuery.toLowerCase()) ||
+      app.applicantEmail?.toLowerCase().includes(applicationSearchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'All' || app.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // Calculate statistics
+  const stats = {
+    total: applications.length,
+    pending: applications.filter(a => a.status === 'pending').length,
+    inProgress: applications.filter(a => ['resume_viewed', 'call_scheduled', 'interview_scheduled'].includes(a.status)).length,
+    offers: applications.filter(a => ['offer_sent', 'accepted'].includes(a.status)).length,
+    rejected: applications.filter(a => a.status === 'rejected').length,
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-50">
@@ -363,31 +326,43 @@ export default function IndustryApplications() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
-        <div className="mb-10 animate-fadeIn">
+        <div className="mb-8">
           <button
             onClick={() => navigate('/')}
-            className="mb-6 text-gray-600 hover:text-gray-900 font-semibold flex items-center gap-2 text-sm transition-colors duration-200 group"
+            className="mb-6 text-gray-500 hover:text-gray-700 font-medium flex items-center gap-2 text-sm transition-colors"
           >
-            <span className="group-hover:-translate-x-1 transition-transform duration-200">←</span> Back to Dashboard
+            ← Back to Dashboard
           </button>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl flex items-center justify-center shadow-sm">
-              <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-200">
+                <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2 tracking-tight">Manage Applications</h1>
+                <p className="text-gray-600 text-base">Review and manage applications for your posted jobs</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/post-jobs')}
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-md hover:shadow-lg flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-            </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2 tracking-tight">Manage Applications</h1>
-              <p className="text-gray-600 text-base font-light">Review and manage applications for your posted jobs</p>
-            </div>
+              Post New Job
+            </button>
           </div>
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl bg-red-50 border border-red-200 p-5 text-red-700 text-sm font-medium shadow-sm animate-fadeIn">
+          <div className="mb-6 rounded-xl bg-red-50 border border-red-200 p-5 text-red-700 text-sm font-medium">
             <div className="flex items-start gap-3">
               <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -397,7 +372,7 @@ export default function IndustryApplications() {
                 <p>{error}</p>
                 <button
                   onClick={loadJobs}
-                  className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors duration-200"
+                  className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors"
                 >
                   Retry
                 </button>
@@ -406,285 +381,279 @@ export default function IndustryApplications() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Jobs List */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-6 animate-fadeIn">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900">My Posted Jobs</h2>
+        {!selectedJob ? (
+          /* Jobs Overview - Show when no job is selected */
+          <div className="space-y-6">
+            {/* Search Bar */}
+            {jobs.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search jobs by title, company, or location..."
+                    value={jobSearchQuery}
+                    onChange={(e) => setJobSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Jobs Grid */}
+            {jobs.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+                <div className="text-5xl mb-4">📋</div>
+                <h3 className="font-bold text-xl text-gray-900 mb-2">No Jobs Posted Yet</h3>
+                <p className="text-gray-600 text-base mb-6">Get started by posting your first job opportunity</p>
                 <button
-                  onClick={loadJobs}
-                  disabled={loading}
-                  className="px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  title="Refresh jobs list"
+                  onClick={() => navigate('/post-jobs')}
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-md hover:shadow-lg"
                 >
-                  <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Refresh
+                  Post Your First Job
                 </button>
               </div>
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900 mb-4"></div>
-                  <p className="text-gray-600 text-sm">Loading your posted jobs...</p>
-                </div>
-              ) : jobs.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-600 text-sm mb-4">You haven't posted any jobs yet.</p>
-                  <button
-                    onClick={() => navigate('/post-jobs')}
-                    className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    Post a Job
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {jobs.map((job) => {
-                    const appCount = selectedJob?.id === job.id ? applications.length : 0;
-                    return (
-                      <div
-                        key={job.id}
-                        className={`w-full rounded-xl border-2 transition-all duration-200 ${
-                          selectedJob?.id === job.id
-                            ? 'border-gray-900 bg-gray-50 shadow-md'
-                            : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
-                        }`}
-                      >
-                        <button
-                          onClick={() => handleJobSelect(job)}
-                          className="w-full text-left p-4"
-                        >
-                          <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{job.title}</h3>
-                          <p className="text-sm text-gray-600 mb-2">{job.company}</p>
-                          {selectedJob?.id === job.id ? (
-                            <p className="text-xs font-semibold text-gray-700">
-                              {applications.length} application{applications.length !== 1 ? 's' : ''}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-gray-500">Click to view applications</p>
-                          )}
-                        </button>
-                        <div className="px-4 pb-4 flex gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditJob(job);
-                            }}
-                            className="flex-1 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200 border border-blue-200 flex items-center justify-center gap-1"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Edit
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(job);
-                            }}
-                            className="flex-1 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors duration-200 border border-red-200 flex items-center justify-center gap-1"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Applications List */}
-          <div className="lg:col-span-2">
-            {!selectedJob ? (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-12 text-center animate-fadeIn">
-                <div className="text-5xl mb-4">📋</div>
-                <h3 className="font-bold text-xl text-gray-900 mb-2">Select a Job</h3>
-                <p className="text-gray-600 text-base font-light">Choose a job from the list to view applications</p>
-              </div>
-            ) : applicationsLoading ? (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-12 text-center">
-                <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900"></div>
-                <p className="mt-4 text-gray-600 text-sm font-medium">Loading applications...</p>
-              </div>
-            ) : applications.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-12 text-center animate-fadeIn">
-                <div className="text-5xl mb-4">📭</div>
-                <h3 className="font-bold text-xl text-gray-900 mb-2">No Applications Yet</h3>
-                <p className="text-gray-600 text-base font-light">No one has applied to this job yet.</p>
+            ) : filteredJobs.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+                <p className="text-gray-600 text-base">No jobs match your search criteria</p>
               </div>
             ) : (
-              <div className="space-y-4 animate-fadeIn">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">{selectedJob.title}</h2>
-                  <p className="text-sm text-gray-600 mb-4">{selectedJob.company} • {selectedJob.location}</p>
-                  <p className="text-sm font-semibold text-gray-700">
-                    {applications.length} Application{applications.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-
-                {applications.map((app) => (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredJobs.map((job) => (
                   <div
-                    key={app.id}
-                    className="bg-white rounded-2xl border border-gray-200 shadow-lg p-6 hover:shadow-xl transition-all duration-300 cursor-pointer animate-fadeIn"
-                    onClick={() => setSelectedApplication(app)}
+                    key={job.id}
+                    className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                    onClick={() => handleJobSelect(job)}
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h3 className="font-bold text-lg text-gray-900 mb-1">{app.fullName || 'Applicant'}</h3>
-                        <p className="text-sm text-gray-600 mb-2">{app.applicantEmail}</p>
-                        {app.phoneNumber && (
-                          <p className="text-sm text-gray-600">📞 {app.phoneNumber}</p>
-                        )}
+                        <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                          {job.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-1">{job.company}</p>
+                        <p className="text-xs text-gray-500">{job.location}</p>
                       </div>
-                      <span className={`px-4 py-2 rounded-xl text-xs font-bold border ${statusColors[app.status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                        {statusOptions.find(s => s.value === app.status)?.label || app.status}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>Applied: {new Date(app.appliedAt).toLocaleDateString()}</span>
-                      {app.lastUpdated && (
-                        <span>Updated: {new Date(app.lastUpdated).toLocaleDateString()}</span>
+                      {job.active ? (
+                        <span className="px-2 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-semibold border border-green-200">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold border border-gray-200">
+                          Draft
+                        </span>
                       )}
+                    </div>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {job.applicationCount !== undefined ? job.applicationCount : '...'} Application{job.applicationCount !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditJob(job);
+                          }}
+                          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Edit Job"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(job);
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Job"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
-
-        {/* Edit Job Modal */}
-        {editingJob && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-            <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100 animate-slideIn">
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl z-10">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-gray-900">Edit Job</h2>
+        ) : (
+          /* Applications View - Show when a job is selected */
+          <div className="space-y-6">
+            {/* Job Header with Back Button */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 flex-1">
                   <button
                     onClick={() => {
-                      setEditingJob(null);
-                      setEditFormData({});
+                      setSelectedJob(null);
+                      setApplications([]);
+                      setSelectedApplication(null);
                     }}
-                    className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-all duration-200 flex items-center justify-center text-xl font-light shadow-sm hover:shadow-md"
+                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Back to Jobs"
                   >
-                    ×
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedJob.title}</h2>
+                    <p className="text-sm text-gray-600">{selectedJob.company} • {selectedJob.location}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleEditJob(selectedJob)}
+                    className="px-4 py-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg font-semibold text-sm transition-colors border border-indigo-200"
+                  >
+                    Edit Job
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(selectedJob)}
+                    className="px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-semibold text-sm transition-colors border border-red-200"
+                  >
+                    Delete
                   </button>
                 </div>
               </div>
-
-              <form onSubmit={handleUpdateJob} className="p-6 space-y-6">
-                {/* Job Title */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Job Title *
-                  </label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={editFormData.title}
-                    onChange={handleEditFormChange}
-                    required
-                    className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
-                  />
-                </div>
-
-                {/* Company */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Company Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="company"
-                    value={editFormData.company}
-                    onChange={handleEditFormChange}
-                    required
-                    className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
-                  />
-                </div>
-
-                {/* Location */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location *
-                  </label>
-                  <input
-                    type="text"
-                    name="location"
-                    value={editFormData.location}
-                    onChange={handleEditFormChange}
-                    required
-                    className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
-                  />
-                </div>
-
-                {/* Job Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Job Description *
-                  </label>
-                  <textarea
-                    name="description"
-                    value={editFormData.description}
-                    onChange={handleEditFormChange}
-                    rows="6"
-                    required
-                    className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
-                  />
-                </div>
-
-                {/* Active Status */}
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    name="active"
-                    id="active"
-                    checked={editFormData.active}
-                    onChange={handleEditFormChange}
-                    className="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-400"
-                  />
-                  <label htmlFor="active" className="text-sm font-medium text-gray-700">
-                    Job is active (visible to applicants)
-                  </label>
-                </div>
-
-                {/* Submit Buttons */}
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 rounded-md bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 text-white font-semibold py-2.5 px-6 transition-colors duration-200 disabled:cursor-not-allowed text-sm"
-                  >
-                    {isSubmitting ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                        Updating...
-                      </span>
-                    ) : (
-                      "Update Job"
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingJob(null);
-                      setEditFormData({});
-                    }}
-                    disabled={isSubmitting}
-                    className="flex-1 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-900 font-semibold py-2.5 px-6 transition-colors duration-200 disabled:cursor-not-allowed text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
             </div>
+
+            {/* Statistics Cards */}
+            {applications.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-amber-200 shadow-sm p-4 bg-amber-50">
+                  <p className="text-xs text-amber-600 uppercase tracking-wide mb-1">Pending</p>
+                  <p className="text-2xl font-bold text-amber-700">{stats.pending}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-blue-200 shadow-sm p-4 bg-blue-50">
+                  <p className="text-xs text-blue-600 uppercase tracking-wide mb-1">In Progress</p>
+                  <p className="text-2xl font-bold text-blue-700">{stats.inProgress}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-green-200 shadow-sm p-4 bg-green-50">
+                  <p className="text-xs text-green-600 uppercase tracking-wide mb-1">Offers</p>
+                  <p className="text-2xl font-bold text-green-700">{stats.offers}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-red-200 shadow-sm p-4 bg-red-50">
+                  <p className="text-xs text-red-600 uppercase tracking-wide mb-1">Rejected</p>
+                  <p className="text-2xl font-bold text-red-700">{stats.rejected}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Search and Filter Bar */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search applicants by name or email..."
+                    value={applicationSearchQuery}
+                    onChange={(e) => setApplicationSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                  />
+                </div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                >
+                  <option value="All">All Statuses</option>
+                  {statusOptions.map(status => (
+                    <option key={status.value} value={status.value}>{status.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Applications List */}
+            {applicationsLoading ? (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+                <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900"></div>
+                <p className="mt-4 text-gray-600 text-sm font-medium">Loading applications...</p>
+              </div>
+            ) : applications.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+                <div className="text-5xl mb-4">📭</div>
+                <h3 className="font-bold text-xl text-gray-900 mb-2">No Applications Yet</h3>
+                <p className="text-gray-600 text-base">No one has applied to this job yet.</p>
+              </div>
+            ) : filteredApplications.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+                <p className="text-gray-600 text-base">No applications match your search criteria</p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {filteredApplications.map((app) => (
+                  <div
+                    key={app.id}
+                    className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-all duration-200 cursor-pointer"
+                    onClick={() => setSelectedApplication(app)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                            <span className="text-lg font-semibold text-indigo-700">
+                              {app.fullName?.charAt(0)?.toUpperCase() || 'A'}
+                            </span>
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-lg text-gray-900">{app.fullName || 'Applicant'}</h3>
+                            <p className="text-sm text-gray-600">{app.applicantEmail}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-500 ml-15">
+                          {app.phoneNumber && (
+                            <span className="flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                              </svg>
+                              {app.phoneNumber}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            Applied {new Date(app.appliedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`px-4 py-2 rounded-lg text-xs font-bold border ${statusColors[app.status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                          {statusOptions.find(s => s.value === app.status)?.label || app.status}
+                        </span>
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -803,7 +772,7 @@ export default function IndustryApplications() {
                     <h3 className="font-bold text-lg text-gray-900 mb-3">Resume</h3>
                     <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                        <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-200">
                           <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                           </svg>
@@ -817,7 +786,7 @@ export default function IndustryApplications() {
                       </div>
                       <button
                         onClick={() => downloadResume(selectedApplication)}
-                        className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg"
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg"
                       >
                         Download Resume
                       </button>
@@ -845,7 +814,7 @@ export default function IndustryApplications() {
                           href={selectedApplication.portfolioUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-semibold text-sm transition-all duration-200 border border-purple-200"
+                          className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold text-sm transition-all duration-200 border border-indigo-200"
                         >
                           Portfolio
                         </a>
@@ -885,4 +854,3 @@ export default function IndustryApplications() {
     </div>
   );
 }
-
