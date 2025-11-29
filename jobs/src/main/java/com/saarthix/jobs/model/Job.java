@@ -2,9 +2,12 @@ package com.saarthix.jobs.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Document(collection = "jobs")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Job {
     @Id
     private String id;
@@ -14,6 +17,11 @@ public class Job {
     private String location;
     private String postedBy;
     private String industryId;           // NEW: User ID of the INDUSTRY user who posted
+    private List<String> skills;         // Skills required for this job
+    private String employmentType;       // Employment type (Full-time, Part-time, etc.)
+    private Integer jobMinSalary;        // Minimum salary
+    private Integer jobMaxSalary;        // Maximum salary
+    private String jobSalaryCurrency;    // Salary currency
     private LocalDateTime createdAt = LocalDateTime.now();
     private boolean active = true;
 
@@ -44,4 +52,19 @@ public class Job {
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+
+    public List<String> getSkills() { return skills; }
+    public void setSkills(List<String> skills) { this.skills = skills; }
+
+    public String getEmploymentType() { return employmentType; }
+    public void setEmploymentType(String employmentType) { this.employmentType = employmentType; }
+
+    public Integer getJobMinSalary() { return jobMinSalary; }
+    public void setJobMinSalary(Integer jobMinSalary) { this.jobMinSalary = jobMinSalary; }
+
+    public Integer getJobMaxSalary() { return jobMaxSalary; }
+    public void setJobMaxSalary(Integer jobMaxSalary) { this.jobMaxSalary = jobMaxSalary; }
+
+    public String getJobSalaryCurrency() { return jobSalaryCurrency; }
+    public void setJobSalaryCurrency(String jobSalaryCurrency) { this.jobSalaryCurrency = jobSalaryCurrency; }
 }
