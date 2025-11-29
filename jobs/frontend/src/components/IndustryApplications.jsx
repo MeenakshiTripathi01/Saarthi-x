@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import { getMyPostedJobs, getApplicationsByJobId, updateApplicationStatusByIndustry } from '../api/jobApi';
+import { getMyPostedJobs, getApplicationsByJobId, updateApplicationStatusByIndustry, updateJob, deleteJob } from '../api/jobApi';
 
 export default function IndustryApplications() {
   const navigate = useNavigate();
@@ -16,6 +16,11 @@ export default function IndustryApplications() {
   const [error, setError] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [editingJob, setEditingJob] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Status options with descriptions
   const statusOptions = [
@@ -245,6 +250,109 @@ export default function IndustryApplications() {
     }
   };
 
+  const handleEditJob = (job) => {
+    setEditingJob(job);
+    setEditFormData({
+      title: job.title || '',
+      description: job.description || '',
+      company: job.company || '',
+      location: job.location || '',
+      active: job.active !== undefined ? job.active : true,
+    });
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleUpdateJob = async (e) => {
+    e.preventDefault();
+    if (!editingJob) return;
+
+    setIsSubmitting(true);
+    try {
+      await updateJob(editingJob.id, editFormData);
+      toast.success('Job updated successfully', {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      
+      // Reload jobs list
+      await loadJobs();
+      
+      // If the updated job was selected, reload its applications
+      if (selectedJob?.id === editingJob.id) {
+        await loadApplications(editingJob.id);
+      }
+      
+      setEditingJob(null);
+      setEditFormData({});
+    } catch (err) {
+      console.error('Error updating job:', err);
+      let errorMessage = 'Failed to update job';
+      if (err.response) {
+        if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        } else if (err.response.data?.message) {
+          errorMessage = err.response.data.message;
+        }
+      }
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteClick = (job) => {
+    setJobToDelete(job);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!jobToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteJob(jobToDelete.id);
+      toast.success('Job deleted successfully', {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      
+      // If the deleted job was selected, clear selection
+      if (selectedJob?.id === jobToDelete.id) {
+        setSelectedJob(null);
+        setApplications([]);
+      }
+      
+      // Reload jobs list
+      await loadJobs();
+      setJobToDelete(null);
+    } catch (err) {
+      console.error('Error deleting job:', err);
+      let errorMessage = 'Failed to delete job';
+      if (err.response) {
+        if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        } else if (err.response.data?.message) {
+          errorMessage = err.response.data.message;
+        }
+      }
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-50">
@@ -342,25 +450,55 @@ export default function IndustryApplications() {
                   {jobs.map((job) => {
                     const appCount = selectedJob?.id === job.id ? applications.length : 0;
                     return (
-                      <button
+                      <div
                         key={job.id}
-                        onClick={() => handleJobSelect(job)}
-                        className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ${
+                        className={`w-full rounded-xl border-2 transition-all duration-200 ${
                           selectedJob?.id === job.id
                             ? 'border-gray-900 bg-gray-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
                         }`}
                       >
-                        <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{job.title}</h3>
-                        <p className="text-sm text-gray-600 mb-2">{job.company}</p>
-                        {selectedJob?.id === job.id ? (
-                          <p className="text-xs font-semibold text-gray-700">
-                            {applications.length} application{applications.length !== 1 ? 's' : ''}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-gray-500">Click to view applications</p>
-                        )}
-                      </button>
+                        <button
+                          onClick={() => handleJobSelect(job)}
+                          className="w-full text-left p-4"
+                        >
+                          <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{job.title}</h3>
+                          <p className="text-sm text-gray-600 mb-2">{job.company}</p>
+                          {selectedJob?.id === job.id ? (
+                            <p className="text-xs font-semibold text-gray-700">
+                              {applications.length} application{applications.length !== 1 ? 's' : ''}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-500">Click to view applications</p>
+                          )}
+                        </button>
+                        <div className="px-4 pb-4 flex gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditJob(job);
+                            }}
+                            className="flex-1 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200 border border-blue-200 flex items-center justify-center gap-1"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(job);
+                            }}
+                            className="flex-1 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors duration-200 border border-red-200 flex items-center justify-center gap-1"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -427,6 +565,188 @@ export default function IndustryApplications() {
             )}
           </div>
         </div>
+
+        {/* Edit Job Modal */}
+        {editingJob && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100 animate-slideIn">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl z-10">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Edit Job</h2>
+                  <button
+                    onClick={() => {
+                      setEditingJob(null);
+                      setEditFormData({});
+                    }}
+                    className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-all duration-200 flex items-center justify-center text-xl font-light shadow-sm hover:shadow-md"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdateJob} className="p-6 space-y-6">
+                {/* Job Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Title *
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={editFormData.title}
+                    onChange={handleEditFormChange}
+                    required
+                    className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
+                </div>
+
+                {/* Company */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="company"
+                    value={editFormData.company}
+                    onChange={handleEditFormChange}
+                    required
+                    className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Location *
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={editFormData.location}
+                    onChange={handleEditFormChange}
+                    required
+                    className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
+                </div>
+
+                {/* Job Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Description *
+                  </label>
+                  <textarea
+                    name="description"
+                    value={editFormData.description}
+                    onChange={handleEditFormChange}
+                    rows="6"
+                    required
+                    className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
+                </div>
+
+                {/* Active Status */}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    name="active"
+                    id="active"
+                    checked={editFormData.active}
+                    onChange={handleEditFormChange}
+                    className="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-400"
+                  />
+                  <label htmlFor="active" className="text-sm font-medium text-gray-700">
+                    Job is active (visible to applicants)
+                  </label>
+                </div>
+
+                {/* Submit Buttons */}
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 rounded-md bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 text-white font-semibold py-2.5 px-6 transition-colors duration-200 disabled:cursor-not-allowed text-sm"
+                  >
+                    {isSubmitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        Updating...
+                      </span>
+                    ) : (
+                      "Update Job"
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingJob(null);
+                      setEditFormData({});
+                    }}
+                    disabled={isSubmitting}
+                    className="flex-1 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-900 font-semibold py-2.5 px-6 transition-colors duration-200 disabled:cursor-not-allowed text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {jobToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 animate-slideIn">
+              <div className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
+                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Delete Job</h2>
+                    <p className="text-sm text-gray-600 mt-1">This action cannot be undone</p>
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
+                  <p className="text-sm font-semibold text-gray-900 mb-1">{jobToDelete.title}</p>
+                  <p className="text-xs text-gray-600">{jobToDelete.company} • {jobToDelete.location}</p>
+                </div>
+
+                <p className="text-sm text-gray-700 mb-6">
+                  Are you sure you want to delete this job posting? All applications associated with this job will remain in the system, but the job will no longer be visible to applicants.
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleConfirmDelete}
+                    disabled={isDeleting}
+                    className="flex-1 rounded-md bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold py-2.5 px-6 transition-colors duration-200 disabled:cursor-not-allowed text-sm"
+                  >
+                    {isDeleting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        Deleting...
+                      </span>
+                    ) : (
+                      "Delete Job"
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setJobToDelete(null)}
+                    disabled={isDeleting}
+                    className="flex-1 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-900 font-semibold py-2.5 px-6 transition-colors duration-200 disabled:cursor-not-allowed text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Application Details Modal */}
         {selectedApplication && (
