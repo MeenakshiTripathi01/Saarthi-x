@@ -251,14 +251,8 @@ export default function IndustryApplications() {
   };
 
   const handleEditJob = (job) => {
-    setEditingJob(job);
-    setEditFormData({
-      title: job.title || '',
-      description: job.description || '',
-      company: job.company || '',
-      location: job.location || '',
-      active: job.active !== undefined ? job.active : true,
-    });
+    // Navigate to JobBuilder with job ID for editing
+    navigate('/post-jobs', { state: { jobId: job.id } });
   };
 
   const handleEditFormChange = (e) => {
