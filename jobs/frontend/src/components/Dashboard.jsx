@@ -14,34 +14,46 @@ export default function Dashboard() {
       return;
     }
 
-    // Check if user has a redirectRoute set (from login button clicks)
+    // Check if user has a redirectRoute set (from login button clicks or login page)
     const redirectRoute = localStorage.getItem('redirectRoute');
+    const loginIntent = localStorage.getItem('loginIntent');
     
     if (redirectRoute) {
-      // Clear the redirectRoute
-      localStorage.removeItem('redirectRoute');
-      
-      // Route based on redirectRoute
-      if (redirectRoute === 'role-selection' || redirectRoute === 'edit-profile') {
-        // Only allow industry users to change their role
-        if (isApplicant) {
-          // Applicants cannot change their role - redirect to apply-jobs
-          console.log('[DASHBOARD] Applicant attempted to change role - redirecting to apply-jobs');
-          navigate('/apply-jobs');
-        } else if (isIndustry) {
-          // Industry users can change their role - go to edit profile
-          navigate('/edit-profile');
-        } else {
-          // User without a role - allow role selection via edit profile
-          navigate('/edit-profile');
-        }
-      } else if (redirectRoute === 'apply-jobs') {
-        // Route to applicant dashboard
-        navigate('/apply-jobs');
-      } else if (redirectRoute === 'post-jobs') {
-        // Route to industry dashboard
-        navigate('/post-jobs');
+      // Check if user has a role
+      if (!user.userType || user.userType === '') {
+        // User doesn't have a role yet - redirect to role selection with intent
+        const email = user.email;
+        const name = user.name;
+        const picture = user.picture;
+        const intent = loginIntent || (redirectRoute === 'apply-jobs' ? 'applicant' : 'industry');
+        navigate(`/choose-role?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}&picture=${encodeURIComponent(picture || '')}&intent=${intent}`);
+        return;
       }
+
+      // User has a role - check if it matches the redirect route
+      if (redirectRoute === 'apply-jobs' && user.userType === 'APPLICANT') {
+        localStorage.removeItem('redirectRoute');
+        localStorage.removeItem('loginIntent');
+        navigate('/apply-jobs');
+        return;
+      } else if (redirectRoute === 'post-jobs' && user.userType === 'INDUSTRY') {
+        localStorage.removeItem('redirectRoute');
+        localStorage.removeItem('loginIntent');
+        navigate('/post-jobs');
+        return;
+      } else if (redirectRoute === 'role-selection') {
+        // Route to role selection page (for editing role)
+        const email = user.email;
+        const name = user.name;
+        const picture = user.picture;
+        localStorage.removeItem('redirectRoute');
+        navigate(`/choose-role?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}&picture=${encodeURIComponent(picture || '')}`);
+        return;
+      }
+      
+      // If redirectRoute doesn't match user's role, clear it and stay on dashboard
+      localStorage.removeItem('redirectRoute');
+      localStorage.removeItem('loginIntent');
     }
   }, [isAuthenticated, user, authLoading, navigate]);
 
