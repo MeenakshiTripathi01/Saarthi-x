@@ -60,6 +60,9 @@ public class UserProfile {
     // Hobbies & Interests
     private List<String> hobbies;
     
+    // Projects
+    private List<Project> projects;
+    
     // Timestamps
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime lastUpdated = LocalDateTime.now();
@@ -163,6 +166,9 @@ public class UserProfile {
 
     public List<String> getHobbies() { return hobbies; }
     public void setHobbies(List<String> hobbies) { this.hobbies = hobbies; }
+
+    public List<Project> getProjects() { return projects; }
+    public void setProjects(List<Project> projects) { this.projects = projects; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
@@ -273,6 +279,29 @@ public class UserProfile {
 
         public String getExpiryDate() { return expiryDate; }
         public void setExpiryDate(String expiryDate) { this.expiryDate = expiryDate; }
+    }
+
+    // Inner class for Project
+    public static class Project {
+        // Empty constructor for MongoDB
+        public Project() {}
+        private String name;
+        private String description;
+        private String githubLink;
+        private String websiteLink;
+
+        // Getters and setters
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+
+        public String getGithubLink() { return githubLink; }
+        public void setGithubLink(String githubLink) { this.githubLink = githubLink; }
+
+        public String getWebsiteLink() { return websiteLink; }
+        public void setWebsiteLink(String websiteLink) { this.websiteLink = websiteLink; }
     }
 }
 

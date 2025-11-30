@@ -68,6 +68,13 @@ const PROFILE_SECTIONS = [
     fields: ['hobbies']
   },
   {
+    id: 'projects',
+    title: 'Projects',
+    icon: '🚀',
+    description: 'Showcase your projects and work',
+    fields: ['projects']
+  },
+  {
     id: 'links',
     title: 'Online Presence',
     icon: '🔗',
@@ -129,6 +136,7 @@ export default function ProfileBuilder() {
     certifications: '',  // Keep for backward compatibility
     certificationFiles: [],
     hobbies: [],
+    projects: [],
   });
 
   const [resume, setResume] = useState(null);
@@ -191,6 +199,7 @@ export default function ProfileBuilder() {
           certificationFiles: profile.certificationFiles || [],
           professionalExperiences: profile.professionalExperiences || [],
           hobbies: profile.hobbies || [],
+          projects: profile.projects || [],
         });
         
         setSkillsInput('');
@@ -233,7 +242,8 @@ export default function ProfileBuilder() {
       return resume !== null;
     }
     if (fieldName === 'skills' || fieldName === 'preferredLocations' || fieldName === 'hobbies' || 
-        fieldName === 'professionalExperiences' || fieldName === 'educationEntries' || fieldName === 'certificationFiles') {
+        fieldName === 'professionalExperiences' || fieldName === 'educationEntries' || fieldName === 'certificationFiles' ||
+        fieldName === 'projects') {
       return Array.isArray(value) && value.length > 0;
     }
     if (fieldName === 'willingToRelocate') {
@@ -345,6 +355,37 @@ export default function ProfileBuilder() {
       hobbies: prev.hobbies.filter(hobby => hobby !== hobbyToRemove)
     }));
     // Force update of completed sections
+    setTimeout(() => updateCompletedSections(), 100);
+  };
+
+  // Project Handlers
+  const handleAddProject = () => {
+    setFormData(prev => ({
+      ...prev,
+      projects: [...prev.projects, {
+        name: '',
+        description: '',
+        githubLink: '',
+        websiteLink: ''
+      }]
+    }));
+    setTimeout(() => updateCompletedSections(), 100);
+  };
+
+  const handleUpdateProject = (index, field, value) => {
+    setFormData(prev => {
+      const updated = [...prev.projects];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, projects: updated };
+    });
+    setTimeout(() => updateCompletedSections(), 100);
+  };
+
+  const handleRemoveProject = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      projects: prev.projects.filter((_, i) => i !== index)
+    }));
     setTimeout(() => updateCompletedSections(), 100);
   };
 
@@ -624,6 +665,7 @@ export default function ProfileBuilder() {
       console.log('Education Entries:', profileData.educationEntries);
       console.log('Certification Files:', profileData.certificationFiles);
       console.log('Hobbies:', profileData.hobbies);
+      console.log('Projects:', profileData.projects);
       console.log('Preferred Locations:', profileData.preferredLocations);
       console.log('Summary:', profileData.summary);
       console.log('=========================================');
@@ -715,7 +757,7 @@ export default function ProfileBuilder() {
           </button>
           
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-100">
+            <div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-200">
               <span className="text-3xl">{currentSection.icon}</span>
             </div>
             <div className="flex-1">
@@ -732,8 +774,8 @@ export default function ProfileBuilder() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center border border-purple-200">
-                  <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-200">
+                  <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
@@ -751,7 +793,7 @@ export default function ProfileBuilder() {
             {/* Progress Bar */}
             <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
               <div 
-                className="h-full bg-purple-300 rounded-full transition-all duration-500"
+                className="h-full bg-indigo-500 rounded-full transition-all duration-500"
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>
@@ -764,16 +806,16 @@ export default function ProfileBuilder() {
                   onClick={() => handleSectionChange(index)}
                   className={`relative flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-200 ${
                     index === currentSectionIndex
-                      ? 'bg-purple-100 border-2 border-purple-300 text-purple-600 shadow-sm'
+                      ? 'bg-indigo-50 border-2 border-indigo-300 text-indigo-700 shadow-sm'
                       : completedSections.has(section.id)
-                      ? 'bg-emerald-50 border-2 border-emerald-200 text-emerald-600 hover:bg-emerald-100'
+                      ? 'bg-blue-50 border-2 border-blue-200 text-blue-700 hover:bg-blue-100'
                       : 'bg-gray-50 border-2 border-gray-200 text-gray-500 hover:bg-gray-100'
                   }`}
                 >
                   <div className="text-xl">{section.icon}</div>
                   <div className="text-xs font-medium text-center leading-tight">{section.title.split(' ')[0]}</div>
                   {completedSections.has(section.id) && index !== currentSectionIndex && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full flex items-center justify-center">
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                       <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
@@ -792,7 +834,7 @@ export default function ProfileBuilder() {
         )}
 
         {success && (
-          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-700 text-sm font-medium">
+          <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-5 text-blue-700 text-sm font-medium">
             <div className="flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -810,8 +852,8 @@ export default function ProfileBuilder() {
               <div className="flex items-center gap-4">
                 <div className={`w-16 h-16 rounded-lg flex items-center justify-center text-3xl border ${
                   isCurrentSectionComplete
-                    ? 'bg-emerald-50 border-emerald-200'
-                    : 'bg-purple-50 border-purple-200'
+                    ? 'bg-blue-50 border-blue-200'
+                    : 'bg-indigo-50 border-indigo-200'
                 }`}>
                   {currentSection.icon}
                 </div>
@@ -823,7 +865,7 @@ export default function ProfileBuilder() {
                 </div>
               </div>
               {isCurrentSectionComplete && (
-                <div className="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-4 py-2 rounded-lg font-medium border border-emerald-200">
+                <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-medium border border-blue-200">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
@@ -841,7 +883,7 @@ export default function ProfileBuilder() {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     Full Name <span className="text-pink-400">*</span>
-                    {isFieldFilled('fullName') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('fullName') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   <input
                     type="text"
@@ -849,35 +891,35 @@ export default function ProfileBuilder() {
                     value={formData.fullName}
                     onChange={handleInputChange}
                     required
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     Phone Number
-                    {isFieldFilled('phoneNumber') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('phoneNumber') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   <input
                     type="tel"
                     name="phoneNumber"
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     Email
-                    {isFieldFilled('email') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('email') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                   />
                 </div>
               </div>
@@ -888,12 +930,12 @@ export default function ProfileBuilder() {
                 <div className="flex items-center justify-between mb-4">
                   <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
                     Professional Experiences
-                    {isFieldFilled('professionalExperiences') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('professionalExperiences') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   <button
                     type="button"
                     onClick={handleAddExperience}
-                    className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
+                    className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors border border-indigo-200"
                   >
                     + Add Experience
                   </button>
@@ -906,7 +948,7 @@ export default function ProfileBuilder() {
                 ) : (
                   <div className="space-y-4">
                     {formData.professionalExperiences.map((exp, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-6 bg-purple-50">
+                      <div key={index} className="border border-gray-200 rounded-lg p-6 bg-indigo-50">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="text-sm font-medium text-gray-700">Experience {index + 1}</h4>
                           <button
@@ -925,7 +967,7 @@ export default function ProfileBuilder() {
                               value={exp.jobTitle || ''}
                               onChange={(e) => handleUpdateExperience(index, 'jobTitle', e.target.value)}
                               placeholder="e.g., Software Engineer"
-                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                             />
                           </div>
                           <div>
@@ -935,7 +977,7 @@ export default function ProfileBuilder() {
                               value={exp.company || ''}
                               onChange={(e) => handleUpdateExperience(index, 'company', e.target.value)}
                               placeholder="e.g., Google"
-                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                             />
                           </div>
                           <div>
@@ -963,7 +1005,7 @@ export default function ProfileBuilder() {
                                 type="checkbox"
                                 checked={exp.isCurrentJob || false}
                                 onChange={(e) => handleUpdateExperience(index, 'isCurrentJob', e.target.checked)}
-                                className="rounded border-gray-300 text-purple-400 focus:ring-purple-200"
+                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-200"
                               />
                               I currently work here
                             </label>
@@ -987,7 +1029,7 @@ export default function ProfileBuilder() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                       Skills
-                      {isFieldFilled('skills') && <span className="text-emerald-500 text-xs">✓</span>}
+                      {isFieldFilled('skills') && <span className="text-blue-600 text-xs">✓</span>}
                     </label>
                     {/* Skills Tags */}
                     {formData.skills.length > 0 && (
@@ -995,13 +1037,13 @@ export default function ProfileBuilder() {
                         {formData.skills.map((skill, index) => (
                           <span
                             key={index}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium border border-purple-200"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200"
                           >
                             {skill}
                             <button
                               type="button"
                               onClick={() => handleRemoveSkill(skill)}
-                              className="text-purple-500 hover:text-purple-700 focus:outline-none"
+                              className="text-blue-600 hover:text-blue-700 focus:outline-none"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1034,7 +1076,7 @@ export default function ProfileBuilder() {
                           }
                         }}
                         placeholder="Type at least 2 letters to see suggestions"
-                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                       />
                       {showSkillsSuggestions && skillsInput.trim().length >= 2 && getFilteredSuggestions(skillsInput, COMMON_SKILLS, formData.skills).length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -1060,7 +1102,7 @@ export default function ProfileBuilder() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     Professional Summary
-                    {isFieldFilled('summary') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('summary') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   <textarea
                     name="summary"
@@ -1081,12 +1123,12 @@ export default function ProfileBuilder() {
                   <div className="flex items-center justify-between mb-4">
                     <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
                       Education
-                      {isFieldFilled('educationEntries') && <span className="text-emerald-500 text-xs">✓</span>}
+                      {isFieldFilled('educationEntries') && <span className="text-blue-600 text-xs">✓</span>}
                     </label>
                     <button
                       type="button"
                       onClick={handleAddEducation}
-                      className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
+                      className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors border border-indigo-200"
                     >
                       + Add Education
                     </button>
@@ -1133,7 +1175,7 @@ export default function ProfileBuilder() {
                                 value={edu.degree || ''}
                                 onChange={(e) => handleUpdateEducation(index, 'degree', e.target.value)}
                                 placeholder="e.g., B.Tech, B.Sc, M.Tech"
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                               />
                             </div>
                             <div>
@@ -1143,7 +1185,7 @@ export default function ProfileBuilder() {
                                 value={edu.institution || ''}
                                 onChange={(e) => handleUpdateEducation(index, 'institution', e.target.value)}
                                 placeholder="e.g., IIT Delhi, Delhi University"
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                               />
                             </div>
                             {edu.level === 'Class 12th' && (
@@ -1154,7 +1196,7 @@ export default function ProfileBuilder() {
                                   value={edu.board || ''}
                                   onChange={(e) => handleUpdateEducation(index, 'board', e.target.value)}
                                   placeholder="e.g., CBSE, ICSE, State Board"
-                                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                                 />
                               </div>
                             )}
@@ -1180,7 +1222,7 @@ export default function ProfileBuilder() {
                                 value={edu.passingYear || ''}
                                 onChange={(e) => handleUpdateEducation(index, 'passingYear', e.target.value)}
                                 placeholder="e.g., 2020"
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                               />
                             </div>
                             <div>
@@ -1190,7 +1232,7 @@ export default function ProfileBuilder() {
                                 value={edu.percentage || ''}
                                 onChange={(e) => handleUpdateEducation(index, 'percentage', e.target.value)}
                                 placeholder="e.g., 85% or 8.5 CGPA"
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                               />
                             </div>
                           </div>
@@ -1205,12 +1247,12 @@ export default function ProfileBuilder() {
                   <div className="flex items-center justify-between mb-4">
                     <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
                       Certifications
-                      {isFieldFilled('certificationFiles') && <span className="text-emerald-500 text-xs">✓</span>}
+                      {isFieldFilled('certificationFiles') && <span className="text-blue-600 text-xs">✓</span>}
                     </label>
                     <button
                       type="button"
                       onClick={handleAddCertification}
-                      className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
+                      className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors border border-indigo-200"
                     >
                       + Add Certification
                     </button>
@@ -1242,7 +1284,7 @@ export default function ProfileBuilder() {
                                 value={cert.name || ''}
                                 onChange={(e) => handleUpdateCertification(index, 'name', e.target.value)}
                                 placeholder="e.g., AWS Certified Solutions Architect"
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                               />
                             </div>
                             <div>
@@ -1252,7 +1294,7 @@ export default function ProfileBuilder() {
                                 value={cert.issuingOrganization || ''}
                                 onChange={(e) => handleUpdateCertification(index, 'issuingOrganization', e.target.value)}
                                 placeholder="e.g., Amazon Web Services"
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                               />
                             </div>
                             <div>
@@ -1288,7 +1330,7 @@ export default function ProfileBuilder() {
                                   {cert.fileName ? (
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         <span className="text-sm text-gray-700">{cert.fileName}</span>
@@ -1334,21 +1376,21 @@ export default function ProfileBuilder() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                       Current Location
-                      {isFieldFilled('currentLocation') && <span className="text-emerald-500 text-xs">✓</span>}
+                      {isFieldFilled('currentLocation') && <span className="text-blue-600 text-xs">✓</span>}
                     </label>
                     <input
                       type="text"
                       name="currentLocation"
                       value={formData.currentLocation}
                       onChange={handleInputChange}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                       Preferred Locations
-                      {isFieldFilled('preferredLocations') && <span className="text-emerald-500 text-xs">✓</span>}
+                      {isFieldFilled('preferredLocations') && <span className="text-blue-600 text-xs">✓</span>}
                     </label>
                     {/* Preferred Locations Tags */}
                     {formData.preferredLocations.length > 0 && (
@@ -1356,13 +1398,13 @@ export default function ProfileBuilder() {
                         {formData.preferredLocations.map((location, index) => (
                           <span
                             key={index}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium border border-purple-200"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200"
                           >
                             {location}
                             <button
                               type="button"
                               onClick={() => handleRemoveLocation(location)}
-                              className="text-purple-500 hover:text-purple-700 focus:outline-none"
+                              className="text-blue-600 hover:text-blue-700 focus:outline-none"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1395,7 +1437,7 @@ export default function ProfileBuilder() {
                           }
                         }}
                         placeholder="Type at least 2 letters to see suggestions"
-                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                       />
                       {showLocationSuggestions && locationInput.trim().length >= 2 && getFilteredSuggestions(locationInput, COMMON_LOCATIONS, formData.preferredLocations).length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -1421,7 +1463,7 @@ export default function ProfileBuilder() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                       Work Preference
-                      {isFieldFilled('workPreference') && <span className="text-emerald-500 text-xs">✓</span>}
+                      {isFieldFilled('workPreference') && <span className="text-blue-600 text-xs">✓</span>}
                     </label>
                     <select
                       name="workPreference"
@@ -1447,7 +1489,7 @@ export default function ProfileBuilder() {
                       />
                       <label htmlFor="willingToRelocate" className="ml-3 block text-sm font-medium text-gray-700 cursor-pointer flex items-center gap-2">
                         Willing to relocate
-                        <span className="text-emerald-500 text-xs">✓</span>
+                        <span className="text-blue-600 text-xs">✓</span>
                       </label>
                     </div>
                   </div>
@@ -1460,7 +1502,7 @@ export default function ProfileBuilder() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     Hobbies & Interests
-                    {isFieldFilled('hobbies') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('hobbies') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   {/* Hobbies Tags */}
                   {formData.hobbies.length > 0 && (
@@ -1507,7 +1549,7 @@ export default function ProfileBuilder() {
                         }
                       }}
                       placeholder="Type at least 2 letters to see suggestions"
-                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                     />
                     {showHobbiesSuggestions && hobbiesInput.trim().length >= 2 && getFilteredSuggestions(hobbiesInput, COMMON_HOBBIES, formData.hobbies).length > 0 && (
                       <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -1532,12 +1574,100 @@ export default function ProfileBuilder() {
               </div>
             )}
 
+            {currentSection.id === 'projects' && (
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                      Projects
+                      {isFieldFilled('projects') && <span className="text-blue-600 text-xs">✓</span>}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddProject}
+                      className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors border border-indigo-200"
+                    >
+                      + Add Project
+                    </button>
+                  </div>
+
+                  {formData.projects.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 text-sm">
+                      No projects added yet. Click "Add Project" to showcase your work.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {formData.projects.map((project, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-6 bg-purple-50">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-medium text-gray-700">Project {index + 1}</h4>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveProject(index)}
+                              className="text-pink-400 hover:text-pink-500 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Project Name *</label>
+                              <input
+                                type="text"
+                                value={project.name || ''}
+                                onChange={(e) => handleUpdateProject(index, 'name', e.target.value)}
+                                placeholder="e.g., E-Commerce Website"
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Description *</label>
+                              <textarea
+                                value={project.description || ''}
+                                onChange={(e) => handleUpdateProject(index, 'description', e.target.value)}
+                                placeholder="Describe your project, technologies used, key features, etc."
+                                rows={4}
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100 resize-none"
+                              />
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">GitHub Link</label>
+                                <input
+                                  type="url"
+                                  value={project.githubLink || ''}
+                                  onChange={(e) => handleUpdateProject(index, 'githubLink', e.target.value)}
+                                  placeholder="https://github.com/username/project"
+                                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Website/Demo Link</label>
+                                <input
+                                  type="url"
+                                  value={project.websiteLink || ''}
+                                  onChange={(e) => handleUpdateProject(index, 'websiteLink', e.target.value)}
+                                  placeholder="https://yourproject.com"
+                                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                                />
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-400">* At least one link (GitHub or Website) is recommended</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {currentSection.id === 'links' && (
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     LinkedIn URL
-                    {isFieldFilled('linkedInUrl') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('linkedInUrl') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   <input
                     type="url"
@@ -1545,14 +1675,14 @@ export default function ProfileBuilder() {
                     value={formData.linkedInUrl}
                     onChange={handleInputChange}
                     placeholder="https://linkedin.com/in/yourprofile"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     Portfolio URL
-                    {isFieldFilled('portfolioUrl') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('portfolioUrl') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   <input
                     type="url"
@@ -1560,14 +1690,14 @@ export default function ProfileBuilder() {
                     value={formData.portfolioUrl}
                     onChange={handleInputChange}
                     placeholder="https://yourportfolio.com"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     GitHub URL
-                    {isFieldFilled('githubUrl') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('githubUrl') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   <input
                     type="url"
@@ -1575,14 +1705,14 @@ export default function ProfileBuilder() {
                     value={formData.githubUrl}
                     onChange={handleInputChange}
                     placeholder="https://github.com/username"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     Website URL
-                    {isFieldFilled('websiteUrl') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('websiteUrl') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   <input
                     type="url"
@@ -1590,7 +1720,7 @@ export default function ProfileBuilder() {
                     value={formData.websiteUrl}
                     onChange={handleInputChange}
                     placeholder="https://yourwebsite.com"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                   />
                 </div>
               </div>
@@ -1602,7 +1732,7 @@ export default function ProfileBuilder() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                       Availability
-                      {isFieldFilled('availability') && <span className="text-emerald-500 text-xs">✓</span>}
+                      {isFieldFilled('availability') && <span className="text-blue-600 text-xs">✓</span>}
                     </label>
                     <select
                       name="availability"
@@ -1621,7 +1751,7 @@ export default function ProfileBuilder() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                       Expected Salary
-                      {isFieldFilled('expectedSalary') && <span className="text-emerald-500 text-xs">✓</span>}
+                      {isFieldFilled('expectedSalary') && <span className="text-blue-600 text-xs">✓</span>}
                     </label>
                     <input
                       type="text"
@@ -1629,7 +1759,7 @@ export default function ProfileBuilder() {
                       value={formData.expectedSalary}
                       onChange={handleInputChange}
                       placeholder="e.g., $50,000 - $70,000"
-                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                     />
                   </div>
                 </div>
@@ -1637,7 +1767,7 @@ export default function ProfileBuilder() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     Cover Letter Template <span className="text-gray-400 font-normal text-xs">(Optional)</span>
-                    {isFieldFilled('coverLetterTemplate') && <span className="text-emerald-500 text-xs">✓</span>}
+                    {isFieldFilled('coverLetterTemplate') && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
                   <textarea
                     name="coverLetterTemplate"
@@ -1689,14 +1819,14 @@ export default function ProfileBuilder() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 bg-emerald-200 rounded-lg flex items-center justify-center border border-emerald-300">
-                          <svg className="h-8 w-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
                         <div>
                           <p className="text-base font-medium text-gray-700 mb-1 flex items-center gap-2">
                             {resume.name}
-                            <span className="text-emerald-500 text-xs">✓</span>
+                            <span className="text-blue-600 text-xs">✓</span>
                           </p>
                           <p className="text-xs text-gray-500">{formatFileSize(resume.size || 0)}</p>
                         </div>

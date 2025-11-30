@@ -7,7 +7,7 @@ import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import JobList from './components/JobList';
-import PostJobs from './components/PostJobs';
+import JobBuilder from './components/JobBuilder';
 import JobTracker from './components/JobTracker';
 import RoleSelection from './components/RoleSelection';
 import EditProfile from './components/EditProfile';
@@ -26,7 +26,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/choose-role" element={<RoleSelection />} />
             <Route path="/apply-jobs" element={<JobList />} />
-            <Route path="/post-jobs" element={<PostJobs />} />
+            <Route path="/post-jobs" element={<JobBuilder />} />
             <Route path="/job-tracker" element={<JobTracker />} />
             <Route path="/edit-profile" element={<EditProfile />} />
             <Route path="/build-profile" element={<ProfileBuilder />} />

@@ -64,6 +64,7 @@ public class UserProfileController {
             System.out.println("Education Entries: " + profileData.get("educationEntries"));
             System.out.println("Certification Files: " + profileData.get("certificationFiles"));
             System.out.println("Hobbies: " + profileData.get("hobbies"));
+            System.out.println("Projects: " + profileData.get("projects"));
             System.out.println("Preferred Locations: " + profileData.get("preferredLocations"));
             System.out.println("=========================================");
             
@@ -361,6 +362,28 @@ public class UserProfileController {
                 profile.setHobbies(new java.util.ArrayList<>());
             }
 
+            // Projects - Always set, even if empty
+            Object projectsObj = profileData.get("projects");
+            if (projectsObj instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> projectsList = (List<Map<String, Object>>) projectsObj;
+                List<UserProfile.Project> projects = new java.util.ArrayList<>();
+                if (projectsList != null) {
+                    for (Map<String, Object> projectMap : projectsList) {
+                        UserProfile.Project project = new UserProfile.Project();
+                        project.setName((String) projectMap.getOrDefault("name", ""));
+                        project.setDescription((String) projectMap.getOrDefault("description", ""));
+                        project.setGithubLink((String) projectMap.getOrDefault("githubLink", ""));
+                        project.setWebsiteLink((String) projectMap.getOrDefault("websiteLink", ""));
+                        projects.add(project);
+                    }
+                }
+                profile.setProjects(projects);
+                System.out.println("Projects set: " + projects.size() + " items");
+            } else {
+                profile.setProjects(new java.util.ArrayList<>());
+            }
+
             // Update lastUpdated timestamp
             profile.setLastUpdated(java.time.LocalDateTime.now());
             
@@ -387,6 +410,7 @@ public class UserProfileController {
             System.out.println("Education Entries Count: " + (saved.getEducationEntries() != null ? saved.getEducationEntries().size() : 0));
             System.out.println("Certification Files Count: " + (saved.getCertificationFiles() != null ? saved.getCertificationFiles().size() : 0));
             System.out.println("Hobbies Count: " + (saved.getHobbies() != null ? saved.getHobbies().size() : 0));
+            System.out.println("Projects Count: " + (saved.getProjects() != null ? saved.getProjects().size() : 0));
             System.out.println("Last Updated: " + saved.getLastUpdated());
             System.out.println("=========================================");
             
@@ -418,6 +442,11 @@ public class UserProfileController {
             System.out.println("Certifications: " + (saved.getCertifications() != null && !saved.getCertifications().isEmpty() ? saved.getCertifications() : "Not provided"));
             System.out.println("Resume File: " + (saved.getResumeFileName() != null && !saved.getResumeFileName().isEmpty() ? saved.getResumeFileName() + " (" + (saved.getResumeFileSize() != null ? saved.getResumeFileSize() + " bytes" : "N/A") + ")" : "Not provided"));
             System.out.println("Cover Letter Template Length: " + (saved.getCoverLetterTemplate() != null ? saved.getCoverLetterTemplate().length() + " characters" : "Not provided"));
+            System.out.println("Education Entries: " + (saved.getEducationEntries() != null ? saved.getEducationEntries().size() + " items" : "Not provided"));
+            System.out.println("Certification Files: " + (saved.getCertificationFiles() != null ? saved.getCertificationFiles().size() + " items" : "Not provided"));
+            System.out.println("Professional Experiences: " + (saved.getProfessionalExperiences() != null ? saved.getProfessionalExperiences().size() + " items" : "Not provided"));
+            System.out.println("Hobbies: " + (saved.getHobbies() != null ? saved.getHobbies().size() + " items" : "Not provided"));
+            System.out.println("Projects: " + (saved.getProjects() != null ? saved.getProjects().size() + " items" : "Not provided"));
             System.out.println("Last Updated: " + saved.getLastUpdated());
             System.out.println("=========================================");
             
