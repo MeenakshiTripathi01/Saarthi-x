@@ -211,10 +211,10 @@ export default function JobList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState("All");
   const [filterIndustry, setFilterIndustry] = useState("All");
+  const [filterCompany, setFilterCompany] = useState("All");
   const [filterSkill, setFilterSkill] = useState("All");
   const [filterSource, setFilterSource] = useState("All");
   const [filterLocation, setFilterLocation] = useState("All");
-  const [filterCompany, setFilterCompany] = useState("All");
   const [refreshing, setRefreshing] = useState(false);
 
   const [selectedJob, setSelectedJob] = useState(null);
@@ -322,16 +322,11 @@ export default function JobList() {
   };
 
   // Get unique values for filters
-  // Roles (job titles)
+  // Roles (job titles) - use full titles
   const uniqueRoles = new Set();
   jobs.forEach((job) => {
     if (job.title && job.title.trim()) {
-      // Extract key role from title (first 2-3 words typically)
-      const words = job.title.trim().split(/\s+/);
-      const role = words.slice(0, 3).join(' '); // Take first 3 words as role
-      if (role.length > 0) {
-        uniqueRoles.add(role);
-      }
+      uniqueRoles.add(job.title.trim());
     }
   });
   const roles = ["All", ...Array.from(uniqueRoles).sort()];
@@ -387,9 +382,17 @@ export default function JobList() {
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (job.description && job.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    // Industry filter (changed from Role - now uses filterRole variable but filters by industry)
-    const matchesIndustry = filterRole === "All" || 
-      (job.industry && job.industry.toLowerCase() === filterRole.toLowerCase());
+    // Role filter (job title)
+    const matchesRole = filterRole === "All" || 
+      (job.title && job.title === filterRole);
+    
+    // Industry filter
+    const matchesIndustry = filterIndustry === "All" || 
+      (job.industry && job.industry.toLowerCase() === filterIndustry.toLowerCase());
+    
+    // Company filter
+    const matchesCompany = filterCompany === "All" || 
+      (job.company && job.company === filterCompany);
     
     // Skills/Education filter
     const matchesSkill = filterSkill === "All" || 
@@ -401,10 +404,9 @@ export default function JobList() {
     // Other filters
     const matchesSource = filterSource === "All" || job.source === filterSource;
     const matchesLocation = filterLocation === "All" || job.location === filterLocation;
-    const matchesCompany = filterCompany === "All" || job.company === filterCompany;
     
-    return matchesSearch && matchesIndustry && matchesSkill && 
-           matchesSource && matchesLocation && matchesCompany;
+    return matchesSearch && matchesRole && matchesIndustry && matchesCompany && 
+           matchesSkill && matchesSource && matchesLocation;
   });
 
   useEffect(() => {
@@ -535,19 +537,63 @@ export default function JobList() {
             <p className="text-gray-600 text-sm">Find your perfect opportunity by filtering jobs below</p>
           </div>
 
-          {/* Primary Filters - Industry, Skills */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {/* Filter by Industry */}
-            <div className="bg-white rounded-xl border-2 border-blue-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+          {/* Primary Filters - Role, Company, Industry, Skills */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* Filter by Role */}
+            <div className="bg-white rounded-xl border-2 border-indigo-200 p-4 shadow-sm hover:shadow-md transition-shadow">
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2 flex items-center gap-2">
-                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                Filter by Industry
+                Filter by Role
               </label>
               <select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              >
+                <option value="All">All Roles</option>
+                {roles.filter(r => r !== "All").map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter by Company */}
+            <div className="bg-white rounded-xl border-2 border-green-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Filter by Company
+              </label>
+              <select
+                value={filterCompany}
+                onChange={(e) => setFilterCompany(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+              >
+                <option value="All">All Companies</option>
+                {companies.filter(c => c !== "All").map((company) => (
+                  <option key={company} value={company}>
+                    {company}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter by Industry */}
+            <div className="bg-white rounded-xl border-2 border-blue-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Filter by Industry
+              </label>
+              <select
+                value={filterIndustry}
+                onChange={(e) => setFilterIndustry(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
                 <option value="All">All Industries</option>
@@ -640,16 +686,17 @@ export default function JobList() {
                 </button>
 
                 {/* Clear Filters Button */}
-                {(filterRole !== "All" || filterSkill !== "All" || 
-                  searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All") && (
+                {(filterRole !== "All" || filterCompany !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+                  searchQuery || filterLocation !== "All" || filterSource !== "All") && (
                   <button
                     onClick={() => {
                       setFilterRole("All");
+                      setFilterCompany("All");
+                      setFilterIndustry("All");
                       setFilterSkill("All");
                       setSearchQuery("");
                       setFilterLocation("All");
                       setFilterSource("All");
-                      setFilterCompany("All");
                     }}
                     className="rounded-lg border border-red-300 bg-red-50 hover:bg-red-100 px-4 py-2.5 text-sm font-semibold text-red-700 transition-all duration-200"
                   >
@@ -663,16 +710,16 @@ export default function JobList() {
 
         {/* Results Counter */}
         <div className={`mb-6 rounded-xl border px-5 py-4 shadow-sm animate-fadeIn ${
-          (filterRole !== "All" || filterSkill !== "All" || 
-           searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All")
+          (filterRole !== "All" || filterCompany !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+           searchQuery || filterLocation !== "All" || filterSource !== "All")
             ? "bg-blue-50 border-blue-200"
             : "bg-white border-gray-200"
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                (filterRole !== "All" || filterSkill !== "All" || 
-                 searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All")
+                (filterRole !== "All" || filterCompany !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+                 searchQuery || filterLocation !== "All" || filterSource !== "All")
                   ? "bg-blue-600"
                   : "bg-gray-600"
               }`}>
@@ -685,8 +732,8 @@ export default function JobList() {
                   {filteredJobs.length} Job{filteredJobs.length !== 1 ? "s" : ""} Available
                 </p>
                 <p className="text-xs text-gray-600">
-                  {(filterRole !== "All" || filterSkill !== "All" || 
-                    searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All")
+                  {(filterRole !== "All" || filterCompany !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+                    searchQuery || filterLocation !== "All" || filterSource !== "All")
                     ? "Matching your selected filters"
                     : "Browse all available opportunities"}
                 </p>

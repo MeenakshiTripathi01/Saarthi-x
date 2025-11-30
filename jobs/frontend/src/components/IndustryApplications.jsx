@@ -24,6 +24,8 @@ export default function IndustryApplications() {
   
   // Search and filter states
   const [jobSearchQuery, setJobSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All');
+  const [companyFilter, setCompanyFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [applicationSearchQuery, setApplicationSearchQuery] = useState('');
 
@@ -201,6 +203,10 @@ export default function IndustryApplications() {
     setSelectedApplication(null);
     setStatusFilter('All');
     setApplicationSearchQuery('');
+    // Reset job filters when selecting a job
+    setJobSearchQuery('');
+    setRoleFilter('All');
+    setCompanyFilter('All');
     loadApplications(job.id);
   };
 
@@ -332,15 +338,45 @@ export default function IndustryApplications() {
     }
   };
 
-  // Filter jobs based on search
+  // Get unique roles from jobs
+  const uniqueRoles = React.useMemo(() => {
+    const roles = jobs
+      .map(job => job.title)
+      .filter(role => role && role.trim() !== '')
+      .filter((value, index, self) => self.indexOf(value) === index)
+      .sort();
+    return roles;
+  }, [jobs]);
+
+  // Get unique companies from jobs
+  const uniqueCompanies = React.useMemo(() => {
+    const companies = jobs
+      .map(job => job.company)
+      .filter(company => company && company.trim() !== '')
+      .filter((value, index, self) => self.indexOf(value) === index)
+      .sort();
+    return companies;
+  }, [jobs]);
+
+  // Filter jobs based on search, role, and company
   const filteredJobs = jobs.filter(job => {
-    if (!jobSearchQuery) return true;
-    const query = jobSearchQuery.toLowerCase();
-    return (
-      job.title?.toLowerCase().includes(query) ||
-      job.company?.toLowerCase().includes(query) ||
-      job.location?.toLowerCase().includes(query)
-    );
+    // Search filter
+    const matchesSearch = !jobSearchQuery || (() => {
+      const query = jobSearchQuery.toLowerCase();
+      return (
+        job.title?.toLowerCase().includes(query) ||
+        job.company?.toLowerCase().includes(query) ||
+        job.location?.toLowerCase().includes(query)
+      );
+    })();
+    
+    // Role filter
+    const matchesRole = roleFilter === 'All' || job.title === roleFilter;
+    
+    // Company filter
+    const matchesCompany = companyFilter === 'All' || job.company === companyFilter;
+    
+    return matchesSearch && matchesRole && matchesCompany;
   });
 
   // Filter applications based on search and status
@@ -455,22 +491,56 @@ export default function IndustryApplications() {
         {!selectedJob ? (
           /* Jobs Overview - Show when no job is selected */
           <div className="space-y-6">
-            {/* Search Bar */}
+            {/* Search and Filter Bar */}
             {jobs.length > 0 && (
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search jobs by title, company, or location..."
+                      value={jobSearchQuery}
+                      onChange={(e) => setJobSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Search jobs by title, company, or location..."
-                    value={jobSearchQuery}
-                    onChange={(e) => setJobSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
-                  />
+                  {uniqueRoles.length > 0 && (
+                    <div className="md:w-64">
+                      <select
+                        value={roleFilter}
+                        onChange={(e) => setRoleFilter(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                      >
+                        <option value="All">All Roles</option>
+                        {uniqueRoles.map((role) => (
+                          <option key={role} value={role}>
+                            {role}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {uniqueCompanies.length > 0 && (
+                    <div className="md:w-64">
+                      <select
+                        value={companyFilter}
+                        onChange={(e) => setCompanyFilter(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                      >
+                        <option value="All">All Companies</option>
+                        {uniqueCompanies.map((company) => (
+                          <option key={company} value={company}>
+                            {company}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
