@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getUserProfile, saveUserProfile } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
+
+const STORAGE_KEY = 'jobApplicationFormData';
+const STORAGE_JOB_KEY = 'jobApplicationJobData';
 
 // Common suggestions data
 const COMMON_LOCATIONS = [
@@ -99,8 +102,13 @@ const PROFILE_SECTIONS = [
 
 export default function ProfileBuilder() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const fileInputRef = useRef(null);
+  
+  // Check if user came from application form
+  const cameFromApplication = location.state?.returnToApplication || false;
+  const jobId = location.state?.jobId || null;
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -749,12 +757,35 @@ export default function ProfileBuilder() {
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => navigate('/')}
-            className="mb-6 text-gray-500 hover:text-gray-700 font-medium flex items-center gap-2 text-sm transition-colors"
-          >
-            ← Back to Dashboard
-          </button>
+          <div className="mb-6 flex items-center justify-between">
+            {cameFromApplication ? (
+              <button
+                onClick={() => {
+                  // Navigate back to job list with state to indicate return from profile
+                  navigate('/apply-jobs', { state: { returnFromProfile: true } });
+                  toast.info('Returning to application form. Your previous entries will be restored.', {
+                    position: "top-right",
+                    autoClose: 3000,
+                  });
+                }}
+                className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2 text-sm transition-colors"
+              >
+                ← Back to Application Form
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/')}
+                className="text-gray-500 hover:text-gray-700 font-medium flex items-center gap-2 text-sm transition-colors"
+              >
+                ← Back to Dashboard
+              </button>
+            )}
+            {cameFromApplication && (
+              <div className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                💡 Your application form data is saved. You can return anytime!
+              </div>
+            )}
+          </div>
           
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-200">

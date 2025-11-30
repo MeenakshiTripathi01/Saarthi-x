@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { fetchJobs, fetchJobDetails } from "../api/jobApi";
@@ -205,6 +206,7 @@ function FormattedJobDescription({ description }) {
 }
 
 export default function JobList() {
+  const location = useLocation();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -412,6 +414,75 @@ export default function JobList() {
   useEffect(() => {
     loadJobs();
   }, []);
+
+  // Check if user returned from build-profile and should open application form
+  useEffect(() => {
+    const savedJobData = localStorage.getItem('jobApplicationJobData');
+    const savedFormData = localStorage.getItem('jobApplicationFormData');
+    const returnFromProfile = location.state?.returnFromProfile;
+    
+    // Only auto-open if user returned from profile AND has saved form data
+    if (returnFromProfile && savedJobData && savedFormData && jobs.length > 0 && !showApplicationForm) {
+      try {
+        const parsedJobData = JSON.parse(savedJobData);
+        const parsedFormData = JSON.parse(savedFormData);
+        
+        // Verify that saved form data exists and has some content
+        const hasFormData = parsedFormData.formData && (
+          parsedFormData.formData.fullName ||
+          parsedFormData.formData.phoneNumber ||
+          parsedFormData.formData.coverLetter ||
+          parsedFormData.formData.linkedInUrl ||
+          parsedFormData.formData.portfolioUrl ||
+          parsedFormData.formData.experience
+        );
+        
+        if (hasFormData) {
+          // Find the job that matches the saved job ID
+          const matchingJob = jobs.find(job => job.id === parsedJobData.jobId);
+          if (matchingJob) {
+            // Get job details first, then open form
+            const openFormWithJob = async () => {
+              try {
+                let details = null;
+                if (matchingJob.source !== "External") {
+                  details = {
+                    job_title: matchingJob.title,
+                    job_description: matchingJob.description,
+                    employer_name: matchingJob.company,
+                    job_city: matchingJob.location,
+                    job_country: "",
+                    job_apply_link: matchingJob.raw?.applyLink || "",
+                    job_employment_type: matchingJob.raw?.employmentType || "",
+                    job_min_salary: matchingJob.raw?.jobMinSalary,
+                    job_max_salary: matchingJob.raw?.jobMaxSalary,
+                    job_salary_currency: matchingJob.raw?.jobSalaryCurrency || "USD",
+                    job_posted_at_datetime_utc: matchingJob.raw?.createdAt,
+                    skills: matchingJob.raw?.skills || [],
+                  };
+                } else {
+                  details = await fetchJobDetails(matchingJob.id);
+                }
+                setJobToApply({ ...matchingJob, details });
+                setShowApplicationForm(true);
+              } catch (err) {
+                console.error('Error loading job details:', err);
+                // Still open form with basic job info
+                setJobToApply(matchingJob);
+                setShowApplicationForm(true);
+              }
+            };
+            
+            // Small delay to ensure component is ready
+            setTimeout(openFormWithJob, 300);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking saved form data:', err);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs.length, location.state?.returnFromProfile]); // Run when jobs are loaded or location state changes
 
   const handleViewDetails = async (job) => {
     setSelectedJob(job);
