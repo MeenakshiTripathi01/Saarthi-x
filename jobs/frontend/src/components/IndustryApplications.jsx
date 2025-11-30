@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import { getMyPostedJobs, getApplicationsByJobId, updateApplicationStatusByIndustry, updateJob, deleteJob } from '../api/jobApi';
+import { getMyPostedJobs, getApplicationsByJobId, updateApplicationStatusByIndustry, updateJob, deleteJob, getApplicantProfilesByJobId } from '../api/jobApi';
 
 export default function IndustryApplications() {
   const navigate = useNavigate();
@@ -18,6 +18,9 @@ export default function IndustryApplications() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [jobToDelete, setJobToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [applicationsWithProfiles, setApplicationsWithProfiles] = useState([]);
   
   // Search and filter states
   const [jobSearchQuery, setJobSearchQuery] = useState('');
@@ -135,11 +138,61 @@ export default function IndustryApplications() {
       setError(null);
       const data = await getApplicationsByJobId(jobId);
       setApplications(data);
+      
+      // Also load applications with profiles
+      try {
+        const profilesData = await getApplicantProfilesByJobId(jobId);
+        setApplicationsWithProfiles(profilesData);
+      } catch (profileErr) {
+        console.error('Error loading profiles:', profileErr);
+        // Don't fail the whole operation if profiles fail
+      }
     } catch (err) {
       console.error('Error loading applications:', err);
       setError('Failed to load applications for this job');
     } finally {
       setApplicationsLoading(false);
+    }
+  };
+
+  const handleViewFullProfile = async (application) => {
+    try {
+      setLoadingProfile(true);
+      setError(null);
+      
+      // Find the profile from the loaded profiles data
+      const appWithProfile = applicationsWithProfiles.find(
+        item => item.application?.id === application.id || 
+                item.application?.applicantEmail === application.applicantEmail
+      );
+      
+      if (appWithProfile?.userProfile) {
+        setSelectedProfile(appWithProfile.userProfile);
+      } else {
+        // If not found, try to fetch it again
+        const profilesData = await getApplicantProfilesByJobId(selectedJob.id);
+        const foundProfile = profilesData.find(
+          item => item.application?.id === application.id || 
+                  item.application?.applicantEmail === application.applicantEmail
+        );
+        
+        if (foundProfile?.userProfile) {
+          setSelectedProfile(foundProfile.userProfile);
+        } else {
+          toast.error('Profile not found for this applicant', {
+            position: "top-right",
+            autoClose: 3000,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error loading profile:', err);
+      toast.error('Failed to load applicant profile', {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setLoadingProfile(false);
     }
   };
 
@@ -349,15 +402,33 @@ export default function IndustryApplications() {
                 <p className="text-gray-600 text-base">Review and manage applications for your posted jobs</p>
               </div>
             </div>
-            <button
-              onClick={() => navigate('/post-jobs')}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-md hover:shadow-lg flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Post New Job
-            </button>
+            <div className="flex items-center gap-3">
+              {selectedJob && (
+                <button
+                  onClick={() => {
+                    setSelectedJob(null);
+                    setApplications([]);
+                    setSelectedApplication(null);
+                    setSelectedProfile(null);
+                  }}
+                  className="px-5 py-3 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-lg transition-all duration-200 text-sm shadow-md hover:shadow-lg flex items-center gap-2 border border-gray-200 hover:border-gray-300"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Back to Jobs
+                </button>
+              )}
+              <button
+                onClick={() => navigate('/post-jobs')}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-md hover:shadow-lg flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Post New Job
+              </button>
+            </div>
           </div>
         </div>
 
@@ -494,26 +565,21 @@ export default function IndustryApplications() {
           <div className="space-y-6">
             {/* Job Header with Back Button */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 flex-1">
-                  <button
-                    onClick={() => {
-                      setSelectedJob(null);
-                      setApplications([]);
-                      setSelectedApplication(null);
-                    }}
-                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Back to Jobs"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedJob.title}</h2>
-                    <p className="text-sm text-gray-600">{selectedJob.company} • {selectedJob.location}</p>
-                  </div>
-                </div>
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={() => {
+                    setSelectedJob(null);
+                    setApplications([]);
+                    setSelectedApplication(null);
+                    setSelectedProfile(null);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg font-semibold text-sm transition-all duration-200 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span>Back to All Jobs</span>
+                </button>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => handleEditJob(selectedJob)}
@@ -528,6 +594,10 @@ export default function IndustryApplications() {
                     Delete
                   </button>
                 </div>
+              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedJob.title}</h2>
+                <p className="text-sm text-gray-600">{selectedJob.company} • {selectedJob.location}</p>
               </div>
             </div>
 
@@ -711,6 +781,452 @@ export default function IndustryApplications() {
           </div>
         )}
 
+        {/* Full Profile Modal */}
+        {selectedProfile && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100 animate-slideIn">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl z-10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Applicant Full Profile</h2>
+                    <p className="text-sm text-gray-600 mt-1">{selectedProfile.fullName || selectedApplication?.fullName || 'Applicant'}</p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedProfile(null)}
+                    className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-all duration-200 flex items-center justify-center text-xl font-light shadow-sm hover:shadow-md"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Helper function to check if value exists */}
+                {(() => {
+                  const hasValue = (value) => {
+                    if (Array.isArray(value)) return value.length > 0;
+                    return value !== null && value !== undefined && value !== '';
+                  };
+
+                  const formatFileSize = (bytes) => {
+                    if (!bytes || bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+                  };
+
+                  return (
+                    <>
+                      {/* Personal Information */}
+                      {(hasValue(selectedProfile.fullName) || hasValue(selectedProfile.email) || hasValue(selectedProfile.phoneNumber)) && (
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                            <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                            </div>
+                            <h2 className="text-xl font-semibold text-gray-800">Personal Information</h2>
+                          </div>
+                          <div className="grid md:grid-cols-2 gap-4">
+                            {hasValue(selectedProfile.fullName) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Full Name</p>
+                                <p className="text-sm font-medium text-gray-800">{selectedProfile.fullName}</p>
+                              </div>
+                            )}
+                            {hasValue(selectedProfile.email) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Email</p>
+                                <p className="text-sm font-medium text-gray-800">{selectedProfile.email}</p>
+                              </div>
+                            )}
+                            {hasValue(selectedProfile.phoneNumber) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Phone Number</p>
+                                <p className="text-sm font-medium text-gray-800">{selectedProfile.phoneNumber}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Professional Information */}
+                      {(hasValue(selectedProfile.professionalExperiences) || hasValue(selectedProfile.currentPosition) || hasValue(selectedProfile.currentCompany) || hasValue(selectedProfile.experience) || hasValue(selectedProfile.skills) || hasValue(selectedProfile.summary)) && (
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                            <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <h2 className="text-xl font-semibold text-gray-800">Professional Information</h2>
+                          </div>
+                          <div className="space-y-6">
+                            {hasValue(selectedProfile.professionalExperiences) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Professional Experiences</p>
+                                <div className="space-y-4">
+                                  {selectedProfile.professionalExperiences.map((exp, index) => (
+                                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-indigo-50">
+                                      <div className="flex items-start justify-between mb-3">
+                                        <div>
+                                          <h3 className="text-base font-semibold text-gray-800">{exp.jobTitle || 'N/A'}</h3>
+                                          <p className="text-sm text-gray-600 mt-0.5">{exp.company || 'N/A'}</p>
+                                        </div>
+                                        {exp.isCurrentJob && (
+                                          <span className="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium border border-blue-200">
+                                            Current
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="grid md:grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                          <p className="text-xs text-gray-500 mb-0.5">Start Date</p>
+                                          <p className="text-gray-700">{exp.startDate || 'N/A'}</p>
+                                        </div>
+                                        {!exp.isCurrentJob && (
+                                          <div>
+                                            <p className="text-xs text-gray-500 mb-0.5">End Date</p>
+                                            <p className="text-gray-700">{exp.endDate || 'N/A'}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                      {exp.description && (
+                                        <div className="mt-3 pt-3 border-t border-gray-200">
+                                          <p className="text-xs text-gray-500 mb-1">Description</p>
+                                          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{exp.description}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {(hasValue(selectedProfile.currentPosition) || hasValue(selectedProfile.currentCompany) || hasValue(selectedProfile.experience)) && !hasValue(selectedProfile.professionalExperiences) && (
+                              <div className="grid md:grid-cols-2 gap-4">
+                                {hasValue(selectedProfile.currentPosition) && (
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Current Position</p>
+                                    <p className="text-sm font-medium text-gray-800">{selectedProfile.currentPosition}</p>
+                                  </div>
+                                )}
+                                {hasValue(selectedProfile.currentCompany) && (
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Current Company</p>
+                                    <p className="text-sm font-medium text-gray-800">{selectedProfile.currentCompany}</p>
+                                  </div>
+                                )}
+                                {hasValue(selectedProfile.experience) && (
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Years of Experience</p>
+                                    <p className="text-sm font-medium text-gray-800">{selectedProfile.experience}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {hasValue(selectedProfile.skills) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Skills</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedProfile.skills.map((skill, index) => (
+                                    <span
+                                      key={index}
+                                      className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200"
+                                    >
+                                      {skill}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {hasValue(selectedProfile.summary) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Professional Summary</p>
+                                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{selectedProfile.summary}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Education & Certifications */}
+                      {(hasValue(selectedProfile.educationEntries) || hasValue(selectedProfile.certificationFiles) || hasValue(selectedProfile.education) || hasValue(selectedProfile.certifications)) && (
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                            <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                              </svg>
+                            </div>
+                            <h2 className="text-xl font-semibold text-gray-800">Education & Certifications</h2>
+                          </div>
+                          <div className="space-y-6">
+                            {hasValue(selectedProfile.educationEntries) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Education</p>
+                                <div className="space-y-4">
+                                  {selectedProfile.educationEntries.map((edu, index) => (
+                                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-indigo-50">
+                                      <div className="grid md:grid-cols-2 gap-3">
+                                        <div>
+                                          <p className="text-xs text-gray-500 mb-0.5">Level</p>
+                                          <p className="text-sm font-medium text-gray-800">{edu.level || 'N/A'}</p>
+                                        </div>
+                                        {edu.degree && (
+                                          <div>
+                                            <p className="text-xs text-gray-500 mb-0.5">Degree/Course</p>
+                                            <p className="text-sm font-medium text-gray-800">{edu.degree}</p>
+                                          </div>
+                                        )}
+                                        <div>
+                                          <p className="text-xs text-gray-500 mb-0.5">Institution/University</p>
+                                          <p className="text-sm font-medium text-gray-800">{edu.institution || 'N/A'}</p>
+                                        </div>
+                                        {edu.passingYear && (
+                                          <div>
+                                            <p className="text-xs text-gray-500 mb-0.5">Passing Year</p>
+                                            <p className="text-sm font-medium text-gray-800">{edu.passingYear}</p>
+                                          </div>
+                                        )}
+                                        {edu.percentage && (
+                                          <div>
+                                            <p className="text-xs text-gray-500 mb-0.5">Percentage/CGPA</p>
+                                            <p className="text-sm font-medium text-gray-800">{edu.percentage}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {hasValue(selectedProfile.certificationFiles) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Certifications</p>
+                                <div className="space-y-4">
+                                  {selectedProfile.certificationFiles.map((cert, index) => (
+                                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-indigo-50">
+                                      <div className="flex items-start justify-between mb-3">
+                                        <div className="flex-1">
+                                          <h3 className="text-base font-semibold text-gray-800 mb-1">{cert.name || 'Unnamed Certification'}</h3>
+                                          {cert.issuingOrganization && (
+                                            <p className="text-sm text-gray-600">{cert.issuingOrganization}</p>
+                                          )}
+                                        </div>
+                                        {cert.fileName && (
+                                          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-200">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            {formatFileSize(cert.fileSize || 0)}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="grid md:grid-cols-2 gap-3 text-sm">
+                                        {cert.issueDate && (
+                                          <div>
+                                            <p className="text-xs text-gray-500 mb-0.5">Issue Date</p>
+                                            <p className="text-gray-700">{cert.issueDate}</p>
+                                          </div>
+                                        )}
+                                        {cert.expiryDate && (
+                                          <div>
+                                            <p className="text-xs text-gray-500 mb-0.5">Expiry Date</p>
+                                            <p className="text-gray-700">{cert.expiryDate}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Projects */}
+                      {hasValue(selectedProfile.projects) && (
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                            <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                              </svg>
+                            </div>
+                            <h2 className="text-xl font-semibold text-gray-800">Projects</h2>
+                          </div>
+                          <div className="space-y-4">
+                            {selectedProfile.projects.map((project, index) => (
+                              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-purple-50">
+                                <div className="mb-3">
+                                  <h3 className="text-lg font-semibold text-gray-800">{project.name || 'Untitled Project'}</h3>
+                                </div>
+                                {project.description && (
+                                  <div className="mb-3">
+                                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{project.description}</p>
+                                  </div>
+                                )}
+                                <div className="flex flex-wrap gap-3">
+                                  {project.githubLink && (
+                                    <a
+                                      href={project.githubLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+                                      </svg>
+                                      GitHub
+                                    </a>
+                                  )}
+                                  {project.websiteLink && (
+                                    <a
+                                      href={project.websiteLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                      </svg>
+                                      Website
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Contact & Links */}
+                      {(hasValue(selectedProfile.linkedInUrl) || hasValue(selectedProfile.portfolioUrl) || hasValue(selectedProfile.githubUrl) || hasValue(selectedProfile.websiteUrl)) && (
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                            <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                              </svg>
+                            </div>
+                            <h2 className="text-xl font-semibold text-gray-800">Contact & Links</h2>
+                          </div>
+                          <div className="grid md:grid-cols-2 gap-4">
+                            {hasValue(selectedProfile.linkedInUrl) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">LinkedIn</p>
+                                <a
+                                  href={selectedProfile.linkedInUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline inline-flex items-center gap-1"
+                                >
+                                  {selectedProfile.linkedInUrl}
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                              </div>
+                            )}
+                            {hasValue(selectedProfile.portfolioUrl) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Portfolio</p>
+                                <a
+                                  href={selectedProfile.portfolioUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline inline-flex items-center gap-1"
+                                >
+                                  {selectedProfile.portfolioUrl}
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                              </div>
+                            )}
+                            {hasValue(selectedProfile.githubUrl) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">GitHub</p>
+                                <a
+                                  href={selectedProfile.githubUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline inline-flex items-center gap-1"
+                                >
+                                  {selectedProfile.githubUrl}
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                              </div>
+                            )}
+                            {hasValue(selectedProfile.websiteUrl) && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Website</p>
+                                <a
+                                  href={selectedProfile.websiteUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline inline-flex items-center gap-1"
+                                >
+                                  {selectedProfile.websiteUrl}
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Resume */}
+                      {selectedProfile.resumeFileName && (
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                            <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <h2 className="text-xl font-semibold text-gray-800">Resume</h2>
+                          </div>
+                          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center border border-blue-200">
+                              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-800">{selectedProfile.resumeFileName}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {formatFileSize(selectedProfile.resumeFileSize || 0)} • {selectedProfile.resumeFileType || 'Document'}
+                              </p>
+                            </div>
+                            <div className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-200">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Uploaded
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Application Details Modal */}
         {selectedApplication && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
@@ -822,6 +1338,29 @@ export default function IndustryApplications() {
                     </div>
                   </div>
                 )}
+
+                {/* View Full Profile Button */}
+                <div className="border-t border-gray-200 pt-6">
+                  <button
+                    onClick={() => handleViewFullProfile(selectedApplication)}
+                    disabled={loadingProfile}
+                    className="w-full px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2 mb-4"
+                  >
+                    {loadingProfile ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        Loading Profile...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        View Full Profile
+                      </>
+                    )}
+                  </button>
+                </div>
 
                 {/* Status Update */}
                 <div className="border-t border-gray-200 pt-6">
