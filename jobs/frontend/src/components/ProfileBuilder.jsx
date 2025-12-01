@@ -105,19 +105,19 @@ export default function ProfileBuilder() {
   const location = useLocation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const fileInputRef = useRef(null);
-  
+
   // Check if user came from application form
   const cameFromApplication = location.state?.returnToApplication || false;
   const jobId = location.state?.jobId || null;
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  
+
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [completedSections, setCompletedSections] = useState(new Set());
-  
+
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
@@ -168,11 +168,6 @@ export default function ProfileBuilder() {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  useEffect(() => {
-    // Calculate completed sections whenever formData changes
-    updateCompletedSections();
-  }, [formData, resume, formData.skills, formData.preferredLocations, formData.hobbies]);
-
   const loadProfile = async () => {
     try {
       setLoading(true);
@@ -180,7 +175,7 @@ export default function ProfileBuilder() {
       const profile = await getUserProfile();
       if (profile) {
         console.log('Loading profile data from database:', profile);
-        
+
         setFormData({
           fullName: profile.fullName || user?.name || '',
           phoneNumber: profile.phoneNumber || '',
@@ -209,11 +204,11 @@ export default function ProfileBuilder() {
           hobbies: profile.hobbies || [],
           projects: profile.projects || [],
         });
-        
+
         setSkillsInput('');
         setLocationInput('');
         setHobbiesInput('');
-        
+
         if (profile.resumeBase64 && profile.resumeFileName) {
           const resumeFile = {
             name: profile.resumeFileName,
@@ -224,8 +219,32 @@ export default function ProfileBuilder() {
           };
           setResume(resumeFile);
         }
-        
+
         setProfileLoaded(true);
+
+        // Calculate completion directly from loaded profile data
+        const completed = new Set();
+        PROFILE_SECTIONS.forEach(section => {
+          const isComplete = section.fields.every(field => {
+            if (field === 'resume') {
+              return profile.resumeBase64 && profile.resumeFileName;
+            }
+            const value = profile[field];
+            if (field === 'skills' || field === 'preferredLocations' || field === 'hobbies' ||
+              field === 'professionalExperiences' || field === 'educationEntries' ||
+              field === 'certificationFiles' || field === 'projects') {
+              return Array.isArray(value) && value.length > 0;
+            }
+            if (field === 'willingToRelocate') {
+              return true;
+            }
+            return value !== null && value !== undefined && value !== '';
+          });
+          if (isComplete) {
+            completed.add(section.id);
+          }
+        });
+        setCompletedSections(completed);
       } else {
         setFormData(prev => ({
           ...prev,
@@ -249,9 +268,9 @@ export default function ProfileBuilder() {
     if (fieldName === 'resume') {
       return resume !== null;
     }
-    if (fieldName === 'skills' || fieldName === 'preferredLocations' || fieldName === 'hobbies' || 
-        fieldName === 'professionalExperiences' || fieldName === 'educationEntries' || fieldName === 'certificationFiles' ||
-        fieldName === 'projects') {
+    if (fieldName === 'skills' || fieldName === 'preferredLocations' || fieldName === 'hobbies' ||
+      fieldName === 'professionalExperiences' || fieldName === 'educationEntries' || fieldName === 'certificationFiles' ||
+      fieldName === 'projects') {
       return Array.isArray(value) && value.length > 0;
     }
     if (fieldName === 'willingToRelocate') {
@@ -468,7 +487,7 @@ export default function ProfileBuilder() {
   // Certification File Handlers
   const handleCertificationFileSelect = async (file, index) => {
     if (!file) return;
-    
+
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File size must be less than 5MB');
       return;
@@ -543,8 +562,8 @@ export default function ProfileBuilder() {
     if (!input || input.trim().length < 2) return [];
     const lowerInput = input.toLowerCase();
     return suggestions
-      .filter(item => 
-        item.toLowerCase().includes(lowerInput) && 
+      .filter(item =>
+        item.toLowerCase().includes(lowerInput) &&
         !existingItems.includes(item)
       )
       .slice(0, 8);
@@ -553,9 +572,9 @@ export default function ProfileBuilder() {
   const handleFileSelect = (file) => {
     if (!file) return;
 
-    const allowedTypes = ['application/pdf', 'application/msword', 
-                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                         'text/plain'];
+    const allowedTypes = ['application/pdf', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'];
     if (!allowedTypes.includes(file.type)) {
       setError('Please upload a PDF, DOC, DOCX, or TXT file');
       return;
@@ -569,7 +588,7 @@ export default function ProfileBuilder() {
 
     setError(null);
     setResume(file);
-    
+
     // Mark resume section as complete
     if (!completedSections.has('resume')) {
       setCompletedSections(prev => new Set([...prev, 'resume']));
@@ -618,6 +637,18 @@ export default function ProfileBuilder() {
   };
 
   const handleSectionChange = (newIndex) => {
+    // Update completion for current section before navigating away
+    const currentSection = PROFILE_SECTIONS[currentSectionIndex];
+    if (isSectionComplete(currentSection)) {
+      setCompletedSections(prev => new Set([...prev, currentSection.id]));
+    } else {
+      setCompletedSections(prev => {
+        const updated = new Set(prev);
+        updated.delete(currentSection.id);
+        return updated;
+      });
+    }
+
     setCurrentSectionIndex(newIndex);
   };
 
@@ -679,11 +710,11 @@ export default function ProfileBuilder() {
       console.log('=========================================');
 
       const savedProfile = await saveUserProfile(profileData);
-      
+
       console.log('Profile saved successfully:', savedProfile);
-      
+
       setSuccess(true);
-      
+
       if (profileLoaded) {
         toast.success('Profile updated successfully! 🎉', {
           position: "top-right",
@@ -695,15 +726,15 @@ export default function ProfileBuilder() {
           autoClose: 3000,
         });
       }
-      
+
       setProfileLoaded(true);
-      
+
       // Reload the profile to ensure we have the latest data
       await loadProfile();
-      
+
       // Dispatch event to notify Header that profile was saved
       window.dispatchEvent(new Event('profileSaved'));
-      
+
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
@@ -715,10 +746,10 @@ export default function ProfileBuilder() {
         status: err.response?.status,
         statusText: err.response?.statusText
       });
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data || 
-                          err.message || 
-                          'Failed to save profile. Please check your connection and try again.';
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data ||
+        err.message ||
+        'Failed to save profile. Please check your connection and try again.';
       setError(errorMessage);
       toast.error(errorMessage, {
         position: "top-right",
@@ -786,7 +817,7 @@ export default function ProfileBuilder() {
               </div>
             )}
           </div>
-          
+
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-200">
               <span className="text-3xl">{currentSection.icon}</span>
@@ -820,10 +851,10 @@ export default function ProfileBuilder() {
                 <p className="text-xs text-gray-500">Complete</p>
               </div>
             </div>
-            
+
             {/* Progress Bar */}
             <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-indigo-500 rounded-full transition-all duration-500"
                 style={{ width: `${progressPercentage}%` }}
               />
@@ -835,13 +866,12 @@ export default function ProfileBuilder() {
                 <button
                   key={section.id}
                   onClick={() => handleSectionChange(index)}
-                  className={`relative flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-200 ${
-                    index === currentSectionIndex
-                      ? 'bg-indigo-50 border-2 border-indigo-300 text-indigo-700 shadow-sm'
-                      : completedSections.has(section.id)
+                  className={`relative flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-200 ${index === currentSectionIndex
+                    ? 'bg-indigo-50 border-2 border-indigo-300 text-indigo-700 shadow-sm'
+                    : completedSections.has(section.id)
                       ? 'bg-blue-50 border-2 border-blue-200 text-blue-700 hover:bg-blue-100'
                       : 'bg-gray-50 border-2 border-gray-200 text-gray-500 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   <div className="text-xl">{section.icon}</div>
                   <div className="text-xs font-medium text-center leading-tight">{section.title.split(' ')[0]}</div>
@@ -881,11 +911,10 @@ export default function ProfileBuilder() {
           <div className="mb-8 pb-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 rounded-lg flex items-center justify-center text-3xl border ${
-                  isCurrentSectionComplete
-                    ? 'bg-blue-50 border-blue-200'
-                    : 'bg-indigo-50 border-indigo-200'
-                }`}>
+                <div className={`w-16 h-16 rounded-lg flex items-center justify-center text-3xl border ${isCurrentSectionComplete
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-indigo-50 border-indigo-200'
+                  }`}>
                   {currentSection.icon}
                 </div>
                 <div>
@@ -1057,78 +1086,78 @@ export default function ProfileBuilder() {
                   </div>
                 )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Skills
-                      {isFieldFilled('skills') && <span className="text-blue-600 text-xs">✓</span>}
-                    </label>
-                    {/* Skills Tags */}
-                    {formData.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {formData.skills.map((skill, index) => (
-                          <span
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    Skills
+                    {isFieldFilled('skills') && <span className="text-blue-600 text-xs">✓</span>}
+                  </label>
+                  {/* Skills Tags */}
+                  {formData.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.skills.map((skill, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200"
+                        >
+                          {skill}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkill(skill)}
+                            className="text-blue-600 hover:text-blue-700 focus:outline-none"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Skills Input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={skillsInput}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSkillsInput(value);
+                        setShowSkillsSuggestions(value.trim().length >= 2);
+                      }}
+                      onFocus={() => {
+                        if (skillsInput.trim().length >= 2) {
+                          setShowSkillsSuggestions(true);
+                        }
+                      }}
+                      onBlur={() => setTimeout(() => setShowSkillsSuggestions(false), 200)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && skillsInput.trim()) {
+                          e.preventDefault();
+                          handleAddSkill(skillsInput);
+                        }
+                      }}
+                      placeholder="Type at least 2 letters to see suggestions"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                    />
+                    {showSkillsSuggestions && skillsInput.trim().length >= 2 && getFilteredSuggestions(skillsInput, COMMON_SKILLS, formData.skills).length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {getFilteredSuggestions(skillsInput, COMMON_SKILLS, formData.skills).map((skill, index) => (
+                          <button
                             key={index}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200"
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleAddSkill(skill);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 transition-colors cursor-pointer"
                           >
                             {skill}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSkill(skill)}
-                              className="text-blue-600 hover:text-blue-700 focus:outline-none"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </span>
+                          </button>
                         ))}
                       </div>
                     )}
-                    {/* Skills Input */}
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={skillsInput}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setSkillsInput(value);
-                          setShowSkillsSuggestions(value.trim().length >= 2);
-                        }}
-                        onFocus={() => {
-                          if (skillsInput.trim().length >= 2) {
-                            setShowSkillsSuggestions(true);
-                          }
-                        }}
-                        onBlur={() => setTimeout(() => setShowSkillsSuggestions(false), 200)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && skillsInput.trim()) {
-                            e.preventDefault();
-                            handleAddSkill(skillsInput);
-                          }
-                        }}
-                        placeholder="Type at least 2 letters to see suggestions"
-                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
-                      />
-                      {showSkillsSuggestions && skillsInput.trim().length >= 2 && getFilteredSuggestions(skillsInput, COMMON_SKILLS, formData.skills).length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                          {getFilteredSuggestions(skillsInput, COMMON_SKILLS, formData.skills).map((skill, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                handleAddSkill(skill);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 transition-colors cursor-pointer"
-                            >
-                              {skill}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs text-gray-400">Type at least 2 letters and click a suggestion or press Enter to add</p>
                   </div>
+                  <p className="mt-1 text-xs text-gray-400">Type at least 2 letters and click a suggestion or press Enter to add</p>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -1819,11 +1848,10 @@ export default function ProfileBuilder() {
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
-                      isDragging
-                        ? 'border-purple-300 bg-purple-50'
-                        : 'border-gray-300 hover:border-purple-200 hover:bg-purple-50'
-                    }`}
+                    className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${isDragging
+                      ? 'border-purple-300 bg-purple-50'
+                      : 'border-gray-300 hover:border-purple-200 hover:bg-purple-50'
+                      }`}
                   >
                     <input
                       ref={fileInputRef}
