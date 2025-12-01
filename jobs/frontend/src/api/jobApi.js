@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_KEY = '7d9462fe86mshba5929ac9dec03ep1a6cfajsn66a02647da68';
+const API_KEY = 'af93a5aec5msh431daab4f70e59fp1726b9jsn6d555bb1cda3';
 const HOST = 'jsearch.p.rapidapi.com';
 const BASE_URL = `https://${HOST}`;
 

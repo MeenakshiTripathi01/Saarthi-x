@@ -1,53 +1,102 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { loginWithGoogle } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { role } = useParams(); // Get role from URL: /login/industry or /login/applicant
   const { isAuthenticated, user, loading: authLoading } = useAuth();
   const [selectedRole, setSelectedRole] = useState(null);
   const [error, setError] = useState(null);
   const [step, setStep] = useState(1); // 1 = role selection, 2 = sign in
 
-  // Redirect if already authenticated
+  // If role is in URL, use it
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user) {
-      // If user already has a role, redirect based on that
-      if (user.userType === 'APPLICANT') {
-        navigate('/apply-jobs');
-      } else if (user.userType === 'INDUSTRY') {
-        navigate('/post-jobs');
-      } else {
-        // User authenticated but no role - go to role selection
-        navigate('/choose-role');
-      }
+    if (role === 'industry') {
+      setSelectedRole('INDUSTRY');
+      setStep(2);
+      console.log('[LOGIN] Role from URL: industry');
+    } else if (role === 'applicant') {
+      setSelectedRole('APPLICANT');
+      setStep(2);
+      console.log('[LOGIN] Role from URL: applicant');
     }
-  }, [isAuthenticated, user, authLoading, navigate]);
+  }, [role]);
+
+  useEffect(() => {
+    console.log('[LOGIN] Auth State:', {
+      authLoading,
+      isAuthenticated,
+      userType: user?.userType,
+      email: user?.email
+    });
+  }, [authLoading, isAuthenticated, user]);
+
+  // Pre-select user's current role if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && user.userType) {
+      // Pre-select their current role so they can see what they are
+      setSelectedRole(user.userType);
+      console.log('[LOGIN] Pre-selecting role:', user.userType);
+      // Don't redirect - let them try to change roles if they want
+      console.log('[LOGIN] User already authenticated as:', user.userType);
+    }
+  }, [isAuthenticated, user, authLoading]);
 
   const handleRoleSelection = () => {
     if (!selectedRole) {
       setError('Please select a role to continue');
       return;
     }
-    setStep(2); // Move to sign-in step
+    
+    // Navigate to /login/role to preserve selection in URL
+    const roleUrl = selectedRole === 'APPLICANT' ? 'applicant' : 'industry';
+    console.log('[LOGIN] Navigating to /login/' + roleUrl);
+    navigate(`/login/${roleUrl}`);
+    
     setError(null);
   };
 
   const handleLogin = () => {
+    console.log('[LOGIN] handleLogin called', {
+      selectedRole,
+      isAuthenticated,
+      userType: user?.userType,
+      userEmail: user?.email
+    });
+
     if (!selectedRole) {
       setError('Please select a role before signing in');
       return;
     }
 
-    // Clear any previous login intent
-    localStorage.removeItem('loginIntent');
-    localStorage.removeItem('redirectRoute');
+    // Check if user is already logged in with a different role
+    console.log('[LOGIN] Checking role mismatch:', {
+      isAuthenticated,
+      hasUser: !!user,
+      hasUserType: !!user?.userType,
+      userType: user?.userType,
+      selectedRole,
+      isMatch: user?.userType === selectedRole
+    });
 
-    // Store the selected role
+    if (isAuthenticated && user && user.userType && user.userType !== selectedRole) {
+      let errorMsg;
+      if (user.userType === 'APPLICANT') {
+        errorMsg = '❌ Role Mismatch Error\n\nYou are only allowed to be a Job Seeker (Applicant) because you are registered as an Applicant.\n\nYou cannot login as an Industry account.\n\nTo register as Industry, please logout first and create a new account with a different email address.';
+      } else {
+        errorMsg = '❌ Role Mismatch Error\n\nYou are only allowed to be an Industry account because you are registered as Industry.\n\nYou cannot login as a Job Seeker (Applicant).\n\nTo register as Applicant, please logout first and create a new account with a different email address.';
+      }
+      console.log('[LOGIN] ROLE MISMATCH DETECTED! Setting error:', errorMsg);
+      setError(errorMsg);
+      return;
+    }
+
+    // Store role from URL/selection in localStorage for later comparison
     const roleIntent = selectedRole === 'APPLICANT' ? 'applicant' : 'industry';
     localStorage.setItem('loginIntent', roleIntent);
-
+    
     // Set redirect route based on role
     if (selectedRole === 'APPLICANT') {
       localStorage.setItem('redirectRoute', 'apply-jobs');
@@ -55,6 +104,10 @@ export default function Login() {
       localStorage.setItem('redirectRoute', 'post-jobs');
     }
 
+    console.log('[LOGIN] URL: /login/' + roleIntent);
+    console.log('[LOGIN] Stored intent: ' + roleIntent);
+    console.log('[LOGIN] Initiating Google OAuth...');
+    
     // Initiate Google login
     loginWithGoogle();
   };
@@ -66,6 +119,17 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 flex items-center justify-center px-4 py-12">
+      {/* DEBUG PANEL - REMOVE LATER */}
+      <div className="fixed top-4 right-4 bg-yellow-100 border-2 border-yellow-400 p-3 rounded text-xs max-w-xs z-50">
+        <p className="font-bold mb-1">🔍 Debug Info</p>
+        <p>Auth Loading: {authLoading ? 'YES' : 'NO'}</p>
+        <p>Authenticated: {isAuthenticated ? 'YES' : 'NO'}</p>
+        <p>User Type: {user?.userType || 'NONE'}</p>
+        <p>Selected Role: {selectedRole || 'NONE'}</p>
+        <p>Step: {step}</p>
+        <p>Has Error: {error ? 'YES' : 'NO'}</p>
+      </div>
+
       <div className="w-full max-w-2xl">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 md:p-12">
           {/* Header */}
@@ -100,16 +164,36 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Error Message */}
+          {/* Error Message - VERY PROMINENT */}
           {error && (
-            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
-              {error}
+            <div className="mb-6 rounded-xl border-4 border-red-500 bg-red-100 p-6 text-red-900 shadow-2xl animate-pulse">
+              <div className="flex items-start gap-4">
+                <svg className="w-8 h-8 text-red-700 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="font-bold text-lg mb-3">🚫 ROLE MISMATCH ERROR 🚫</p>
+                  <p className="text-base whitespace-pre-wrap font-semibold leading-relaxed">{error}</p>
+                  <p className="mt-4 text-sm bg-red-200 p-3 rounded font-bold">
+                    👉 Click the logout button in your profile (top right) to change roles
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Step 1: Role Selection */}
           {step === 1 && (
             <>
+              {/* Show current role if authenticated */}
+              {isAuthenticated && user?.userType && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Currently Registered As:</strong> {user.userType === 'APPLICANT' ? '👤 Job Seeker (Applicant)' : '🏢 Industry'}
+                  </p>
+                </div>
+              )}
+
               {/* Role Selection Cards */}
               <div className="grid md:grid-cols-2 gap-6 mb-8">
             {/* APPLICANT Option */}
@@ -122,7 +206,7 @@ export default function Login() {
                 selectedRole === 'APPLICANT'
                   ? 'border-gray-900 bg-gray-50 shadow-md scale-105'
                   : 'border-gray-200 bg-white hover:border-gray-400 hover:shadow-lg'
-              }`}
+              } ${isAuthenticated && user?.userType === 'APPLICANT' && selectedRole === 'INDUSTRY' ? 'ring-2 ring-red-500' : ''}`}
             >
               <div className="text-5xl mb-4 text-center">👤</div>
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">
@@ -131,6 +215,12 @@ export default function Login() {
               <p className="text-gray-600 text-sm mb-4 text-center">
                 Browse and apply to job opportunities posted by companies.
               </p>
+              {/* Badge showing if user is registered as this role */}
+              {isAuthenticated && user?.userType === 'APPLICANT' && (
+                <div className="mb-3 inline-block bg-green-100 border-2 border-green-500 text-green-700 px-3 py-1 rounded-full text-xs font-bold">
+                  ✓ YOUR REGISTERED ROLE
+                </div>
+              )}
               <ul className="text-sm text-gray-700 space-y-2">
                 <li className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,6 +272,12 @@ export default function Login() {
               <p className="text-gray-600 text-sm mb-4 text-center">
                 Post job openings and find talented candidates for your company.
               </p>
+              {/* Badge showing if user is registered as this role */}
+              {isAuthenticated && user?.userType === 'INDUSTRY' && (
+                <div className="mb-3 inline-block bg-green-100 border-2 border-green-500 text-green-700 px-3 py-1 rounded-full text-xs font-bold">
+                  ✓ YOUR REGISTERED ROLE
+                </div>
+              )}
               <ul className="text-sm text-gray-700 space-y-2">
                 <li className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

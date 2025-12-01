@@ -146,7 +146,7 @@ export default function ViewProfile() {
 
         <div className="grid gap-6">
           {/* Profile Picture */}
-          {profile.profilePictureBase64 && (
+          {/* {profile.profilePictureBase64 && (
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 shadow-sm p-6">
               <div className="flex items-center gap-3 mb-4 pb-4 border-b border-indigo-200">
                 <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
@@ -166,7 +166,7 @@ export default function ViewProfile() {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Personal Information */}
           {(hasValue(profile.fullName) || hasValue(profile.email) || hasValue(profile.phoneNumber)) && (
