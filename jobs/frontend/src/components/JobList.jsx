@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { fetchJobs, fetchJobDetails } from "../api/jobApi";
+import { fetchJobs, fetchJobDetails, getRecommendedJobs, getUserProfile } from "../api/jobApi";
 import { loginWithGoogle } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
 import JobApplicationForm from "./JobApplicationForm";
@@ -225,8 +225,42 @@ export default function JobList() {
   const [detailsError, setDetailsError] = useState(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [jobToApply, setJobToApply] = useState(null);
+  const [jobMatchPercentages, setJobMatchPercentages] = useState({});
+  const [userProfile, setUserProfile] = useState(null);
 
-  const { isAuthenticated, isIndustry } = useAuth();
+  const { isAuthenticated, isIndustry, isApplicant } = useAuth();
+
+  // Load user profile for skill highlighting
+  const loadUserProfile = async () => {
+    try {
+      if (isAuthenticated && isApplicant) {
+        const profile = await getUserProfile();
+        setUserProfile(profile);
+      }
+    } catch (err) {
+      console.error("Error loading user profile:", err);
+      // Silent fail
+    }
+  };
+
+  // Load recommended jobs match percentages
+  const loadRecommendedJobs = async () => {
+    try {
+      if (isAuthenticated && isApplicant) {
+        const recommendedJobs = await getRecommendedJobs();
+        const matchMap = {};
+        if (Array.isArray(recommendedJobs)) {
+          recommendedJobs.forEach(item => {
+            matchMap[item.job.id] = item.matchPercentage;
+          });
+        }
+        setJobMatchPercentages(matchMap);
+      }
+    } catch (err) {
+      console.error("Error loading recommended jobs:", err);
+      // Silent fail - don't show error if recommendations can't be loaded
+    }
+  };
 
   // Define loadJobs outside useEffect so it can be called manually
   const loadJobs = async () => {
@@ -413,6 +447,8 @@ export default function JobList() {
 
   useEffect(() => {
     loadJobs();
+    loadRecommendedJobs();
+    loadUserProfile();
   }, []);
 
   // Check if user returned from build-profile and should open application form
@@ -842,6 +878,17 @@ export default function JobList() {
                     }`}>
                       {job.source}
                     </span>
+                    {jobMatchPercentages[job.id] !== undefined && (
+                      <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
+                        jobMatchPercentages[job.id] >= 75
+                          ? 'text-green-700 bg-green-50 border border-green-200'
+                          : jobMatchPercentages[job.id] >= 50
+                          ? 'text-amber-700 bg-amber-50 border border-amber-200'
+                          : 'text-red-700 bg-red-50 border border-red-200'
+                      }`}>
+                        {Math.round(jobMatchPercentages[job.id])}% Match
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 leading-tight">
                     {job.title}
@@ -939,24 +986,68 @@ export default function JobList() {
                 <div className="space-y-6">
                   {/* Key Information Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-gray-50 rounded-xl border border-gray-200">
-                    {/* Location - Fixed to show only once */}
-                    <div className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {/* Location - Fixed to show only once - with matching highlight */}
+                    <div className={`flex items-start gap-3 px-4 py-3 rounded-lg ${
+                      (() => {
+                        const jobLocation = (jobDetails?.job_city || selectedJob.location || "").toLowerCase();
+                        const preferredLocations = userProfile?.preferredLocations?.map(l => l.toLowerCase()) || [];
+                        const currentLocation = userProfile?.currentLocation?.toLowerCase() || "";
+                        const isLocationMatch = preferredLocations.some(loc => 
+                          jobLocation.includes(loc) || loc.includes(jobLocation)
+                        ) || (currentLocation && (jobLocation.includes(currentLocation) || currentLocation.includes(jobLocation)));
+                        const isRemote = jobLocation.includes("remote");
+                        
+                        return isLocationMatch || isRemote
+                          ? 'bg-green-50 border-2 border-green-300'
+                          : 'bg-transparent';
+                      })()
+                    }`}>
+                      <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                        (() => {
+                          const jobLocation = (jobDetails?.job_city || selectedJob.location || "").toLowerCase();
+                          const preferredLocations = userProfile?.preferredLocations?.map(l => l.toLowerCase()) || [];
+                          const currentLocation = userProfile?.currentLocation?.toLowerCase() || "";
+                          const isLocationMatch = preferredLocations.some(loc => 
+                            jobLocation.includes(loc) || loc.includes(jobLocation)
+                          ) || (currentLocation && (jobLocation.includes(currentLocation) || currentLocation.includes(jobLocation)));
+                          const isRemote = jobLocation.includes("remote");
+                          return isLocationMatch || isRemote ? 'text-green-600' : 'text-blue-600';
+                        })()
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <div>
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Location</p>
-                        <p className="text-sm font-medium text-gray-900">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-900">
+                            {(() => {
+                              const locationParts = [
+                                jobDetails?.job_city,
+                                jobDetails?.job_country,
+                                selectedJob.location && !jobDetails?.job_city ? selectedJob.location : null
+                              ].filter(Boolean);
+                              return locationParts.length > 0 ? locationParts.join(", ") : "Location not specified";
+                            })()}
+                          </p>
                           {(() => {
-                            const locationParts = [
-                              jobDetails?.job_city,
-                              jobDetails?.job_country,
-                              selectedJob.location && !jobDetails?.job_city ? selectedJob.location : null
-                            ].filter(Boolean);
-                            return locationParts.length > 0 ? locationParts.join(", ") : "Location not specified";
+                            const jobLocation = (jobDetails?.job_city || selectedJob.location || "").toLowerCase();
+                            const preferredLocations = userProfile?.preferredLocations?.map(l => l.toLowerCase()) || [];
+                            const currentLocation = userProfile?.currentLocation?.toLowerCase() || "";
+                            const isLocationMatch = preferredLocations.some(loc => 
+                              jobLocation.includes(loc) || loc.includes(jobLocation)
+                            ) || (currentLocation && (jobLocation.includes(currentLocation) || currentLocation.includes(jobLocation)));
+                            
+                            if (isLocationMatch) {
+                              return (
+                                <span className="text-xs font-bold bg-green-200 text-green-800 px-2 py-0.5 rounded-full">
+                                  ✓ Your preference
+                                </span>
+                              );
+                            }
+                            return null;
                           })()}
-                        </p>
+                        </div>
                       </div>
                     </div>
 
@@ -1029,7 +1120,62 @@ export default function JobList() {
                     )}
                   </div>
 
-                  {/* Skills Section */}
+                  {/* Your Matching Profile Section */}
+                  {userProfile && isApplicant && (
+                    <div className="p-5 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border-2 border-indigo-300">
+                      <div className="flex items-center gap-2 mb-4">
+                        <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m7 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h3 className="text-lg font-bold text-gray-900">Your Profile Match</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {/* Matching Skills */}
+                        {userProfile?.skills && userProfile.skills.length > 0 && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Your Skills:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {userProfile.skills.map((skill, idx) => (
+                                <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Preferred Locations */}
+                        {(userProfile?.preferredLocations?.length > 0 || userProfile?.currentLocation) && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Your Locations:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {userProfile?.preferredLocations?.map((loc, idx) => (
+                                <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
+                                  📍 {loc}
+                                </span>
+                              ))}
+                              {userProfile?.currentLocation && !userProfile?.preferredLocations?.includes(userProfile.currentLocation) && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
+                                  📍 {userProfile.currentLocation}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Work Preference */}
+                        {userProfile?.workPreference && (
+                          <div className="pt-2 border-t border-indigo-200">
+                            <p className="text-xs text-gray-600">
+                              <span className="font-semibold">Work Preference:</span> {userProfile.workPreference}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Skills Section - with matching highlights */}
                   {((jobDetails?.skills && jobDetails.skills.length > 0) || (selectedJob.raw?.skills && selectedJob.raw.skills.length > 0)) && (
                     <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
                       <div className="flex items-center gap-2 mb-4">
@@ -1039,17 +1185,35 @@ export default function JobList() {
                         <h3 className="text-lg font-bold text-gray-900">Required Skills</h3>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {((jobDetails?.skills || selectedJob.raw?.skills) || []).map((skill, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white border border-blue-200 text-sm font-medium text-blue-700 shadow-sm hover:shadow-md transition-shadow"
-                          >
-                            <svg className="w-4 h-4 mr-1.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            {skill}
-                          </span>
-                        ))}
+                        {((jobDetails?.skills || selectedJob.raw?.skills) || []).map((skill, index) => {
+                          // Check if this skill matches user's skills
+                          const userSkills = userProfile?.skills?.map(s => s.toLowerCase()) || [];
+                          const isMatching = userSkills.some(userSkill => 
+                            skill.toLowerCase().includes(userSkill.trim()) || 
+                            userSkill.includes(skill.toLowerCase())
+                          );
+                          
+                          return (
+                            <span
+                              key={index}
+                              className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all ${
+                                isMatching
+                                  ? 'bg-green-100 border-2 border-green-400 text-green-800 ring-2 ring-green-200'
+                                  : 'bg-white border border-blue-200 text-blue-700'
+                              }`}
+                            >
+                              <svg className={`w-4 h-4 mr-1.5 ${isMatching ? 'text-green-600' : 'text-blue-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              {skill}
+                              {isMatching && (
+                                <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-green-200 text-green-800 rounded-full">
+                                  ✓ You have
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

@@ -110,11 +110,21 @@ export default function ViewProfile() {
 
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <div className="w-20 h-20 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-200">
-                <svg className="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
+              {profile.profilePictureBase64 ? (
+                <div className="w-20 h-20 bg-indigo-50 rounded-xl flex items-center justify-center border-2 border-indigo-300 overflow-hidden">
+                  <img
+                    src={`data:${profile.profilePictureFileType};base64,${profile.profilePictureBase64}`}
+                    alt={profile.fullName || 'Profile'}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-20 h-20 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-200">
+                  <svg className="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+              )}
               <div>
                 <h1 className="text-4xl font-semibold text-gray-800 tracking-tight">
                   {profile.fullName || user?.name || 'My Profile'}
@@ -135,6 +145,29 @@ export default function ViewProfile() {
         </div>
 
         <div className="grid gap-6">
+          {/* Profile Picture */}
+          {profile.profilePictureBase64 && (
+            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 shadow-sm p-6">
+              <div className="flex items-center gap-3 mb-4 pb-4 border-b border-indigo-200">
+                <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-semibold text-gray-800">Profile Picture</h2>
+              </div>
+              <div className="flex justify-center">
+                <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-indigo-300 bg-white shadow-md">
+                  <img
+                    src={`data:${profile.profilePictureFileType};base64,${profile.profilePictureBase64}`}
+                    alt={profile.fullName || 'Profile'}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Personal Information */}
           {(hasValue(profile.fullName) || hasValue(profile.email) || hasValue(profile.phoneNumber)) && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">

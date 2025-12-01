@@ -19,6 +19,12 @@ public class UserProfile {
     private String phoneNumber;
     private String email;  // Additional email if different
     
+    // Profile Picture
+    private String profilePictureFileName;
+    private String profilePictureFileType;
+    private String profilePictureBase64;    // Base64 encoded profile picture
+    private Long profilePictureFileSize;
+    
     // Resume Information
     private String resumeFileName;
     private String resumeFileType;
@@ -85,6 +91,18 @@ public class UserProfile {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getProfilePictureFileName() { return profilePictureFileName; }
+    public void setProfilePictureFileName(String profilePictureFileName) { this.profilePictureFileName = profilePictureFileName; }
+
+    public String getProfilePictureFileType() { return profilePictureFileType; }
+    public void setProfilePictureFileType(String profilePictureFileType) { this.profilePictureFileType = profilePictureFileType; }
+
+    public String getProfilePictureBase64() { return profilePictureBase64; }
+    public void setProfilePictureBase64(String profilePictureBase64) { this.profilePictureBase64 = profilePictureBase64; }
+
+    public Long getProfilePictureFileSize() { return profilePictureFileSize; }
+    public void setProfilePictureFileSize(Long profilePictureFileSize) { this.profilePictureFileSize = profilePictureFileSize; }
 
     public String getResumeFileName() { return resumeFileName; }
     public void setResumeFileName(String resumeFileName) { this.resumeFileName = resumeFileName; }

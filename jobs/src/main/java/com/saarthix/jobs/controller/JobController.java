@@ -3,16 +3,20 @@ package com.saarthix.jobs.controller;
 import com.saarthix.jobs.model.Application;
 import com.saarthix.jobs.model.Job;
 import com.saarthix.jobs.model.User;
+import com.saarthix.jobs.model.UserProfile;
 import com.saarthix.jobs.repository.ApplicationRepository;
 import com.saarthix.jobs.repository.JobRepository;
+import com.saarthix.jobs.repository.UserProfileRepository;
 import com.saarthix.jobs.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 import com.saarthix.jobs.service.EmailService;
+import com.saarthix.jobs.service.JobService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -24,12 +28,16 @@ public class JobController {
     private final UserRepository userRepository;
     private final ApplicationRepository applicationRepository;
     private final EmailService emailService;
+    private final JobService jobService;
+    private final UserProfileRepository userProfileRepository;
 
-    public JobController(JobRepository jobRepository, UserRepository userRepository, ApplicationRepository applicationRepository, EmailService emailService) {
+    public JobController(JobRepository jobRepository, UserRepository userRepository, ApplicationRepository applicationRepository, EmailService emailService, JobService jobService, UserProfileRepository userProfileRepository) {
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
         this.applicationRepository = applicationRepository;
         this.emailService = emailService;
+        this.jobService = jobService;
+        this.userProfileRepository = userProfileRepository;
     }
 
     // ✅ GET all jobs (public - no auth required)
@@ -42,6 +50,42 @@ public class JobController {
     @GetMapping("/{id}")
     public Optional<Job> getJobById(@PathVariable String id) {
         return jobRepository.findById(id);
+    }
+
+    // ✅ GET recommended jobs for authenticated applicant
+    @GetMapping("/recommended/jobs")
+    public ResponseEntity<?> getRecommendedJobs(Authentication auth) {
+        try {
+            // Check if user is authenticated
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(401).body("Must be logged in to view recommended jobs");
+            }
+
+            User user = resolveUserFromOAuth(auth);
+            if (user == null) {
+                return ResponseEntity.status(401).body("User not found");
+            }
+
+            // Check if user is APPLICANT type
+            if (!"APPLICANT".equals(user.getUserType())) {
+                return ResponseEntity.status(403).body("Only APPLICANT users can view recommended jobs");
+            }
+
+            // Get user profile
+            Optional<UserProfile> profileOpt = userProfileRepository.findByApplicantEmail(user.getEmail());
+            if (profileOpt.isEmpty()) {
+                return ResponseEntity.status(404).body("Profile not found. Please create your profile first.");
+            }
+
+            UserProfile profile = profileOpt.get();
+            List<Map<String, Object>> recommendedJobs = jobService.getRecommendedJobs(profile);
+
+            return ResponseEntity.ok(recommendedJobs);
+        } catch (Exception e) {
+            System.err.println("Error fetching recommended jobs: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error fetching recommended jobs: " + e.getMessage());
+        }
     }
 
     // ✅ POST a new job (INDUSTRY users only)

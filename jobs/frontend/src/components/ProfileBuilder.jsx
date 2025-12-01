@@ -40,7 +40,7 @@ const PROFILE_SECTIONS = [
     title: 'Personal Information',
     icon: '👤',
     description: 'Tell us about yourself',
-    fields: ['fullName', 'phoneNumber', 'email']
+    fields: ['profilePicture', 'fullName', 'phoneNumber', 'email']
   },
   {
     id: 'professional',
@@ -122,6 +122,10 @@ export default function ProfileBuilder() {
     fullName: '',
     phoneNumber: '',
     email: '',
+    profilePictureBase64: '',
+    profilePictureFileType: '',
+    profilePictureFileName: '',
+    profilePictureFileSize: 0,
     currentPosition: '',  // Keep for backward compatibility
     currentCompany: '',  // Keep for backward compatibility
     experience: '',
@@ -180,6 +184,10 @@ export default function ProfileBuilder() {
           fullName: profile.fullName || user?.name || '',
           phoneNumber: profile.phoneNumber || '',
           email: profile.email || user?.email || '',
+          profilePictureBase64: profile.profilePictureBase64 || '',
+          profilePictureFileType: profile.profilePictureFileType || '',
+          profilePictureFileName: profile.profilePictureFileName || '',
+          profilePictureFileSize: profile.profilePictureFileSize || 0,
           currentPosition: profile.currentPosition || '',
           currentCompany: profile.currentCompany || '',
           experience: profile.experience || '',
@@ -229,6 +237,9 @@ export default function ProfileBuilder() {
             if (field === 'resume') {
               return profile.resumeBase64 && profile.resumeFileName;
             }
+            if (field === 'profilePicture') {
+              return profile.profilePictureBase64 && profile.profilePictureBase64.length > 0;
+            }
             const value = profile[field];
             if (field === 'skills' || field === 'preferredLocations' || field === 'hobbies' ||
               field === 'professionalExperiences' || field === 'educationEntries' ||
@@ -267,6 +278,9 @@ export default function ProfileBuilder() {
     const value = formData[fieldName];
     if (fieldName === 'resume') {
       return resume !== null;
+    }
+    if (fieldName === 'profilePicture') {
+      return formData.profilePictureBase64 && formData.profilePictureBase64.length > 0;
     }
     if (fieldName === 'skills' || fieldName === 'preferredLocations' || fieldName === 'hobbies' ||
       fieldName === 'professionalExperiences' || fieldName === 'educationEntries' || fieldName === 'certificationFiles' ||
@@ -939,12 +953,102 @@ export default function ProfileBuilder() {
           <div>
             {/* Render section-specific fields */}
             {currentSection.id === 'personal' && (
-              <div className="grid md:grid-cols-2 gap-6 space-y-6">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    Full Name <span className="text-pink-400">*</span>
-                    {isFieldFilled('fullName') && <span className="text-blue-600 text-xs">✓</span>}
+              <div className="space-y-6">
+                {/* Profile Picture Upload */}
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 p-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    Profile Picture
+                    {formData.profilePictureBase64 && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
+                  <div className="flex items-center gap-6">
+                    {/* Profile Picture Preview */}
+                    <div className="flex-shrink-0">
+                      {formData.profilePictureBase64 ? (
+                        <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-300 bg-white flex items-center justify-center">
+                          <img
+                            src={`data:${formData.profilePictureFileType};base64,${formData.profilePictureBase64}`}
+                            alt="Profile Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-24 h-24 rounded-full border-4 border-gray-300 bg-gray-100 flex items-center justify-center">
+                          <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Upload Button */}
+                    <div className="flex-1">
+                      <div className="relative inline-block">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+                              toast.error('Please upload a valid image file (JPEG, PNG, GIF, WebP)');
+                              return;
+                            }
+                            
+                            if (file.size > 2 * 1024 * 1024) {
+                              toast.error('Image size must be less than 2MB');
+                              return;
+                            }
+                            
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              const base64 = event.target.result.split(',')[1];
+                              setFormData(prev => ({
+                                ...prev,
+                                profilePictureBase64: base64,
+                                profilePictureFileType: file.type,
+                                profilePictureFileName: file.name,
+                                profilePictureFileSize: file.size
+                              }));
+                              toast.success('Profile picture uploaded successfully!');
+                              setTimeout(() => updateCompletedSections(), 100);
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                          className="hidden"
+                          id="profilePictureInput"
+                        />
+                        <label
+                          htmlFor="profilePictureInput"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg cursor-pointer transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          Upload Picture
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Recommended: Square image, at least 400x400px, Max 2MB
+                      </p>
+                      {formData.profilePictureFileName && (
+                        <div className="mt-2 p-2 bg-white rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-600">
+                            <span className="font-medium">File:</span> {formData.profilePictureFileName}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Other personal fields */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Full Name <span className="text-pink-400">*</span>
+                      {isFieldFilled('fullName') && <span className="text-blue-600 text-xs">✓</span>}
+                    </label>
                   <input
                     type="text"
                     name="fullName"
@@ -982,6 +1086,7 @@ export default function ProfileBuilder() {
                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                   />
                 </div>
+              </div>
               </div>
             )}
 

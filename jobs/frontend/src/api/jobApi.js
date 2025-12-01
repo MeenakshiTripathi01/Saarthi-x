@@ -336,3 +336,19 @@ export const getApplicantProfilesByJobId = async (jobId) => {
     throw error;
   }
 };
+
+// Get recommended jobs for authenticated applicant
+export const getRecommendedJobs = async () => {
+  try {
+    const response = await axios.get(
+      'http://localhost:8080/api/jobs/recommended/jobs',
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching recommended jobs:', error);
+    throw error;
+  }
+};
