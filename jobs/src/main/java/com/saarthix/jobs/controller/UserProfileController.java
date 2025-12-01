@@ -146,6 +146,31 @@ public class UserProfileController {
                 profile.setResumeFileSize(0L);
             }
 
+            // Profile Picture Information
+            String profilePictureFileName = (String) profileData.getOrDefault("profilePictureFileName", "");
+            profile.setProfilePictureFileName(profilePictureFileName != null ? profilePictureFileName : "");
+            System.out.println("Profile Picture File Name set: " + (profilePictureFileName != null && !profilePictureFileName.isEmpty() ? profilePictureFileName : "empty"));
+            
+            String profilePictureFileType = (String) profileData.getOrDefault("profilePictureFileType", "");
+            profile.setProfilePictureFileType(profilePictureFileType != null ? profilePictureFileType : "");
+            
+            String profilePictureBase64 = (String) profileData.getOrDefault("profilePictureBase64", "");
+            profile.setProfilePictureBase64(profilePictureBase64 != null ? profilePictureBase64 : "");
+            System.out.println("Profile Picture Base64 set: " + (profilePictureBase64 != null && !profilePictureBase64.isEmpty() ? profilePictureBase64.length() + " characters" : "empty"));
+            
+            Object profilePictureFileSize = profileData.get("profilePictureFileSize");
+            if (profilePictureFileSize instanceof Number) {
+                profile.setProfilePictureFileSize(((Number) profilePictureFileSize).longValue());
+            } else if (profilePictureFileSize instanceof String) {
+                try {
+                    profile.setProfilePictureFileSize(Long.parseLong((String) profilePictureFileSize));
+                } catch (NumberFormatException e) {
+                    profile.setProfilePictureFileSize(0L);
+                }
+            } else {
+                profile.setProfilePictureFileSize(0L);
+            }
+
             // Professional information
             String currentPosition = (String) profileData.getOrDefault("currentPosition", "");
             profile.setCurrentPosition(currentPosition != null ? currentPosition : "");

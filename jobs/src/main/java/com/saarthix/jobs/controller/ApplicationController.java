@@ -4,10 +4,12 @@ import com.saarthix.jobs.model.Application;
 import com.saarthix.jobs.model.Job;
 import com.saarthix.jobs.model.ResumeAndDetails;
 import com.saarthix.jobs.model.User;
+import com.saarthix.jobs.model.UserProfile;
 import com.saarthix.jobs.repository.ApplicationRepository;
 import com.saarthix.jobs.repository.JobRepository;
 import com.saarthix.jobs.repository.ResumeAndDetailsRepository;
 import com.saarthix.jobs.repository.UserRepository;
+import com.saarthix.jobs.repository.UserProfileRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -28,17 +30,20 @@ public class ApplicationController {
     private final UserRepository userRepository;
     private final JobRepository jobRepository;
     private final NotificationService notificationService;
+    private final UserProfileRepository userProfileRepository;
 
     public ApplicationController(ApplicationRepository applicationRepository, 
                                 ResumeAndDetailsRepository resumeAndDetailsRepository,
                                 UserRepository userRepository,
                                 JobRepository jobRepository,
-                                NotificationService notificationService) {
+                                NotificationService notificationService,
+                                UserProfileRepository userProfileRepository) {
         this.applicationRepository = applicationRepository;
         this.resumeAndDetailsRepository = resumeAndDetailsRepository;
         this.userRepository = userRepository;
         this.jobRepository = jobRepository;
         this.notificationService = notificationService;
+        this.userProfileRepository = userProfileRepository;
     }
 
     /**
@@ -401,6 +406,118 @@ public class ApplicationController {
         System.out.println("=========================================");
         
         return ResponseEntity.ok(applications);
+    }
+
+    /**
+     * Get applicant profiles for a specific job (for industry users who posted the job)
+     * Returns applications with their corresponding user profiles
+     * IMPORTANT: This must be defined BEFORE @PutMapping("/{id}/status") to avoid path conflict
+     */
+    @GetMapping("/job/{jobId}/profiles")
+    public ResponseEntity<?> getApplicantProfilesByJobId(
+            @PathVariable String jobId,
+            Authentication auth) {
+        // Check authentication
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(401).body("Must be logged in to view applicant profiles");
+        }
+
+        User user = resolveUserFromOAuth(auth);
+        if (user == null) {
+            return ResponseEntity.status(401).body("User not found");
+        }
+
+        // Check if user is INDUSTRY type
+        if (!"INDUSTRY".equals(user.getUserType())) {
+            return ResponseEntity.status(403).body("Only INDUSTRY users can view applicant profiles");
+        }
+
+        // Verify the job exists and belongs to this industry user
+        Optional<Job> jobOpt = jobRepository.findById(jobId);
+        if (jobOpt.isEmpty()) {
+            return ResponseEntity.status(404).body("Job not found");
+        }
+
+        Job job = jobOpt.get();
+        if (!user.getId().equals(job.getIndustryId())) {
+            return ResponseEntity.status(403).body("You can only view applicant profiles for your own jobs");
+        }
+
+        // Get all applications for this job
+        List<Application> applications = applicationRepository.findByJobId(jobId);
+        
+        // Also check for applications that might have been created with different job ID formats
+        if (applications.isEmpty()) {
+            // Get all applications and filter by job title and company as fallback
+            List<Application> allApplications = applicationRepository.findAll();
+            List<Application> matchedApplications = allApplications.stream()
+                .filter(app -> {
+                    // Match by job title and company if jobId doesn't match
+                    boolean titleMatch = job.getTitle() != null && 
+                                       app.getJobTitle() != null && 
+                                       job.getTitle().equalsIgnoreCase(app.getJobTitle());
+                    boolean companyMatch = job.getCompany() != null && 
+                                          app.getCompany() != null && 
+                                          job.getCompany().equalsIgnoreCase(app.getCompany());
+                    return titleMatch && companyMatch;
+                })
+                .toList();
+            
+            if (!matchedApplications.isEmpty()) {
+                System.out.println("Found " + matchedApplications.size() + " applications by title/company matching");
+                // Update these applications with the correct jobId
+                for (Application app : matchedApplications) {
+                    if (!jobId.equals(app.getJobId())) {
+                        app.setJobId(jobId);
+                        applicationRepository.save(app);
+                    }
+                }
+                applications = matchedApplications;
+            }
+        }
+        
+        // For each application, fetch the corresponding user profile
+        List<Map<String, Object>> applicationsWithProfiles = new java.util.ArrayList<>();
+        
+        for (Application application : applications) {
+            Map<String, Object> applicationWithProfile = new java.util.HashMap<>();
+            applicationWithProfile.put("application", application);
+            
+            // Try to find user profile by applicantId first, then by applicantEmail
+            Optional<UserProfile> profileOpt = Optional.empty();
+            if (application.getApplicantId() != null && !application.getApplicantId().isEmpty()) {
+                profileOpt = userProfileRepository.findByApplicantId(application.getApplicantId());
+            }
+            
+            if (profileOpt.isEmpty() && application.getApplicantEmail() != null && !application.getApplicantEmail().isEmpty()) {
+                profileOpt = userProfileRepository.findByApplicantEmail(application.getApplicantEmail());
+            }
+            
+            if (profileOpt.isPresent()) {
+                applicationWithProfile.put("userProfile", profileOpt.get());
+            } else {
+                // If no profile found, set to null
+                applicationWithProfile.put("userProfile", null);
+                System.out.println("No user profile found for applicant: " + 
+                    (application.getApplicantEmail() != null ? application.getApplicantEmail() : application.getApplicantId()));
+            }
+            
+            applicationsWithProfiles.add(applicationWithProfile);
+        }
+        
+        // Log for debugging
+        System.out.println("=========================================");
+        System.out.println("GET /api/applications/job/" + jobId + "/profiles");
+        System.out.println("Job Title: " + job.getTitle());
+        System.out.println("Company: " + job.getCompany());
+        System.out.println("Industry User ID: " + user.getId());
+        System.out.println("Found " + applications.size() + " applications");
+        System.out.println("Found " + applicationsWithProfiles.stream()
+            .filter(item -> item.get("userProfile") != null)
+            .count() + " applications with profiles");
+        System.out.println("=========================================");
+        
+        return ResponseEntity.ok(applicationsWithProfiles);
     }
 
     /**

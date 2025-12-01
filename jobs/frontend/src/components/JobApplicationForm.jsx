@@ -1,10 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { recordJobApplication, getUserProfile } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 
+const STORAGE_KEY = 'jobApplicationFormData';
+const STORAGE_JOB_KEY = 'jobApplicationJobData';
+
 export default function JobApplicationForm({ job, onClose, onSuccess }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
   
   const [formData, setFormData] = useState({
@@ -24,6 +29,110 @@ export default function JobApplicationForm({ job, onClose, onSuccess }) {
   const [userProfile, setUserProfile] = useState(null);
   const [useProfileData, setUseProfileData] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+
+  // Restore saved form data on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    const savedJobData = localStorage.getItem(STORAGE_JOB_KEY);
+    
+    if (savedData && savedJobData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        const parsedJobData = JSON.parse(savedJobData);
+        
+        // If saved data is for a different job, clear it
+        if (parsedJobData.jobId !== job.id) {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(STORAGE_JOB_KEY);
+          return;
+        }
+        
+        // Only restore if it's for the same job
+        if (parsedJobData.jobId === job.id) {
+          // Check if there's actually form data to restore
+          const hasDataToRestore = parsedData.formData && (
+            parsedData.formData.fullName ||
+            parsedData.formData.phoneNumber ||
+            parsedData.formData.coverLetter ||
+            parsedData.formData.linkedInUrl ||
+            parsedData.formData.portfolioUrl ||
+            parsedData.formData.experience ||
+            parsedData.formData.availability !== 'Immediately'
+          );
+          
+          if (hasDataToRestore) {
+            // Restore form data, preserving any fields that might have been filled
+            setFormData(prev => ({
+              ...prev,
+              ...parsedData.formData,
+              // Only override if saved data has a value
+              fullName: parsedData.formData.fullName || prev.fullName,
+              phoneNumber: parsedData.formData.phoneNumber || prev.phoneNumber,
+              coverLetter: parsedData.formData.coverLetter || prev.coverLetter,
+              linkedInUrl: parsedData.formData.linkedInUrl || prev.linkedInUrl,
+              portfolioUrl: parsedData.formData.portfolioUrl || prev.portfolioUrl,
+              experience: parsedData.formData.experience || prev.experience,
+              availability: parsedData.formData.availability || prev.availability,
+            }));
+            
+            // Restore resume if it was saved (only metadata, not the actual file)
+            if (parsedData.resume && parsedData.resume.isFromProfile && parsedData.resume.base64) {
+              setResume(parsedData.resume);
+            } else if (parsedData.resumeFileName && !resume) {
+              // If resume was uploaded but we can't restore the file object,
+              // notify user to re-upload
+              toast.info('Please re-upload your resume file', {
+                position: "top-right",
+                autoClose: 3000,
+              });
+            }
+            
+            toast.success('Your previous form entries have been restored!', {
+              position: "top-right",
+              autoClose: 3000,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error restoring saved form data:', err);
+      }
+    }
+  }, [job.id]); // Only run once when component mounts with a job
+
+  // Save form data to localStorage whenever it changes
+  // Only save if there's actual data entered (not just initial empty state)
+  useEffect(() => {
+    const hasData = formData.fullName || 
+                    formData.phoneNumber || 
+                    formData.coverLetter || 
+                    formData.linkedInUrl || 
+                    formData.portfolioUrl || 
+                    formData.experience ||
+                    resume;
+    
+    if (hasData) {
+      const dataToSave = {
+        formData,
+        resume: resume ? {
+          name: resume.name,
+          type: resume.type,
+          size: resume.size,
+          isFromProfile: resume.isFromProfile || false,
+          base64: resume.base64 || null,
+        } : null,
+        resumeFileName: resume?.name || null,
+      };
+      
+      const jobDataToSave = {
+        jobId: job.id,
+        jobTitle: job.title,
+        company: job.company,
+      };
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      localStorage.setItem(STORAGE_JOB_KEY, JSON.stringify(jobDataToSave));
+    }
+  }, [formData, resume, job.id, job.title, job.company]);
 
   // Load user profile on mount
   useEffect(() => {
@@ -210,6 +319,10 @@ export default function JobApplicationForm({ job, onClose, onSuccess }) {
 
       await recordJobApplication(applicationData);
       
+      // Clear saved form data after successful submission
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_JOB_KEY);
+      
       // Show success toast notification
       toast.success('Application submitted successfully!', {
         position: "top-right",
@@ -244,6 +357,9 @@ export default function JobApplicationForm({ job, onClose, onSuccess }) {
           pauseOnHover: true,
           draggable: true,
         });
+        // Clear saved data if already applied
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STORAGE_JOB_KEY);
       } else {
         // Show error toast for other errors
         toast.error(errorMessage, {
@@ -258,6 +374,33 @@ export default function JobApplicationForm({ job, onClose, onSuccess }) {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleNavigateToProfile = () => {
+    // Save current form state before navigating
+    const dataToSave = {
+      formData,
+      resume: resume ? {
+        name: resume.name,
+        type: resume.type,
+        size: resume.size,
+        isFromProfile: resume.isFromProfile || false,
+        base64: resume.base64 || null,
+      } : null,
+      resumeFileName: resume?.name || null,
+    };
+    
+    const jobDataToSave = {
+      jobId: job.id,
+      jobTitle: job.title,
+      company: job.company,
+    };
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    localStorage.setItem(STORAGE_JOB_KEY, JSON.stringify(jobDataToSave));
+    
+    // Navigate to build-profile with return path
+    navigate('/build-profile', { state: { returnToApplication: true, jobId: job.id } });
   };
 
   const formatFileSize = (bytes) => {
@@ -327,7 +470,13 @@ export default function JobApplicationForm({ job, onClose, onSuccess }) {
           {!userProfile && !loadingProfile && (
             <div className="rounded-md border border-blue-200 bg-blue-50 p-4">
               <p className="text-sm text-blue-800">
-                💡 <a href="/build-profile" className="font-semibold underline">Create a profile</a> to auto-fill application forms in the future!
+                💡 <button 
+                  type="button"
+                  onClick={handleNavigateToProfile}
+                  className="font-semibold underline hover:text-blue-900"
+                >
+                  Create a profile
+                </button> to auto-fill application forms in the future!
               </p>
             </div>
           )}
@@ -541,7 +690,11 @@ export default function JobApplicationForm({ job, onClose, onSuccess }) {
           <div className="flex gap-4 pt-4 border-t border-gray-200">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => {
+                // Don't clear saved data when closing - user might want to come back
+                // Data will be cleared on successful submission or when applying to a different job
+                onClose();
+              }}
               disabled={isSubmitting}
               className="flex-1 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-900 font-semibold py-3 px-6 transition disabled:cursor-not-allowed text-sm"
             >

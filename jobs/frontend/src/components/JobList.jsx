@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { fetchJobs, fetchJobDetails } from "../api/jobApi";
+import { fetchJobs, fetchJobDetails, getRecommendedJobs, getUserProfile } from "../api/jobApi";
 import { loginWithGoogle } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
 import JobApplicationForm from "./JobApplicationForm";
@@ -205,16 +206,17 @@ function FormattedJobDescription({ description }) {
 }
 
 export default function JobList() {
+  const location = useLocation();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState("All");
   const [filterIndustry, setFilterIndustry] = useState("All");
+  const [filterCompany, setFilterCompany] = useState("All");
   const [filterSkill, setFilterSkill] = useState("All");
   const [filterSource, setFilterSource] = useState("All");
   const [filterLocation, setFilterLocation] = useState("All");
-  const [filterCompany, setFilterCompany] = useState("All");
   const [refreshing, setRefreshing] = useState(false);
 
   const [selectedJob, setSelectedJob] = useState(null);
@@ -223,8 +225,42 @@ export default function JobList() {
   const [detailsError, setDetailsError] = useState(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [jobToApply, setJobToApply] = useState(null);
+  const [jobMatchPercentages, setJobMatchPercentages] = useState({});
+  const [userProfile, setUserProfile] = useState(null);
 
-  const { isAuthenticated, isIndustry } = useAuth();
+  const { isAuthenticated, isIndustry, isApplicant } = useAuth();
+
+  // Load user profile for skill highlighting
+  const loadUserProfile = async () => {
+    try {
+      if (isAuthenticated && isApplicant) {
+        const profile = await getUserProfile();
+        setUserProfile(profile);
+      }
+    } catch (err) {
+      console.error("Error loading user profile:", err);
+      // Silent fail
+    }
+  };
+
+  // Load recommended jobs match percentages
+  const loadRecommendedJobs = async () => {
+    try {
+      if (isAuthenticated && isApplicant) {
+        const recommendedJobs = await getRecommendedJobs();
+        const matchMap = {};
+        if (Array.isArray(recommendedJobs)) {
+          recommendedJobs.forEach(item => {
+            matchMap[item.job.id] = item.matchPercentage;
+          });
+        }
+        setJobMatchPercentages(matchMap);
+      }
+    } catch (err) {
+      console.error("Error loading recommended jobs:", err);
+      // Silent fail - don't show error if recommendations can't be loaded
+    }
+  };
 
   // Define loadJobs outside useEffect so it can be called manually
   const loadJobs = async () => {
@@ -322,16 +358,11 @@ export default function JobList() {
   };
 
   // Get unique values for filters
-  // Roles (job titles)
+  // Roles (job titles) - use full titles
   const uniqueRoles = new Set();
   jobs.forEach((job) => {
     if (job.title && job.title.trim()) {
-      // Extract key role from title (first 2-3 words typically)
-      const words = job.title.trim().split(/\s+/);
-      const role = words.slice(0, 3).join(' '); // Take first 3 words as role
-      if (role.length > 0) {
-        uniqueRoles.add(role);
-      }
+      uniqueRoles.add(job.title.trim());
     }
   });
   const roles = ["All", ...Array.from(uniqueRoles).sort()];
@@ -387,9 +418,17 @@ export default function JobList() {
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (job.description && job.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    // Industry filter (changed from Role - now uses filterRole variable but filters by industry)
-    const matchesIndustry = filterRole === "All" || 
-      (job.industry && job.industry.toLowerCase() === filterRole.toLowerCase());
+    // Role filter (job title)
+    const matchesRole = filterRole === "All" || 
+      (job.title && job.title === filterRole);
+    
+    // Industry filter
+    const matchesIndustry = filterIndustry === "All" || 
+      (job.industry && job.industry.toLowerCase() === filterIndustry.toLowerCase());
+    
+    // Company filter
+    const matchesCompany = filterCompany === "All" || 
+      (job.company && job.company === filterCompany);
     
     // Skills/Education filter
     const matchesSkill = filterSkill === "All" || 
@@ -401,15 +440,85 @@ export default function JobList() {
     // Other filters
     const matchesSource = filterSource === "All" || job.source === filterSource;
     const matchesLocation = filterLocation === "All" || job.location === filterLocation;
-    const matchesCompany = filterCompany === "All" || job.company === filterCompany;
     
-    return matchesSearch && matchesIndustry && matchesSkill && 
-           matchesSource && matchesLocation && matchesCompany;
+    return matchesSearch && matchesRole && matchesIndustry && matchesCompany && 
+           matchesSkill && matchesSource && matchesLocation;
   });
 
   useEffect(() => {
     loadJobs();
+    loadRecommendedJobs();
+    loadUserProfile();
   }, []);
+
+  // Check if user returned from build-profile and should open application form
+  useEffect(() => {
+    const savedJobData = localStorage.getItem('jobApplicationJobData');
+    const savedFormData = localStorage.getItem('jobApplicationFormData');
+    const returnFromProfile = location.state?.returnFromProfile;
+    
+    // Only auto-open if user returned from profile AND has saved form data
+    if (returnFromProfile && savedJobData && savedFormData && jobs.length > 0 && !showApplicationForm) {
+      try {
+        const parsedJobData = JSON.parse(savedJobData);
+        const parsedFormData = JSON.parse(savedFormData);
+        
+        // Verify that saved form data exists and has some content
+        const hasFormData = parsedFormData.formData && (
+          parsedFormData.formData.fullName ||
+          parsedFormData.formData.phoneNumber ||
+          parsedFormData.formData.coverLetter ||
+          parsedFormData.formData.linkedInUrl ||
+          parsedFormData.formData.portfolioUrl ||
+          parsedFormData.formData.experience
+        );
+        
+        if (hasFormData) {
+          // Find the job that matches the saved job ID
+          const matchingJob = jobs.find(job => job.id === parsedJobData.jobId);
+          if (matchingJob) {
+            // Get job details first, then open form
+            const openFormWithJob = async () => {
+              try {
+                let details = null;
+                if (matchingJob.source !== "External") {
+                  details = {
+                    job_title: matchingJob.title,
+                    job_description: matchingJob.description,
+                    employer_name: matchingJob.company,
+                    job_city: matchingJob.location,
+                    job_country: "",
+                    job_apply_link: matchingJob.raw?.applyLink || "",
+                    job_employment_type: matchingJob.raw?.employmentType || "",
+                    job_min_salary: matchingJob.raw?.jobMinSalary,
+                    job_max_salary: matchingJob.raw?.jobMaxSalary,
+                    job_salary_currency: matchingJob.raw?.jobSalaryCurrency || "USD",
+                    job_posted_at_datetime_utc: matchingJob.raw?.createdAt,
+                    skills: matchingJob.raw?.skills || [],
+                  };
+                } else {
+                  details = await fetchJobDetails(matchingJob.id);
+                }
+                setJobToApply({ ...matchingJob, details });
+                setShowApplicationForm(true);
+              } catch (err) {
+                console.error('Error loading job details:', err);
+                // Still open form with basic job info
+                setJobToApply(matchingJob);
+                setShowApplicationForm(true);
+              }
+            };
+            
+            // Small delay to ensure component is ready
+            setTimeout(openFormWithJob, 300);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking saved form data:', err);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs.length, location.state?.returnFromProfile]); // Run when jobs are loaded or location state changes
 
   const handleViewDetails = async (job) => {
     setSelectedJob(job);
@@ -535,19 +644,63 @@ export default function JobList() {
             <p className="text-gray-600 text-sm">Find your perfect opportunity by filtering jobs below</p>
           </div>
 
-          {/* Primary Filters - Industry, Skills */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {/* Filter by Industry */}
-            <div className="bg-white rounded-xl border-2 border-blue-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+          {/* Primary Filters - Role, Company, Industry, Skills */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* Filter by Role */}
+            <div className="bg-white rounded-xl border-2 border-indigo-200 p-4 shadow-sm hover:shadow-md transition-shadow">
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2 flex items-center gap-2">
-                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                Filter by Industry
+                Filter by Role
               </label>
               <select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              >
+                <option value="All">All Roles</option>
+                {roles.filter(r => r !== "All").map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter by Company */}
+            <div className="bg-white rounded-xl border-2 border-green-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Filter by Company
+              </label>
+              <select
+                value={filterCompany}
+                onChange={(e) => setFilterCompany(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+              >
+                <option value="All">All Companies</option>
+                {companies.filter(c => c !== "All").map((company) => (
+                  <option key={company} value={company}>
+                    {company}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter by Industry */}
+            <div className="bg-white rounded-xl border-2 border-blue-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Filter by Industry
+              </label>
+              <select
+                value={filterIndustry}
+                onChange={(e) => setFilterIndustry(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
                 <option value="All">All Industries</option>
@@ -640,16 +793,17 @@ export default function JobList() {
                 </button>
 
                 {/* Clear Filters Button */}
-                {(filterRole !== "All" || filterSkill !== "All" || 
-                  searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All") && (
+                {(filterRole !== "All" || filterCompany !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+                  searchQuery || filterLocation !== "All" || filterSource !== "All") && (
                   <button
                     onClick={() => {
                       setFilterRole("All");
+                      setFilterCompany("All");
+                      setFilterIndustry("All");
                       setFilterSkill("All");
                       setSearchQuery("");
                       setFilterLocation("All");
                       setFilterSource("All");
-                      setFilterCompany("All");
                     }}
                     className="rounded-lg border border-red-300 bg-red-50 hover:bg-red-100 px-4 py-2.5 text-sm font-semibold text-red-700 transition-all duration-200"
                   >
@@ -663,16 +817,16 @@ export default function JobList() {
 
         {/* Results Counter */}
         <div className={`mb-6 rounded-xl border px-5 py-4 shadow-sm animate-fadeIn ${
-          (filterRole !== "All" || filterSkill !== "All" || 
-           searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All")
+          (filterRole !== "All" || filterCompany !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+           searchQuery || filterLocation !== "All" || filterSource !== "All")
             ? "bg-blue-50 border-blue-200"
             : "bg-white border-gray-200"
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                (filterRole !== "All" || filterSkill !== "All" || 
-                 searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All")
+                (filterRole !== "All" || filterCompany !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+                 searchQuery || filterLocation !== "All" || filterSource !== "All")
                   ? "bg-blue-600"
                   : "bg-gray-600"
               }`}>
@@ -685,8 +839,8 @@ export default function JobList() {
                   {filteredJobs.length} Job{filteredJobs.length !== 1 ? "s" : ""} Available
                 </p>
                 <p className="text-xs text-gray-600">
-                  {(filterRole !== "All" || filterSkill !== "All" || 
-                    searchQuery || filterLocation !== "All" || filterSource !== "All" || filterCompany !== "All")
+                  {(filterRole !== "All" || filterCompany !== "All" || filterIndustry !== "All" || filterSkill !== "All" || 
+                    searchQuery || filterLocation !== "All" || filterSource !== "All")
                     ? "Matching your selected filters"
                     : "Browse all available opportunities"}
                 </p>
@@ -724,6 +878,17 @@ export default function JobList() {
                     }`}>
                       {job.source}
                     </span>
+                    {jobMatchPercentages[job.id] !== undefined && (
+                      <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
+                        jobMatchPercentages[job.id] >= 75
+                          ? 'text-green-700 bg-green-50 border border-green-200'
+                          : jobMatchPercentages[job.id] >= 50
+                          ? 'text-amber-700 bg-amber-50 border border-amber-200'
+                          : 'text-red-700 bg-red-50 border border-red-200'
+                      }`}>
+                        {Math.round(jobMatchPercentages[job.id])}% Match
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 leading-tight">
                     {job.title}
@@ -821,24 +986,68 @@ export default function JobList() {
                 <div className="space-y-6">
                   {/* Key Information Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-gray-50 rounded-xl border border-gray-200">
-                    {/* Location - Fixed to show only once */}
-                    <div className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {/* Location - Fixed to show only once - with matching highlight */}
+                    <div className={`flex items-start gap-3 px-4 py-3 rounded-lg ${
+                      (() => {
+                        const jobLocation = (jobDetails?.job_city || selectedJob.location || "").toLowerCase();
+                        const preferredLocations = userProfile?.preferredLocations?.map(l => l.toLowerCase()) || [];
+                        const currentLocation = userProfile?.currentLocation?.toLowerCase() || "";
+                        const isLocationMatch = preferredLocations.some(loc => 
+                          jobLocation.includes(loc) || loc.includes(jobLocation)
+                        ) || (currentLocation && (jobLocation.includes(currentLocation) || currentLocation.includes(jobLocation)));
+                        const isRemote = jobLocation.includes("remote");
+                        
+                        return isLocationMatch || isRemote
+                          ? 'bg-green-50 border-2 border-green-300'
+                          : 'bg-transparent';
+                      })()
+                    }`}>
+                      <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                        (() => {
+                          const jobLocation = (jobDetails?.job_city || selectedJob.location || "").toLowerCase();
+                          const preferredLocations = userProfile?.preferredLocations?.map(l => l.toLowerCase()) || [];
+                          const currentLocation = userProfile?.currentLocation?.toLowerCase() || "";
+                          const isLocationMatch = preferredLocations.some(loc => 
+                            jobLocation.includes(loc) || loc.includes(jobLocation)
+                          ) || (currentLocation && (jobLocation.includes(currentLocation) || currentLocation.includes(jobLocation)));
+                          const isRemote = jobLocation.includes("remote");
+                          return isLocationMatch || isRemote ? 'text-green-600' : 'text-blue-600';
+                        })()
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <div>
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Location</p>
-                        <p className="text-sm font-medium text-gray-900">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-900">
+                            {(() => {
+                              const locationParts = [
+                                jobDetails?.job_city,
+                                jobDetails?.job_country,
+                                selectedJob.location && !jobDetails?.job_city ? selectedJob.location : null
+                              ].filter(Boolean);
+                              return locationParts.length > 0 ? locationParts.join(", ") : "Location not specified";
+                            })()}
+                          </p>
                           {(() => {
-                            const locationParts = [
-                              jobDetails?.job_city,
-                              jobDetails?.job_country,
-                              selectedJob.location && !jobDetails?.job_city ? selectedJob.location : null
-                            ].filter(Boolean);
-                            return locationParts.length > 0 ? locationParts.join(", ") : "Location not specified";
+                            const jobLocation = (jobDetails?.job_city || selectedJob.location || "").toLowerCase();
+                            const preferredLocations = userProfile?.preferredLocations?.map(l => l.toLowerCase()) || [];
+                            const currentLocation = userProfile?.currentLocation?.toLowerCase() || "";
+                            const isLocationMatch = preferredLocations.some(loc => 
+                              jobLocation.includes(loc) || loc.includes(jobLocation)
+                            ) || (currentLocation && (jobLocation.includes(currentLocation) || currentLocation.includes(jobLocation)));
+                            
+                            if (isLocationMatch) {
+                              return (
+                                <span className="text-xs font-bold bg-green-200 text-green-800 px-2 py-0.5 rounded-full">
+                                  ✓ Your preference
+                                </span>
+                              );
+                            }
+                            return null;
                           })()}
-                        </p>
+                        </div>
                       </div>
                     </div>
 
@@ -911,7 +1120,62 @@ export default function JobList() {
                     )}
                   </div>
 
-                  {/* Skills Section */}
+                  {/* Your Matching Profile Section */}
+                  {userProfile && isApplicant && (
+                    <div className="p-5 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border-2 border-indigo-300">
+                      <div className="flex items-center gap-2 mb-4">
+                        <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m7 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h3 className="text-lg font-bold text-gray-900">Your Profile Match</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {/* Matching Skills */}
+                        {userProfile?.skills && userProfile.skills.length > 0 && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Your Skills:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {userProfile.skills.map((skill, idx) => (
+                                <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Preferred Locations */}
+                        {(userProfile?.preferredLocations?.length > 0 || userProfile?.currentLocation) && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Your Locations:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {userProfile?.preferredLocations?.map((loc, idx) => (
+                                <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
+                                  📍 {loc}
+                                </span>
+                              ))}
+                              {userProfile?.currentLocation && !userProfile?.preferredLocations?.includes(userProfile.currentLocation) && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
+                                  📍 {userProfile.currentLocation}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Work Preference */}
+                        {userProfile?.workPreference && (
+                          <div className="pt-2 border-t border-indigo-200">
+                            <p className="text-xs text-gray-600">
+                              <span className="font-semibold">Work Preference:</span> {userProfile.workPreference}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Skills Section - with matching highlights */}
                   {((jobDetails?.skills && jobDetails.skills.length > 0) || (selectedJob.raw?.skills && selectedJob.raw.skills.length > 0)) && (
                     <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
                       <div className="flex items-center gap-2 mb-4">
@@ -921,17 +1185,35 @@ export default function JobList() {
                         <h3 className="text-lg font-bold text-gray-900">Required Skills</h3>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {((jobDetails?.skills || selectedJob.raw?.skills) || []).map((skill, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white border border-blue-200 text-sm font-medium text-blue-700 shadow-sm hover:shadow-md transition-shadow"
-                          >
-                            <svg className="w-4 h-4 mr-1.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            {skill}
-                          </span>
-                        ))}
+                        {((jobDetails?.skills || selectedJob.raw?.skills) || []).map((skill, index) => {
+                          // Check if this skill matches user's skills
+                          const userSkills = userProfile?.skills?.map(s => s.toLowerCase()) || [];
+                          const isMatching = userSkills.some(userSkill => 
+                            skill.toLowerCase().includes(userSkill.trim()) || 
+                            userSkill.includes(skill.toLowerCase())
+                          );
+                          
+                          return (
+                            <span
+                              key={index}
+                              className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all ${
+                                isMatching
+                                  ? 'bg-green-100 border-2 border-green-400 text-green-800 ring-2 ring-green-200'
+                                  : 'bg-white border border-blue-200 text-blue-700'
+                              }`}
+                            >
+                              <svg className={`w-4 h-4 mr-1.5 ${isMatching ? 'text-green-600' : 'text-blue-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              {skill}
+                              {isMatching && (
+                                <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-green-200 text-green-800 rounded-full">
+                                  ✓ You have
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

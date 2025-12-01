@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getUserProfile, saveUserProfile } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
+
+const STORAGE_KEY = 'jobApplicationFormData';
+const STORAGE_JOB_KEY = 'jobApplicationJobData';
 
 // Common suggestions data
 const COMMON_LOCATIONS = [
@@ -37,7 +40,7 @@ const PROFILE_SECTIONS = [
     title: 'Personal Information',
     icon: '👤',
     description: 'Tell us about yourself',
-    fields: ['fullName', 'phoneNumber', 'email']
+    fields: ['profilePicture', 'fullName', 'phoneNumber', 'email']
   },
   {
     id: 'professional',
@@ -99,21 +102,30 @@ const PROFILE_SECTIONS = [
 
 export default function ProfileBuilder() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const fileInputRef = useRef(null);
-  
+
+  // Check if user came from application form
+  const cameFromApplication = location.state?.returnToApplication || false;
+  const jobId = location.state?.jobId || null;
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  
+
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [completedSections, setCompletedSections] = useState(new Set());
-  
+
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
     email: '',
+    profilePictureBase64: '',
+    profilePictureFileType: '',
+    profilePictureFileName: '',
+    profilePictureFileSize: 0,
     currentPosition: '',  // Keep for backward compatibility
     currentCompany: '',  // Keep for backward compatibility
     experience: '',
@@ -160,11 +172,6 @@ export default function ProfileBuilder() {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  useEffect(() => {
-    // Calculate completed sections whenever formData changes
-    updateCompletedSections();
-  }, [formData, resume, formData.skills, formData.preferredLocations, formData.hobbies]);
-
   const loadProfile = async () => {
     try {
       setLoading(true);
@@ -172,11 +179,15 @@ export default function ProfileBuilder() {
       const profile = await getUserProfile();
       if (profile) {
         console.log('Loading profile data from database:', profile);
-        
+
         setFormData({
           fullName: profile.fullName || user?.name || '',
           phoneNumber: profile.phoneNumber || '',
           email: profile.email || user?.email || '',
+          profilePictureBase64: profile.profilePictureBase64 || '',
+          profilePictureFileType: profile.profilePictureFileType || '',
+          profilePictureFileName: profile.profilePictureFileName || '',
+          profilePictureFileSize: profile.profilePictureFileSize || 0,
           currentPosition: profile.currentPosition || '',
           currentCompany: profile.currentCompany || '',
           experience: profile.experience || '',
@@ -201,11 +212,11 @@ export default function ProfileBuilder() {
           hobbies: profile.hobbies || [],
           projects: profile.projects || [],
         });
-        
+
         setSkillsInput('');
         setLocationInput('');
         setHobbiesInput('');
-        
+
         if (profile.resumeBase64 && profile.resumeFileName) {
           const resumeFile = {
             name: profile.resumeFileName,
@@ -216,8 +227,35 @@ export default function ProfileBuilder() {
           };
           setResume(resumeFile);
         }
-        
+
         setProfileLoaded(true);
+
+        // Calculate completion directly from loaded profile data
+        const completed = new Set();
+        PROFILE_SECTIONS.forEach(section => {
+          const isComplete = section.fields.every(field => {
+            if (field === 'resume') {
+              return profile.resumeBase64 && profile.resumeFileName;
+            }
+            if (field === 'profilePicture') {
+              return profile.profilePictureBase64 && profile.profilePictureBase64.length > 0;
+            }
+            const value = profile[field];
+            if (field === 'skills' || field === 'preferredLocations' || field === 'hobbies' ||
+              field === 'professionalExperiences' || field === 'educationEntries' ||
+              field === 'certificationFiles' || field === 'projects') {
+              return Array.isArray(value) && value.length > 0;
+            }
+            if (field === 'willingToRelocate') {
+              return true;
+            }
+            return value !== null && value !== undefined && value !== '';
+          });
+          if (isComplete) {
+            completed.add(section.id);
+          }
+        });
+        setCompletedSections(completed);
       } else {
         setFormData(prev => ({
           ...prev,
@@ -241,9 +279,12 @@ export default function ProfileBuilder() {
     if (fieldName === 'resume') {
       return resume !== null;
     }
-    if (fieldName === 'skills' || fieldName === 'preferredLocations' || fieldName === 'hobbies' || 
-        fieldName === 'professionalExperiences' || fieldName === 'educationEntries' || fieldName === 'certificationFiles' ||
-        fieldName === 'projects') {
+    if (fieldName === 'profilePicture') {
+      return formData.profilePictureBase64 && formData.profilePictureBase64.length > 0;
+    }
+    if (fieldName === 'skills' || fieldName === 'preferredLocations' || fieldName === 'hobbies' ||
+      fieldName === 'professionalExperiences' || fieldName === 'educationEntries' || fieldName === 'certificationFiles' ||
+      fieldName === 'projects') {
       return Array.isArray(value) && value.length > 0;
     }
     if (fieldName === 'willingToRelocate') {
@@ -256,7 +297,21 @@ export default function ProfileBuilder() {
     return section.fields.every(field => isFieldFilled(field));
   };
 
-  const updateCompletedSections = () => {
+  // Auto-save function to save profile to database
+  const autoSaveProfile = async (dataToSave) => {
+    try {
+      console.log('Auto-saving section to database...');
+      await saveUserProfile(dataToSave);
+      console.log('Section auto-saved successfully');
+      return true;
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+      // Don't show error toast for auto-save to avoid interrupting user
+      return false;
+    }
+  };
+
+  const updateCompletedSections = async () => {
     const completed = new Set();
     PROFILE_SECTIONS.forEach(section => {
       if (isSectionComplete(section)) {
@@ -264,6 +319,34 @@ export default function ProfileBuilder() {
       }
     });
     setCompletedSections(completed);
+
+    // Auto-save the current form data to database whenever a section is completed
+    if (formData.fullName.trim()) {
+      const profileData = { ...formData };
+      
+      // Include resume if present
+      if (resume) {
+        if (resume.isFromProfile && resume.base64) {
+          profileData.resumeFileName = resume.name;
+          profileData.resumeFileType = resume.type;
+          profileData.resumeBase64 = resume.base64;
+          profileData.resumeFileSize = resume.size;
+        } else if (resume && resume.size) {
+          // For newly selected files, convert to base64
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            profileData.resumeFileName = resume.name;
+            profileData.resumeFileType = resume.type;
+            profileData.resumeBase64 = e.target.result.split(',')[1];
+            profileData.resumeFileSize = resume.size;
+            await autoSaveProfile(profileData);
+          };
+          reader.readAsDataURL(resume);
+        }
+      } else {
+        await autoSaveProfile(profileData);
+      }
+    }
   };
 
   const calculateProgress = () => {
@@ -460,7 +543,7 @@ export default function ProfileBuilder() {
   // Certification File Handlers
   const handleCertificationFileSelect = async (file, index) => {
     if (!file) return;
-    
+
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File size must be less than 5MB');
       return;
@@ -535,8 +618,8 @@ export default function ProfileBuilder() {
     if (!input || input.trim().length < 2) return [];
     const lowerInput = input.toLowerCase();
     return suggestions
-      .filter(item => 
-        item.toLowerCase().includes(lowerInput) && 
+      .filter(item =>
+        item.toLowerCase().includes(lowerInput) &&
         !existingItems.includes(item)
       )
       .slice(0, 8);
@@ -545,9 +628,9 @@ export default function ProfileBuilder() {
   const handleFileSelect = (file) => {
     if (!file) return;
 
-    const allowedTypes = ['application/pdf', 'application/msword', 
-                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                         'text/plain'];
+    const allowedTypes = ['application/pdf', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'];
     if (!allowedTypes.includes(file.type)) {
       setError('Please upload a PDF, DOC, DOCX, or TXT file');
       return;
@@ -561,7 +644,7 @@ export default function ProfileBuilder() {
 
     setError(null);
     setResume(file);
-    
+
     // Mark resume section as complete
     if (!completedSections.has('resume')) {
       setCompletedSections(prev => new Set([...prev, 'resume']));
@@ -609,7 +692,35 @@ export default function ProfileBuilder() {
     });
   };
 
-  const handleSectionChange = (newIndex) => {
+  const handleSectionChange = async (newIndex) => {
+    // Auto-save before changing section
+    if (formData.fullName.trim()) {
+      const profileData = { ...formData };
+      
+      if (resume) {
+        if (resume.isFromProfile && resume.base64) {
+          profileData.resumeFileName = resume.name;
+          profileData.resumeFileType = resume.type;
+          profileData.resumeBase64 = resume.base64;
+          profileData.resumeFileSize = resume.size;
+        }
+      }
+      
+      await autoSaveProfile(profileData);
+    }
+
+    // Update completion for current section before navigating away
+    const currentSection = PROFILE_SECTIONS[currentSectionIndex];
+    if (isSectionComplete(currentSection)) {
+      setCompletedSections(prev => new Set([...prev, currentSection.id]));
+    } else {
+      setCompletedSections(prev => {
+        const updated = new Set(prev);
+        updated.delete(currentSection.id);
+        return updated;
+      });
+    }
+
     setCurrentSectionIndex(newIndex);
   };
 
@@ -668,14 +779,17 @@ export default function ProfileBuilder() {
       console.log('Projects:', profileData.projects);
       console.log('Preferred Locations:', profileData.preferredLocations);
       console.log('Summary:', profileData.summary);
+      console.log('Profile Picture Base64:', profileData.profilePictureBase64 ? 'Present (' + profileData.profilePictureBase64.length + ' chars)' : 'Not present');
+      console.log('Profile Picture File Name:', profileData.profilePictureFileName);
+      console.log('Profile Picture File Type:', profileData.profilePictureFileType);
       console.log('=========================================');
 
       const savedProfile = await saveUserProfile(profileData);
-      
+
       console.log('Profile saved successfully:', savedProfile);
-      
+
       setSuccess(true);
-      
+
       if (profileLoaded) {
         toast.success('Profile updated successfully! 🎉', {
           position: "top-right",
@@ -687,15 +801,15 @@ export default function ProfileBuilder() {
           autoClose: 3000,
         });
       }
-      
+
       setProfileLoaded(true);
-      
+
       // Reload the profile to ensure we have the latest data
       await loadProfile();
-      
+
       // Dispatch event to notify Header that profile was saved
       window.dispatchEvent(new Event('profileSaved'));
-      
+
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
@@ -707,10 +821,10 @@ export default function ProfileBuilder() {
         status: err.response?.status,
         statusText: err.response?.statusText
       });
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data || 
-                          err.message || 
-                          'Failed to save profile. Please check your connection and try again.';
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data ||
+        err.message ||
+        'Failed to save profile. Please check your connection and try again.';
       setError(errorMessage);
       toast.error(errorMessage, {
         position: "top-right",
@@ -749,13 +863,36 @@ export default function ProfileBuilder() {
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => navigate('/')}
-            className="mb-6 text-gray-500 hover:text-gray-700 font-medium flex items-center gap-2 text-sm transition-colors"
-          >
-            ← Back to Dashboard
-          </button>
-          
+          <div className="mb-6 flex items-center justify-between">
+            {cameFromApplication ? (
+              <button
+                onClick={() => {
+                  // Navigate back to job list with state to indicate return from profile
+                  navigate('/apply-jobs', { state: { returnFromProfile: true } });
+                  toast.info('Returning to application form. Your previous entries will be restored.', {
+                    position: "top-right",
+                    autoClose: 3000,
+                  });
+                }}
+                className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2 text-sm transition-colors"
+              >
+                ← Back to Application Form
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/')}
+                className="text-gray-500 hover:text-gray-700 font-medium flex items-center gap-2 text-sm transition-colors"
+              >
+                ← Back to Dashboard
+              </button>
+            )}
+            {cameFromApplication && (
+              <div className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                💡 Your application form data is saved. You can return anytime!
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-200">
               <span className="text-3xl">{currentSection.icon}</span>
@@ -789,10 +926,10 @@ export default function ProfileBuilder() {
                 <p className="text-xs text-gray-500">Complete</p>
               </div>
             </div>
-            
+
             {/* Progress Bar */}
             <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-indigo-500 rounded-full transition-all duration-500"
                 style={{ width: `${progressPercentage}%` }}
               />
@@ -804,13 +941,12 @@ export default function ProfileBuilder() {
                 <button
                   key={section.id}
                   onClick={() => handleSectionChange(index)}
-                  className={`relative flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-200 ${
-                    index === currentSectionIndex
-                      ? 'bg-indigo-50 border-2 border-indigo-300 text-indigo-700 shadow-sm'
-                      : completedSections.has(section.id)
+                  className={`relative flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-200 ${index === currentSectionIndex
+                    ? 'bg-indigo-50 border-2 border-indigo-300 text-indigo-700 shadow-sm'
+                    : completedSections.has(section.id)
                       ? 'bg-blue-50 border-2 border-blue-200 text-blue-700 hover:bg-blue-100'
                       : 'bg-gray-50 border-2 border-gray-200 text-gray-500 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   <div className="text-xl">{section.icon}</div>
                   <div className="text-xs font-medium text-center leading-tight">{section.title.split(' ')[0]}</div>
@@ -850,11 +986,10 @@ export default function ProfileBuilder() {
           <div className="mb-8 pb-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 rounded-lg flex items-center justify-center text-3xl border ${
-                  isCurrentSectionComplete
-                    ? 'bg-blue-50 border-blue-200'
-                    : 'bg-indigo-50 border-indigo-200'
-                }`}>
+                <div className={`w-16 h-16 rounded-lg flex items-center justify-center text-3xl border ${isCurrentSectionComplete
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-indigo-50 border-indigo-200'
+                  }`}>
                   {currentSection.icon}
                 </div>
                 <div>
@@ -879,12 +1014,102 @@ export default function ProfileBuilder() {
           <div>
             {/* Render section-specific fields */}
             {currentSection.id === 'personal' && (
-              <div className="grid md:grid-cols-2 gap-6 space-y-6">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    Full Name <span className="text-pink-400">*</span>
-                    {isFieldFilled('fullName') && <span className="text-blue-600 text-xs">✓</span>}
+              <div className="space-y-6">
+                {/* Profile Picture Upload */}
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 p-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    Profile Picture
+                    {formData.profilePictureBase64 && <span className="text-blue-600 text-xs">✓</span>}
                   </label>
+                  <div className="flex items-center gap-6">
+                    {/* Profile Picture Preview */}
+                    <div className="flex-shrink-0">
+                      {formData.profilePictureBase64 ? (
+                        <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-300 bg-white flex items-center justify-center">
+                          <img
+                            src={`data:${formData.profilePictureFileType};base64,${formData.profilePictureBase64}`}
+                            alt="Profile Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-24 h-24 rounded-full border-4 border-gray-300 bg-gray-100 flex items-center justify-center">
+                          <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Upload Button */}
+                    <div className="flex-1">
+                      <div className="relative inline-block">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+                              toast.error('Please upload a valid image file (JPEG, PNG, GIF, WebP)');
+                              return;
+                            }
+                            
+                            if (file.size > 2 * 1024 * 1024) {
+                              toast.error('Image size must be less than 2MB');
+                              return;
+                            }
+                            
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              const base64 = event.target.result.split(',')[1];
+                              setFormData(prev => ({
+                                ...prev,
+                                profilePictureBase64: base64,
+                                profilePictureFileType: file.type,
+                                profilePictureFileName: file.name,
+                                profilePictureFileSize: file.size
+                              }));
+                              toast.success('Profile picture uploaded successfully!');
+                              setTimeout(() => updateCompletedSections(), 100);
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                          className="hidden"
+                          id="profilePictureInput"
+                        />
+                        <label
+                          htmlFor="profilePictureInput"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg cursor-pointer transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          Upload Picture
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Recommended: Square image, at least 400x400px, Max 2MB
+                      </p>
+                      {formData.profilePictureFileName && (
+                        <div className="mt-2 p-2 bg-white rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-600">
+                            <span className="font-medium">File:</span> {formData.profilePictureFileName}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Other personal fields */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Full Name <span className="text-pink-400">*</span>
+                      {isFieldFilled('fullName') && <span className="text-blue-600 text-xs">✓</span>}
+                    </label>
                   <input
                     type="text"
                     name="fullName"
@@ -922,6 +1147,7 @@ export default function ProfileBuilder() {
                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
                   />
                 </div>
+              </div>
               </div>
             )}
 
@@ -1026,78 +1252,78 @@ export default function ProfileBuilder() {
                   </div>
                 )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Skills
-                      {isFieldFilled('skills') && <span className="text-blue-600 text-xs">✓</span>}
-                    </label>
-                    {/* Skills Tags */}
-                    {formData.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {formData.skills.map((skill, index) => (
-                          <span
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    Skills
+                    {isFieldFilled('skills') && <span className="text-blue-600 text-xs">✓</span>}
+                  </label>
+                  {/* Skills Tags */}
+                  {formData.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.skills.map((skill, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200"
+                        >
+                          {skill}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkill(skill)}
+                            className="text-blue-600 hover:text-blue-700 focus:outline-none"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Skills Input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={skillsInput}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSkillsInput(value);
+                        setShowSkillsSuggestions(value.trim().length >= 2);
+                      }}
+                      onFocus={() => {
+                        if (skillsInput.trim().length >= 2) {
+                          setShowSkillsSuggestions(true);
+                        }
+                      }}
+                      onBlur={() => setTimeout(() => setShowSkillsSuggestions(false), 200)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && skillsInput.trim()) {
+                          e.preventDefault();
+                          handleAddSkill(skillsInput);
+                        }
+                      }}
+                      placeholder="Type at least 2 letters to see suggestions"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                    />
+                    {showSkillsSuggestions && skillsInput.trim().length >= 2 && getFilteredSuggestions(skillsInput, COMMON_SKILLS, formData.skills).length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {getFilteredSuggestions(skillsInput, COMMON_SKILLS, formData.skills).map((skill, index) => (
+                          <button
                             key={index}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200"
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleAddSkill(skill);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 transition-colors cursor-pointer"
                           >
                             {skill}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSkill(skill)}
-                              className="text-blue-600 hover:text-blue-700 focus:outline-none"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </span>
+                          </button>
                         ))}
                       </div>
                     )}
-                    {/* Skills Input */}
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={skillsInput}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setSkillsInput(value);
-                          setShowSkillsSuggestions(value.trim().length >= 2);
-                        }}
-                        onFocus={() => {
-                          if (skillsInput.trim().length >= 2) {
-                            setShowSkillsSuggestions(true);
-                          }
-                        }}
-                        onBlur={() => setTimeout(() => setShowSkillsSuggestions(false), 200)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && skillsInput.trim()) {
-                            e.preventDefault();
-                            handleAddSkill(skillsInput);
-                          }
-                        }}
-                        placeholder="Type at least 2 letters to see suggestions"
-                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
-                      />
-                      {showSkillsSuggestions && skillsInput.trim().length >= 2 && getFilteredSuggestions(skillsInput, COMMON_SKILLS, formData.skills).length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                          {getFilteredSuggestions(skillsInput, COMMON_SKILLS, formData.skills).map((skill, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                handleAddSkill(skill);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 transition-colors cursor-pointer"
-                            >
-                              {skill}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs text-gray-400">Type at least 2 letters and click a suggestion or press Enter to add</p>
                   </div>
+                  <p className="mt-1 text-xs text-gray-400">Type at least 2 letters and click a suggestion or press Enter to add</p>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -1788,11 +2014,10 @@ export default function ProfileBuilder() {
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
-                      isDragging
-                        ? 'border-purple-300 bg-purple-50'
-                        : 'border-gray-300 hover:border-purple-200 hover:bg-purple-50'
-                    }`}
+                    className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${isDragging
+                      ? 'border-purple-300 bg-purple-50'
+                      : 'border-gray-300 hover:border-purple-200 hover:bg-purple-50'
+                      }`}
                   >
                     <input
                       ref={fileInputRef}
