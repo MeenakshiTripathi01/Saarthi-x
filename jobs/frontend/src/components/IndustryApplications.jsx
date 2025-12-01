@@ -888,6 +888,29 @@ export default function IndustryApplications() {
 
                   return (
                     <>
+                      {/* Profile Picture */}
+                      {selectedProfile.profilePictureBase64 && (
+                        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 shadow-sm p-6">
+                          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-indigo-200">
+                            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <h2 className="text-xl font-semibold text-gray-800">Profile Picture</h2>
+                          </div>
+                          <div className="flex justify-center">
+                            <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-indigo-300 bg-white shadow-md">
+                              <img
+                                src={`data:${selectedProfile.profilePictureFileType};base64,${selectedProfile.profilePictureBase64}`}
+                                alt={selectedProfile.fullName || 'Applicant Profile'}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Personal Information */}
                       {(hasValue(selectedProfile.fullName) || hasValue(selectedProfile.email) || hasValue(selectedProfile.phoneNumber)) && (
                         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">

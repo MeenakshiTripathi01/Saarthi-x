@@ -297,7 +297,21 @@ export default function ProfileBuilder() {
     return section.fields.every(field => isFieldFilled(field));
   };
 
-  const updateCompletedSections = () => {
+  // Auto-save function to save profile to database
+  const autoSaveProfile = async (dataToSave) => {
+    try {
+      console.log('Auto-saving section to database...');
+      await saveUserProfile(dataToSave);
+      console.log('Section auto-saved successfully');
+      return true;
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+      // Don't show error toast for auto-save to avoid interrupting user
+      return false;
+    }
+  };
+
+  const updateCompletedSections = async () => {
     const completed = new Set();
     PROFILE_SECTIONS.forEach(section => {
       if (isSectionComplete(section)) {
@@ -305,6 +319,34 @@ export default function ProfileBuilder() {
       }
     });
     setCompletedSections(completed);
+
+    // Auto-save the current form data to database whenever a section is completed
+    if (formData.fullName.trim()) {
+      const profileData = { ...formData };
+      
+      // Include resume if present
+      if (resume) {
+        if (resume.isFromProfile && resume.base64) {
+          profileData.resumeFileName = resume.name;
+          profileData.resumeFileType = resume.type;
+          profileData.resumeBase64 = resume.base64;
+          profileData.resumeFileSize = resume.size;
+        } else if (resume && resume.size) {
+          // For newly selected files, convert to base64
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            profileData.resumeFileName = resume.name;
+            profileData.resumeFileType = resume.type;
+            profileData.resumeBase64 = e.target.result.split(',')[1];
+            profileData.resumeFileSize = resume.size;
+            await autoSaveProfile(profileData);
+          };
+          reader.readAsDataURL(resume);
+        }
+      } else {
+        await autoSaveProfile(profileData);
+      }
+    }
   };
 
   const calculateProgress = () => {
@@ -650,7 +692,23 @@ export default function ProfileBuilder() {
     });
   };
 
-  const handleSectionChange = (newIndex) => {
+  const handleSectionChange = async (newIndex) => {
+    // Auto-save before changing section
+    if (formData.fullName.trim()) {
+      const profileData = { ...formData };
+      
+      if (resume) {
+        if (resume.isFromProfile && resume.base64) {
+          profileData.resumeFileName = resume.name;
+          profileData.resumeFileType = resume.type;
+          profileData.resumeBase64 = resume.base64;
+          profileData.resumeFileSize = resume.size;
+        }
+      }
+      
+      await autoSaveProfile(profileData);
+    }
+
     // Update completion for current section before navigating away
     const currentSection = PROFILE_SECTIONS[currentSectionIndex];
     if (isSectionComplete(currentSection)) {
@@ -721,6 +779,9 @@ export default function ProfileBuilder() {
       console.log('Projects:', profileData.projects);
       console.log('Preferred Locations:', profileData.preferredLocations);
       console.log('Summary:', profileData.summary);
+      console.log('Profile Picture Base64:', profileData.profilePictureBase64 ? 'Present (' + profileData.profilePictureBase64.length + ' chars)' : 'Not present');
+      console.log('Profile Picture File Name:', profileData.profilePictureFileName);
+      console.log('Profile Picture File Type:', profileData.profilePictureFileType);
       console.log('=========================================');
 
       const savedProfile = await saveUserProfile(profileData);
