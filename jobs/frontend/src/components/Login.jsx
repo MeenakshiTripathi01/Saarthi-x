@@ -119,7 +119,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 flex items-center justify-center px-4 py-12">
-      {/* DEBUG PANEL - REMOVE LATER */}
+      {/* DEBUG PANEL - REMOVE LATER
       <div className="fixed top-4 right-4 bg-yellow-100 border-2 border-yellow-400 p-3 rounded text-xs max-w-xs z-50">
         <p className="font-bold mb-1">🔍 Debug Info</p>
         <p>Auth Loading: {authLoading ? 'YES' : 'NO'}</p>
@@ -128,7 +128,7 @@ export default function Login() {
         <p>Selected Role: {selectedRole || 'NONE'}</p>
         <p>Step: {step}</p>
         <p>Has Error: {error ? 'YES' : 'NO'}</p>
-      </div>
+      </div> */}
 
       <div className="w-full max-w-2xl">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 md:p-12">
