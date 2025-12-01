@@ -1282,7 +1282,7 @@ export default function JobList() {
                             </svg>
                             Apply on Company Website
                           </button>
-                          {jobDetails?.job_apply_link && (
+                          {/* {jobDetails?.job_apply_link && (
                             <a
                               href={jobDetails.job_apply_link}
                               target="_blank"
@@ -1295,7 +1295,7 @@ export default function JobList() {
                               </svg>
                               View Original Posting
                             </a>
-                          )}
+                          )} */}
                         </>
                       ) : (
                         <button

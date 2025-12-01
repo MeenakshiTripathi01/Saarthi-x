@@ -115,9 +115,9 @@ public class SecurityConfig {
                 response.sendRedirect(redirectUrl);
             } else {
                 // EXISTING USER - has role saved in database
-                // Redirect to home - AuthContext will fetch role via /api/user/me
-                // User will be automatically directed based on their role
-                response.sendRedirect("http://localhost:5173/");
+                // Redirect to RoleSelection so role mismatch check can happen
+                // RoleSelection will read loginIntent from localStorage and compare
+                response.sendRedirect("http://localhost:5173/choose-role");
             }
         };
     }

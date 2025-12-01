@@ -39,7 +39,7 @@ export default function Dashboard() {
       } else if (redirectRoute === 'post-jobs' && user.userType === 'INDUSTRY') {
         localStorage.removeItem('redirectRoute');
         localStorage.removeItem('loginIntent');
-        navigate('/post-jobs');
+        navigate('/manage-applications');
         return;
       } else if (redirectRoute === 'role-selection') {
         // Route to role selection page (for editing role)

@@ -24,6 +24,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/login/:role" element={<Login />} />
             <Route path="/choose-role" element={<RoleSelection />} />
             <Route path="/apply-jobs" element={<JobList />} />
             <Route path="/post-jobs" element={<JobBuilder />} />
