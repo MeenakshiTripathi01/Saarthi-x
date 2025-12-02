@@ -115,8 +115,8 @@ public class SecurityConfig {
                 response.sendRedirect(redirectUrl);
             } else {
                 // EXISTING USER - has role saved in database
-                // Redirect to RoleSelection so role mismatch check can happen
-                // RoleSelection will read loginIntent from localStorage and compare
+                // Still redirect to choose-role but they will be redirected based on their role
+                // The RoleSelection component will check currentUser?.userType from AuthContext
                 response.sendRedirect("http://localhost:5173/choose-role");
             }
         };
