@@ -126,7 +126,7 @@ export default function RoleSelection() {
     if (currentUser?.userType === 'INDUSTRY' && !isNewUser) {
       // Existing industry user returning = just coming back, redirect to post-jobs
       console.log('[ROLE_SELECTION] Existing Industry user - redirecting to post-jobs');
-      navigate('/post-jobs');
+      navigate('/manage-applications');
       return;
     }
   }, [mismatchChecked, error, searchParams, currentUser, navigate]);

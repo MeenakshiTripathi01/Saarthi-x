@@ -141,7 +141,7 @@ export default function Dashboard() {
                   loginWithGoogle();
                 } else if (isIndustry) {
                   // Already logged in as INDUSTRY - go to posting form
-                  navigate("/post-jobs");
+                  navigate("/manage-applications");
                 }
               }}
               className="group cursor-pointer animate-fadeIn"
