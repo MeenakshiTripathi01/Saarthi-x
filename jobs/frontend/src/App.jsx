@@ -14,6 +14,8 @@ import EditProfile from './components/EditProfile';
 import ProfileBuilder from './components/ProfileBuilder';
 import ViewProfile from './components/ViewProfile';
 import IndustryApplications from './components/IndustryApplications';
+import IndustryHackathons from './components/IndustryHackathons';
+import ApplicantHackathons from './components/ApplicantHackathons';
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
             <Route path="/build-profile" element={<ProfileBuilder />} />
             <Route path="/view-profile" element={<ViewProfile />} />
             <Route path="/manage-applications" element={<IndustryApplications />} />
+            <Route path="/manage-hackathons" element={<IndustryHackathons />} />
+            <Route path="/browse-hackathons" element={<ApplicantHackathons />} />
           </Routes>
           <ToastContainer
             position="top-right"

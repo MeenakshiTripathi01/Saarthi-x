@@ -23,6 +23,7 @@ public class Job {
     private Integer jobMinSalary;        // Minimum salary
     private Integer jobMaxSalary;        // Maximum salary
     private String jobSalaryCurrency;    // Salary currency
+    private Integer yearsOfExperience;   // Required years of experience for this job
     private LocalDateTime createdAt = LocalDateTime.now();
     private boolean active = true;
 
@@ -71,4 +72,7 @@ public class Job {
 
     public String getJobSalaryCurrency() { return jobSalaryCurrency; }
     public void setJobSalaryCurrency(String jobSalaryCurrency) { this.jobSalaryCurrency = jobSalaryCurrency; }
+
+    public Integer getYearsOfExperience() { return yearsOfExperience; }
+    public void setYearsOfExperience(Integer yearsOfExperience) { this.yearsOfExperience = yearsOfExperience; }
 }

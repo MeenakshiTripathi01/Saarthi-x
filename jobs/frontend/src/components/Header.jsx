@@ -98,16 +98,26 @@ export default function Header() {
                   My Posted Jobs
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gray-900 group-hover:w-full transition-all duration-300"></span>
                 </Link>
+                <Link to="/manage-hackathons" className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200 text-sm relative group">
+                  Hackathons
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gray-900 group-hover:w-full transition-all duration-300"></span>
+                </Link>
                 <Link to="/post-jobs" className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200 text-sm relative group">
                   Post a Job
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gray-900 group-hover:w-full transition-all duration-300"></span>
                 </Link>
               </>
             ) : (
-              <Link to="/job-tracker" className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200 text-sm relative group">
-                My Applications
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gray-900 group-hover:w-full transition-all duration-300"></span>
-              </Link>
+              <>
+                <Link to="/job-tracker" className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200 text-sm relative group">
+                  My Applications
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gray-900 group-hover:w-full transition-all duration-300"></span>
+                </Link>
+                <Link to="/browse-hackathons" className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200 text-sm relative group">
+                  Hackathons
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gray-900 group-hover:w-full transition-all duration-300"></span>
+                </Link>
+              </>
             )}
           </div>
           

@@ -352,3 +352,122 @@ export const getRecommendedJobs = async () => {
     throw error;
   }
 };
+
+// Hackathon API functions
+export const getAllHackathons = async () => {
+  try {
+    const response = await axios.get(
+      'http://localhost:8080/api/hackathons',
+      {
+        withCredentials: true,
+      }
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Error fetching all hackathons:', error);
+    throw error;
+  }
+};
+
+export const getMyHackathons = async () => {
+  try {
+    const response = await axios.get(
+      'http://localhost:8080/api/hackathons/my-hackathons',
+      {
+        withCredentials: true,
+      }
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Error fetching my hackathons:', error);
+    throw error;
+  }
+};
+
+export const createHackathon = async (hackathonData) => {
+  try {
+    const response = await axios.post(
+      'http://localhost:8080/api/hackathons',
+      hackathonData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error creating hackathon:', error);
+    throw error;
+  }
+};
+
+export const deleteHackathon = async (hackathonId) => {
+  try {
+    const response = await axios.delete(
+      `http://localhost:8080/api/hackathons/${hackathonId}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting hackathon:', error);
+    throw error;
+  }
+};
+
+export const updateHackathon = async (hackathonId, hackathonData) => {
+  try {
+    const response = await axios.put(
+      `http://localhost:8080/api/hackathons/${hackathonId}`,
+      hackathonData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating hackathon:', error);
+    throw error;
+  }
+};
+
+// Hackathon Application API functions (for Applicants)
+export const applyForHackathon = async (hackathonId, applicationData) => {
+  try {
+    const response = await axios.post(
+      `http://localhost:8080/api/hackathon-applications/${hackathonId}/apply`,
+      applicationData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error applying for hackathon:', error);
+    throw error;
+  }
+};
+
+export const getMyHackathonApplications = async () => {
+  try {
+    const response = await axios.get(
+      'http://localhost:8080/api/hackathon-applications/my-applications',
+      {
+        withCredentials: true,
+      }
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Error fetching my hackathon applications:', error);
+    throw error;
+  }
+};

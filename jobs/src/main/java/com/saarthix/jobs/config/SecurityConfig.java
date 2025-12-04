@@ -43,6 +43,9 @@ public class SecurityConfig {
                 // ✅ Authorization rules
                 .authorizeHttpRequests(auth -> auth
         // ✅ Allow GET & POST job APIs without Google login
+        .requestMatchers("/api/hackathons/**").permitAll()
+.requestMatchers("/api/hackathons/apply/**").permitAll()
+
         .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
         .requestMatchers(HttpMethod.POST, "/api/jobs/**").permitAll()
         
@@ -114,11 +117,13 @@ public class SecurityConfig {
                 );
                 response.sendRedirect(redirectUrl);
             } else {
-                // EXISTING USER - has role saved in database
-                // Still redirect to choose-role but they will be redirected based on their role
-                // The RoleSelection component will check currentUser?.userType from AuthContext
-                response.sendRedirect("http://localhost:5173/choose-role");
-            }
+    // Existing user -> attach userType into session
+    request.getSession().setAttribute("USER_TYPE", existingUser.getUserType());
+    request.getSession().setAttribute("USER_ID", existingUser.getId());
+
+    response.sendRedirect("http://localhost:5173/choose-role");
+}
+
         };
     }
 

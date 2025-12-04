@@ -17,6 +17,7 @@ export default function PostJobs() {
     employmentType: "",
     minSalary: "",
     maxSalary: "",
+    yearsOfExperience: "",
     skills: "",
   });
   const [submitting, setSubmitting] = useState(false);
@@ -109,6 +110,7 @@ export default function PostJobs() {
         jobMinSalary: formData.minSalary ? parseInt(formData.minSalary) : null,
         jobMaxSalary: formData.maxSalary ? parseInt(formData.maxSalary) : null,
         jobSalaryCurrency: "USD", // Default currency
+        yearsOfExperience: formData.yearsOfExperience ? parseInt(formData.yearsOfExperience) : null,
         skills: formData.skills
           ? formData.skills.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
           : [],
@@ -146,6 +148,7 @@ export default function PostJobs() {
         employmentType: "",
         minSalary: "",
         maxSalary: "",
+        yearsOfExperience: "",
         skills: "",
       });
 
@@ -278,15 +281,26 @@ export default function PostJobs() {
             >
               ← Back to Dashboard
             </button>
-            <button
-              onClick={() => navigate("/manage-applications")}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-semibold transition-colors duration-200 text-sm flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Manage Applications
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigate("/manage-hackathons")}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors duration-200 text-sm flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Hackathons
+              </button>
+              <button
+                onClick={() => navigate("/manage-applications")}
+                className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-semibold transition-colors duration-200 text-sm flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Manage Applications
+              </button>
+            </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Create Job Posting</h1>
           <p className="mt-2 text-gray-600 text-sm">
@@ -387,6 +401,26 @@ export default function PostJobs() {
                 <option value="Internship">Internship</option>
                 <option value="Freelance">Freelance</option>
               </select>
+            </div>
+
+            {/* Years of Experience Required */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Required Years of Experience
+              </label>
+              <input
+                type="number"
+                name="yearsOfExperience"
+                value={formData.yearsOfExperience}
+                onChange={handleChange}
+                placeholder="e.g., 3"
+                min="0"
+                max="100"
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Specify the minimum years of experience required for this position
+              </p>
             </div>
 
             {/* Salary Range */}

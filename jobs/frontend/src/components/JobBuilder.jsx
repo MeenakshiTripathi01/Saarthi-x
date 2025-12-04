@@ -19,6 +19,7 @@ const JOB_TABS = [
   { id: 'basic', label: 'Basic Info', icon: '📋', required: true },
   { id: 'details', label: 'Job Details', icon: '📝', required: true },
   { id: 'requirements', label: 'Requirements', icon: '🎯', required: false },
+  { id: 'yearsOfExperience', label: 'Experience', icon: '📊', required: true },
   { id: 'compensation', label: 'Compensation', icon: '💰', required: false }
 ];
 
@@ -43,6 +44,7 @@ export default function JobBuilder() {
     industry: '',
     employmentType: '',
     skills: [],
+    yearsOfExperience: '',
     minSalary: '',
     maxSalary: '',
     jobSalaryCurrency: 'USD',
@@ -98,6 +100,7 @@ export default function JobBuilder() {
           industry: job.industry || '',
           employmentType: job.employmentType || '',
           skills: job.skills || [],
+          yearsOfExperience: job.yearsOfExperience ? job.yearsOfExperience.toString() : '',
           minSalary: job.jobMinSalary ? job.jobMinSalary.toString() : '',
           maxSalary: job.jobMaxSalary ? job.jobMaxSalary.toString() : '',
           jobSalaryCurrency: job.jobSalaryCurrency || 'USD',
@@ -134,6 +137,8 @@ export default function JobBuilder() {
         return isFieldFilled('description') && isFieldFilled('industry') && isFieldFilled('employmentType');
       case 'requirements':
         return isFieldFilled('skills');
+      case 'yearsOfExperience':
+        return isFieldFilled('yearsOfExperience');
       case 'compensation':
         return isFieldFilled('minSalary') && isFieldFilled('maxSalary');
       default:
@@ -236,6 +241,7 @@ export default function JobBuilder() {
         employmentType: formData.employmentType || '',
         jobMinSalary: formData.minSalary ? parseInt(formData.minSalary) : null,
         jobMaxSalary: formData.maxSalary ? parseInt(formData.maxSalary) : null,
+        yearsOfExperience: formData.yearsOfExperience ? parseInt(formData.yearsOfExperience) : null,
         jobSalaryCurrency: formData.jobSalaryCurrency || 'USD',
         skills: formData.skills || [],
         active: false // Save as draft (inactive)
@@ -295,6 +301,7 @@ export default function JobBuilder() {
     if (!formData.description) missingFields.push('Job Description');
     if (!formData.industry) missingFields.push('Industry');
     if (!formData.employmentType) missingFields.push('Employment Type');
+    if (!formData.yearsOfExperience && formData.yearsOfExperience !== 0) missingFields.push('Years of Experience');
 
     // Validate salary range if both are provided
     if (formData.minSalary && formData.maxSalary) {
@@ -322,6 +329,8 @@ export default function JobBuilder() {
         setActiveTab('basic');
       } else if (!formData.description || !formData.industry || !formData.employmentType) {
         setActiveTab('details');
+      } else if (!formData.yearsOfExperience && formData.yearsOfExperience !== 0) {
+        setActiveTab('yearsOfExperience');
       }
       return;
     }
@@ -340,6 +349,7 @@ export default function JobBuilder() {
         employmentType: formData.employmentType,
         jobMinSalary: formData.minSalary ? parseInt(formData.minSalary) : null,
         jobMaxSalary: formData.maxSalary ? parseInt(formData.maxSalary) : null,
+        yearsOfExperience: formData.yearsOfExperience ? parseInt(formData.yearsOfExperience) : null,
         jobSalaryCurrency: formData.jobSalaryCurrency || 'USD',
         skills: formData.skills || [],
         active: true // Post as active job
@@ -710,6 +720,34 @@ export default function JobBuilder() {
                     No skills added yet. Start typing to add skills.
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+          {/* Years of Experience Tab */}
+          {activeTab === 'yearsOfExperience' && (
+            <div className="space-y-6">
+              <div className="mb-6 pb-4 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800">Years of Experience</h2>
+                <p className="text-sm text-gray-500 mt-1">Specify the minimum years of experience needed for this position</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Minimum Years of Experience Required <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="yearsOfExperience"
+                  value={formData.yearsOfExperience}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 3"
+                  min="0"
+                  max="100"
+                  required
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  Enter the minimum years of experience candidates should have. This will be used to match candidates with their experience level.
+                </p>
               </div>
             </div>
           )}

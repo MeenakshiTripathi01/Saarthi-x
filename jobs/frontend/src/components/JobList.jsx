@@ -1157,6 +1157,26 @@ export default function JobList() {
                       </div>
                     )}
 
+                    {/* Years of Experience Required */}
+                    {(jobDetails?.years_of_experience || selectedJob.raw?.yearsOfExperience) && (
+                      <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Experience Required</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {(() => {
+                              const yearsRequired = jobDetails?.years_of_experience || selectedJob.raw?.yearsOfExperience;
+                              return yearsRequired 
+                                ? `${yearsRequired} year${yearsRequired !== 1 ? 's' : ''} of experience` 
+                                : "Experience not specified";
+                            })()}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Posted Date */}
                     {(jobDetails?.job_posted_at_datetime_utc || selectedJob.raw?.createdAt) && (
                       <div className="flex items-start gap-3">
@@ -1227,6 +1247,16 @@ export default function JobList() {
                           </div>
                         )}
                         
+                        {/* Years of Experience */}
+                        {userProfile?.experience && (
+                          <div className="pt-2 border-t border-indigo-200">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Your Experience:</p>
+                            <div className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+                              📊 {userProfile.experience} years
+                            </div>
+                          </div>
+                        )}
+
                         {/* Work Preference */}
                         {userProfile?.workPreference && (
                           <div className="pt-2 border-t border-indigo-200">
@@ -1292,6 +1322,30 @@ export default function JobList() {
                         <h3 className="text-lg font-bold text-gray-900">What You're Missing</h3>
                       </div>
                       <div className="space-y-3">
+                        {/* Experience Mismatch */}
+                        {selectedJob?.raw?.yearsOfExperience && (() => {
+                          const userExpStr = userProfile?.experience || "0";
+                          const userExp = parseInt(userExpStr) || 0;
+                          const requiredExp = selectedJob.raw.yearsOfExperience || 0;
+                          
+                          if (userExp < requiredExp) {
+                            return (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-700 mb-2">Experience Gap:</p>
+                                <div className="flex flex-wrap gap-2">
+                                  <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 border-2 border-red-300 text-red-700 shadow-sm">
+                                    <svg className="w-4 h-4 mr-1.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    You have {userExp} year{userExp !== 1 ? 's' : ''}, need {requiredExp} year{requiredExp !== 1 ? 's' : ''} ({requiredExp - userExp} year{(requiredExp - userExp) !== 1 ? 's' : ''} short)
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                        
                         {/* Missing Skills */}
                         {((jobDetails?.skills || selectedJob.raw?.skills) || []).length > 0 && (
                           <div>
