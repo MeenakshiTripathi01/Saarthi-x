@@ -471,3 +471,17 @@ export const getMyHackathonApplications = async () => {
     throw error;
   }
 };
+export const getHackathonById = async (hackathonId) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8080/api/hackathons/${hackathonId}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching hackathon by ID:', error);
+    throw error;
+  }
+};

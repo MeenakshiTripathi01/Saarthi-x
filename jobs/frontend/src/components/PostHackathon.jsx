@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import { createHackathon } from '../api/jobApi';
+import { createHackathon, getHackathonById, updateHackathon } from '../api/jobApi';
 
 // Tab-based sections for hackathon - matching the image exactly
 const HACKATHON_TABS = [
@@ -17,6 +17,8 @@ const HACKATHON_TABS = [
 
 export default function PostHackathon() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const editId = searchParams.get('edit');
     const { user, isAuthenticated, loading: authLoading, isIndustry } = useAuth();
 
     const [loading, setLoading] = useState(true);
@@ -60,7 +62,52 @@ export default function PostHackathon() {
         prize: '',
     });
 
+    // Load hackathon data if editing
     useEffect(() => {
+        const loadHackathonData = async () => {
+            if (editId && isAuthenticated && isIndustry) {
+                try {
+                    setLoading(true);
+                    const hackathon = await getHackathonById(editId);
+
+                    // Set form data
+                    setFormData({
+                        title: hackathon.title || '',
+                        company: hackathon.company || '',
+                        description: hackathon.description || '',
+                        problemStatement: hackathon.problemStatement || '',
+                        eligibility: hackathon.eligibility || '',
+                        startDate: hackathon.startDate || '',
+                        endDate: hackathon.endDate || '',
+                        mode: hackathon.mode || '',
+                        location: hackathon.location || '',
+                        reportingDate: hackathon.reportingDate || '',
+                        submissionUrl: hackathon.submissionUrl || '',
+                        submissionGuidelines: hackathon.submissionGuidelines || '',
+                        teamSize: hackathon.teamSize || '',
+                        maxTeams: hackathon.maxTeams || '',
+                        prize: hackathon.prize || '',
+                    });
+
+                    // Set skills
+                    if (hackathon.skills && Array.isArray(hackathon.skills)) {
+                        setSkills(hackathon.skills);
+                    }
+
+                    // Set phases
+                    if (hackathon.phases && Array.isArray(hackathon.phases) && hackathon.phases.length > 0) {
+                        setPhases(hackathon.phases);
+                    }
+
+                    setLoading(false);
+                } catch (err) {
+                    console.error('Error loading hackathon:', err);
+                    toast.error('Failed to load hackathon data');
+                    navigate('/manage-hackathons');
+                }
+            }
+        };
+
         if (!authLoading) {
             if (!isAuthenticated) {
                 navigate('/');
@@ -71,9 +118,14 @@ export default function PostHackathon() {
                 navigate('/');
                 return;
             }
-            setLoading(false);
+
+            if (editId) {
+                loadHackathonData();
+            } else {
+                setLoading(false);
+            }
         }
-    }, [isAuthenticated, authLoading, isIndustry, navigate]);
+    }, [isAuthenticated, authLoading, isIndustry, navigate, editId]);
 
     useEffect(() => {
         updateCompletedTabs();
@@ -225,28 +277,40 @@ export default function PostHackathon() {
                 startDate: formData.startDate,
                 endDate: formData.endDate,
                 mode: formData.mode,
+                location: formData.location || null,
+                reportingDate: formData.reportingDate || null,
                 submissionGuidelines: formData.submissionGuidelines,
                 maxTeams: formData.maxTeams ? parseInt(formData.maxTeams) : null,
             };
 
-            const response = await createHackathon(hackathonData);
-
-            console.log('Hackathon posted successfully:', response);
-
-            toast.success('Hackathon posted successfully!', {
-                position: "top-right",
-                autoClose: 3000,
-            });
+            let response;
+            if (editId) {
+                // Update existing hackathon
+                response = await updateHackathon(editId, hackathonData);
+                console.log('Hackathon updated successfully:', response);
+                toast.success('Hackathon updated successfully!', {
+                    position: "top-right",
+                    autoClose: 3000,
+                });
+            } else {
+                // Create new hackathon
+                response = await createHackathon(hackathonData);
+                console.log('Hackathon posted successfully:', response);
+                toast.success('Hackathon posted successfully!', {
+                    position: "top-right",
+                    autoClose: 3000,
+                });
+            }
 
             setTimeout(() => {
                 navigate('/manage-hackathons');
             }, 2000);
         } catch (err) {
-            console.error('Error posting hackathon:', err);
+            console.error(editId ? 'Error updating hackathon:' : 'Error posting hackathon:', err);
             const errorMessage = err.response?.data?.message ||
                 err.response?.data ||
                 err.message ||
-                'Failed to post hackathon. Please check your connection and try again.';
+                `Failed to ${editId ? 'update' : 'post'} hackathon. Please check your connection and try again.`;
             setError(errorMessage);
             toast.error('Please fill in all required details about the hackathon', {
                 position: "top-right",
@@ -288,10 +352,10 @@ export default function PostHackathon() {
 
                     <div className="mb-6">
                         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-2">
-                            Create Hackathon
+                            {editId ? 'Edit Hackathon' : 'Create Hackathon'}
                         </h1>
                         <p className="text-gray-600 text-base">
-                            Fill out the form to post a new hackathon
+                            {editId ? 'Update the hackathon details' : 'Fill out the form to post a new hackathon'}
                         </p>
                     </div>
 
@@ -299,11 +363,11 @@ export default function PostHackathon() {
                     <div className="mb-6">
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-gray-700">Progress</span>
-                            <span className="text-sm font-medium text-purple-600">{progressPercentage}%</span>
+                            <span className="text-sm font-medium text-blue-600">{progressPercentage}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
-                                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                                 style={{ width: `${progressPercentage}%` }}
                             ></div>
                         </div>
@@ -340,7 +404,7 @@ export default function PostHackathon() {
                                     type="button"
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex-1 min-w-[140px] px-4 py-4 text-xs font-medium transition-all duration-200 relative border-b-2 ${isActive
-                                        ? 'text-purple-700 border-purple-600 bg-purple-50'
+                                        ? 'text-blue-700 border-blue-600 bg-blue-50'
                                         : 'text-gray-600 border-transparent hover:text-gray-900 hover:bg-gray-50'
                                         }`}
                                 >
@@ -394,7 +458,7 @@ export default function PostHackathon() {
                                     onChange={handleInputChange}
                                     placeholder="e.g., AI Innovation Hackathon 2024"
                                     required
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                 />
                             </div>
 
@@ -409,7 +473,7 @@ export default function PostHackathon() {
                                     onChange={handleInputChange}
                                     placeholder="e.g., Tech Company Inc."
                                     required
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                 />
                             </div>
 
@@ -424,7 +488,7 @@ export default function PostHackathon() {
                                     placeholder="Describe the hackathon, its themes, goals, and what participants will be doing..."
                                     rows="6"
                                     required
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                 />
                             </div>
                         </div>
@@ -449,7 +513,7 @@ export default function PostHackathon() {
                                     placeholder="Describe the problem participants will solve..."
                                     rows="6"
                                     required
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                 />
                             </div>
 
@@ -463,7 +527,7 @@ export default function PostHackathon() {
                                     onChange={(e) => setSkillInput(e.target.value)}
                                     onKeyPress={handleAddSkill}
                                     placeholder="Type a skill and press Enter (e.g., Python, Machine Learning)"
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                 />
                                 <p className="mt-1 text-xs text-gray-500">Press Enter to add each skill</p>
 
@@ -473,13 +537,13 @@ export default function PostHackathon() {
                                         {skills.map((skill, index) => (
                                             <span
                                                 key={index}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium border border-purple-200"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200"
                                             >
                                                 {skill}
                                                 <button
                                                     type="button"
                                                     onClick={() => handleRemoveSkill(skill)}
-                                                    className="text-purple-600 hover:text-purple-800 focus:outline-none"
+                                                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -530,7 +594,7 @@ export default function PostHackathon() {
                                                     onChange={(e) => handlePhaseChange(phase.id, 'name', e.target.value)}
                                                     placeholder="e.g., Ideation, Development, Submission"
                                                     required
-                                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                                 />
                                             </div>
 
@@ -543,7 +607,7 @@ export default function PostHackathon() {
                                                     value={phase.deadline}
                                                     onChange={(e) => handlePhaseChange(phase.id, 'deadline', e.target.value)}
                                                     required
-                                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                                 />
                                             </div>
                                         </div>
@@ -558,7 +622,7 @@ export default function PostHackathon() {
                                                 placeholder="Describe what participants need to do in this phase..."
                                                 rows="3"
                                                 required
-                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none"
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                             />
                                         </div>
 
@@ -569,7 +633,7 @@ export default function PostHackathon() {
                                             <select
                                                 value={phase.uploadFormat}
                                                 onChange={(e) => handlePhaseChange(phase.id, 'uploadFormat', e.target.value)}
-                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                             >
                                                 <option value="document">Document (PDF, DOC)</option>
                                                 <option value="video">Video (MP4, AVI)</option>
@@ -586,7 +650,7 @@ export default function PostHackathon() {
                                 <button
                                     type="button"
                                     onClick={handleAddPhase}
-                                    className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-purple-400 hover:text-purple-600 transition-colors flex items-center justify-center gap-2 font-medium"
+                                    className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors flex items-center justify-center gap-2 font-medium"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -615,7 +679,7 @@ export default function PostHackathon() {
                                     onChange={handleInputChange}
                                     placeholder="Describe who can participate (e.g., students, professionals, age restrictions, etc.)..."
                                     rows="6"
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                 />
                             </div>
                         </div>
@@ -640,7 +704,7 @@ export default function PostHackathon() {
                                         value={formData.startDate}
                                         onChange={handleInputChange}
                                         required
-                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />
                                 </div>
 
@@ -654,7 +718,7 @@ export default function PostHackathon() {
                                         value={formData.endDate}
                                         onChange={handleInputChange}
                                         required
-                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />
                                 </div>
                             </div>
@@ -668,7 +732,7 @@ export default function PostHackathon() {
                                     value={formData.mode}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                 >
                                     <option value="">Select Mode</option>
                                     <option value="Online">Online</option>
@@ -679,8 +743,8 @@ export default function PostHackathon() {
 
                             {/* Conditional fields for Hybrid/Offline mode */}
                             {(formData.mode === 'Hybrid' || formData.mode === 'Offline') && (
-                                <div className="space-y-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                                    <h3 className="text-sm font-semibold text-purple-900">Physical Venue Details</h3>
+                                <div className="space-y-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <h3 className="text-sm font-semibold text-blue-900">Physical Venue Details</h3>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -693,7 +757,7 @@ export default function PostHackathon() {
                                             onChange={handleInputChange}
                                             placeholder="e.g., Tech Hub, 123 Innovation Street, Bangalore"
                                             required={formData.mode === 'Hybrid' || formData.mode === 'Offline'}
-                                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                         />
                                         <p className="mt-1 text-xs text-gray-500">
                                             Provide the complete address where participants need to report
@@ -710,7 +774,7 @@ export default function PostHackathon() {
                                             value={formData.reportingDate}
                                             onChange={handleInputChange}
                                             required={formData.mode === 'Hybrid' || formData.mode === 'Offline'}
-                                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                         />
                                         <p className="mt-1 text-xs text-gray-500">
                                             When should participants arrive at the venue?
@@ -739,7 +803,7 @@ export default function PostHackathon() {
                                     value={formData.submissionUrl}
                                     onChange={handleInputChange}
                                     placeholder="https://hackathon.example.com/submit"
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                 />
                             </div>
 
@@ -753,7 +817,7 @@ export default function PostHackathon() {
                                     onChange={handleInputChange}
                                     placeholder="Describe what participants need to submit and how..."
                                     rows="6"
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                 />
                             </div>
                         </div>
@@ -780,7 +844,7 @@ export default function PostHackathon() {
                                         placeholder="e.g., 5"
                                         min="1"
                                         max="20"
-                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />
                                 </div>
 
@@ -795,7 +859,7 @@ export default function PostHackathon() {
                                         onChange={handleInputChange}
                                         placeholder="e.g., 100"
                                         min="1"
-                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />
                                 </div>
                             </div>
@@ -810,7 +874,7 @@ export default function PostHackathon() {
                                     onChange={handleInputChange}
                                     placeholder="Describe the prizes (e.g., 1st Prize: $10,000, 2nd Prize: $5,000, etc.)..."
                                     rows="4"
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                 />
                             </div>
                         </div>
@@ -836,7 +900,7 @@ export default function PostHackathon() {
                         {activeTab !== 'capacity' ? (
                             <button
                                 type="submit"
-                                className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors text-sm"
+                                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors text-sm"
                             >
                                 Continue →
                             </button>
@@ -844,15 +908,15 @@ export default function PostHackathon() {
                             <button
                                 type="submit"
                                 disabled={saving}
-                                className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-semibold rounded-lg transition-colors text-sm disabled:cursor-not-allowed"
+                                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-lg transition-colors text-sm disabled:cursor-not-allowed"
                             >
                                 {saving ? (
                                     <span className="flex items-center justify-center gap-2">
                                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                                        Posting...
+                                        {editId ? 'Updating...' : 'Posting...'}
                                     </span>
                                 ) : (
-                                    "Post Hackathon"
+                                    editId ? "Update Hackathon" : "Post Hackathon"
                                 )}
                             </button>
                         )}

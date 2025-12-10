@@ -29,7 +29,8 @@ public class HackathonController {
 
     // --- KEEP ONLY THIS METHOD ---
     private User resolveUser(Authentication auth) {
-        if (auth == null) return null;
+        if (auth == null)
+            return null;
 
         if (auth.getPrincipal() instanceof OAuth2User oauth) {
             String email = oauth.getAttribute("email");
@@ -64,7 +65,8 @@ public class HackathonController {
 
             if (!"INDUSTRY".equals(user.getUserType())) {
                 System.err.println("User type check failed: " + user.getUserType());
-                return ResponseEntity.status(403).body("Only industry users can view their hackathons. You are: " + user.getUserType());
+                return ResponseEntity.status(403)
+                        .body("Only industry users can view their hackathons. You are: " + user.getUserType());
             }
 
             List<Hackathon> hackathons = hackathonRepository.findByCreatedByIndustryId(user.getId());
@@ -78,6 +80,37 @@ public class HackathonController {
             System.err.println("Error retrieving hackathons: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(500).body("Error retrieving hackathons: " + e.getMessage());
+        }
+    }
+
+    // GET single hackathon by ID
+    @GetMapping("/{hackathonId}")
+    public ResponseEntity<?> getHackathonById(@PathVariable String hackathonId, Authentication auth) {
+        try {
+            User user = resolveUser(auth);
+
+            if (user == null) {
+                return ResponseEntity.status(401).body("Authentication failed. Please log in again.");
+            }
+
+            var hackathon = hackathonRepository.findById(hackathonId);
+            if (hackathon.isEmpty()) {
+                return ResponseEntity.status(404).body("Hackathon not found");
+            }
+
+            Hackathon foundHackathon = hackathon.get();
+
+            // Only allow industry users to fetch their own hackathons for editing
+            if ("INDUSTRY".equals(user.getUserType())
+                    && !user.getId().equals(foundHackathon.getCreatedByIndustryId())) {
+                return ResponseEntity.status(403).body("You can only view your own hackathons");
+            }
+
+            return ResponseEntity.ok(foundHackathon);
+        } catch (Exception e) {
+            System.err.println("Error fetching hackathon by ID: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error fetching hackathon: " + e.getMessage());
         }
     }
 
@@ -99,7 +132,8 @@ public class HackathonController {
 
             if (!"INDUSTRY".equals(user.getUserType())) {
                 System.err.println("User type check failed: " + user.getUserType());
-                return ResponseEntity.status(403).body("Only industry users can create hackathons. You are: " + user.getUserType());
+                return ResponseEntity.status(403)
+                        .body("Only industry users can create hackathons. You are: " + user.getUserType());
             }
 
             hackathon.setCreatedByIndustryId(user.getId());
@@ -117,7 +151,8 @@ public class HackathonController {
 
     // PUT update hackathon (industry only)
     @PutMapping("/{hackathonId}")
-    public ResponseEntity<?> updateHackathon(@PathVariable String hackathonId, @RequestBody Hackathon updatedHackathon, Authentication auth) {
+    public ResponseEntity<?> updateHackathon(@PathVariable String hackathonId, @RequestBody Hackathon updatedHackathon,
+            Authentication auth) {
 
         User user = resolveUser(auth);
 
@@ -131,7 +166,7 @@ public class HackathonController {
         }
 
         Hackathon existingHackathon = hackathon.get();
-        
+
         // Check if the user owns this hackathon
         if (!user.getId().equals(existingHackathon.getCreatedByIndustryId())) {
             return ResponseEntity.status(403).body("You can only update your own hackathons");
@@ -144,6 +179,19 @@ public class HackathonController {
         existingHackathon.setPrize(updatedHackathon.getPrize());
         existingHackathon.setTeamSize(updatedHackathon.getTeamSize());
         existingHackathon.setSubmissionUrl(updatedHackathon.getSubmissionUrl());
+
+        // Update new fields
+        existingHackathon.setProblemStatement(updatedHackathon.getProblemStatement());
+        existingHackathon.setSkills(updatedHackathon.getSkills());
+        existingHackathon.setPhases(updatedHackathon.getPhases());
+        existingHackathon.setEligibility(updatedHackathon.getEligibility());
+        existingHackathon.setStartDate(updatedHackathon.getStartDate());
+        existingHackathon.setEndDate(updatedHackathon.getEndDate());
+        existingHackathon.setMode(updatedHackathon.getMode());
+        existingHackathon.setLocation(updatedHackathon.getLocation());
+        existingHackathon.setReportingDate(updatedHackathon.getReportingDate());
+        existingHackathon.setSubmissionGuidelines(updatedHackathon.getSubmissionGuidelines());
+        existingHackathon.setMaxTeams(updatedHackathon.getMaxTeams());
 
         return ResponseEntity.ok(hackathonRepository.save(existingHackathon));
     }

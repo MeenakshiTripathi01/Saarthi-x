@@ -215,16 +215,8 @@ export default function IndustryHackathons() {
   };
 
   const handleEditClick = (hackathon) => {
-    setEditingHackathon(hackathon);
-    setFormData({
-      title: hackathon.title,
-      description: hackathon.description,
-      company: hackathon.company,
-      prize: hackathon.prize,
-      teamSize: hackathon.teamSize,
-      submissionUrl: hackathon.submissionUrl,
-    });
-    setShowForm(true);
+    // Navigate to PostHackathon page with the hackathon ID
+    navigate(`/post-hackathons?edit=${hackathon.id}`);
   };
 
   // Get hackathons based on active tab
