@@ -27,6 +27,15 @@ export default function PostHackathon() {
     const [activeTab, setActiveTab] = useState('basic');
     const [completedTabs, setCompletedTabs] = useState(new Set());
 
+    // Skills state
+    const [skillInput, setSkillInput] = useState('');
+    const [skills, setSkills] = useState([]);
+
+    // Phases state - array of phase objects
+    const [phases, setPhases] = useState([
+        { id: 1, name: '', description: '', uploadFormat: 'document', deadline: '' }
+    ]);
+
     const [formData, setFormData] = useState({
         // Basic Info
         title: '',
@@ -34,15 +43,14 @@ export default function PostHackathon() {
         description: '',
         // Problem & Skills
         problemStatement: '',
-        skills: '',
-        // Phases
-        phases: '',
         // Eligibility
         eligibility: '',
         // Dates & Mode
         startDate: '',
         endDate: '',
         mode: '',
+        location: '',
+        reportingDate: '',
         // Submission
         submissionUrl: '',
         submissionGuidelines: '',
@@ -69,7 +77,7 @@ export default function PostHackathon() {
 
     useEffect(() => {
         updateCompletedTabs();
-    }, [formData]);
+    }, [formData, skills, phases]);
 
     const isFieldFilled = (fieldName) => {
         const value = formData[fieldName];
@@ -83,11 +91,15 @@ export default function PostHackathon() {
             case 'problem':
                 return isFieldFilled('problemStatement');
             case 'phases':
-                return isFieldFilled('phases');
+                return phases.length > 0 && phases.every(p => p.name.trim() !== '' && p.description.trim() !== '' && p.deadline !== '');
             case 'eligibility':
                 return isFieldFilled('eligibility');
             case 'dates':
-                return isFieldFilled('startDate') && isFieldFilled('endDate') && isFieldFilled('mode');
+                const basicDatesValid = isFieldFilled('startDate') && isFieldFilled('endDate') && isFieldFilled('mode');
+                if (formData.mode === 'Hybrid' || formData.mode === 'Offline') {
+                    return basicDatesValid && isFieldFilled('location') && isFieldFilled('reportingDate');
+                }
+                return basicDatesValid;
             case 'submission':
                 return isFieldFilled('submissionUrl') || isFieldFilled('submissionGuidelines');
             case 'capacity':
@@ -121,6 +133,38 @@ export default function PostHackathon() {
         }));
     };
 
+    // Skills handlers
+    const handleAddSkill = (e) => {
+        if (e.key === 'Enter' && skillInput.trim()) {
+            e.preventDefault();
+            if (!skills.includes(skillInput.trim())) {
+                setSkills([...skills, skillInput.trim()]);
+            }
+            setSkillInput('');
+        }
+    };
+
+    const handleRemoveSkill = (skillToRemove) => {
+        setSkills(skills.filter(skill => skill !== skillToRemove));
+    };
+
+    // Phases handlers
+    const handleAddPhase = () => {
+        setPhases([...phases, { id: Date.now(), name: '', description: '', uploadFormat: 'document', deadline: '' }]);
+    };
+
+    const handleRemovePhase = (phaseId) => {
+        if (phases.length > 1) {
+            setPhases(phases.filter(phase => phase.id !== phaseId));
+        }
+    };
+
+    const handlePhaseChange = (phaseId, field, value) => {
+        setPhases(phases.map(phase =>
+            phase.id === phaseId ? { ...phase, [field]: value } : phase
+        ));
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -146,10 +190,12 @@ export default function PostHackathon() {
         if (!formData.company) missingFields.push('Company Name');
         if (!formData.description) missingFields.push('Hackathon Description');
         if (!formData.problemStatement) missingFields.push('Problem Statement');
-        if (!formData.phases) missingFields.push('Phases');
+        if (phases.length === 0 || !phases.every(p => p.name.trim() && p.description.trim() && p.deadline)) missingFields.push('Phases (all fields required)');
         if (!formData.startDate) missingFields.push('Start Date');
         if (!formData.endDate) missingFields.push('End Date');
         if (!formData.mode) missingFields.push('Mode');
+        if ((formData.mode === 'Hybrid' || formData.mode === 'Offline') && !formData.location) missingFields.push('Venue Location');
+        if ((formData.mode === 'Hybrid' || formData.mode === 'Offline') && !formData.reportingDate) missingFields.push('Reporting Date & Time');
 
         if (missingFields.length > 0) {
             toast.error('Please fill in all required details about the hackathon', {
@@ -171,7 +217,16 @@ export default function PostHackathon() {
                 prize: formData.prize || null,
                 teamSize: formData.teamSize ? parseInt(formData.teamSize) : 0,
                 submissionUrl: formData.submissionUrl || null,
-                // Additional fields can be stored in description or separate fields
+                // Store additional data as JSON in description or separate fields
+                problemStatement: formData.problemStatement,
+                skills: skills,
+                phases: phases,
+                eligibility: formData.eligibility,
+                startDate: formData.startDate,
+                endDate: formData.endDate,
+                mode: formData.mode,
+                submissionGuidelines: formData.submissionGuidelines,
+                maxTeams: formData.maxTeams ? parseInt(formData.maxTeams) : null,
             };
 
             const response = await createHackathon(hackathonData);
@@ -285,8 +340,8 @@ export default function PostHackathon() {
                                     type="button"
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex-1 min-w-[140px] px-4 py-4 text-xs font-medium transition-all duration-200 relative border-b-2 ${isActive
-                                            ? 'text-purple-700 border-purple-600 bg-purple-50'
-                                            : 'text-gray-600 border-transparent hover:text-gray-900 hover:bg-gray-50'
+                                        ? 'text-purple-700 border-purple-600 bg-purple-50'
+                                        : 'text-gray-600 border-transparent hover:text-gray-900 hover:bg-gray-50'
                                         }`}
                                 >
                                     <div className="flex flex-col items-center justify-center gap-1">
@@ -404,12 +459,36 @@ export default function PostHackathon() {
                                 </label>
                                 <input
                                     type="text"
-                                    name="skills"
-                                    value={formData.skills}
-                                    onChange={handleInputChange}
-                                    placeholder="e.g., Python, Machine Learning, React (comma-separated)"
+                                    value={skillInput}
+                                    onChange={(e) => setSkillInput(e.target.value)}
+                                    onKeyPress={handleAddSkill}
+                                    placeholder="Type a skill and press Enter (e.g., Python, Machine Learning)"
                                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
                                 />
+                                <p className="mt-1 text-xs text-gray-500">Press Enter to add each skill</p>
+
+                                {/* Skills Tags */}
+                                {skills.length > 0 && (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {skills.map((skill, index) => (
+                                            <span
+                                                key={index}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium border border-purple-200"
+                                            >
+                                                {skill}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveSkill(skill)}
+                                                    className="text-purple-600 hover:text-purple-800 focus:outline-none"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -419,22 +498,101 @@ export default function PostHackathon() {
                         <div className="space-y-6">
                             <div className="mb-6">
                                 <h2 className="text-2xl font-bold text-gray-900">Phases</h2>
-                                <p className="text-sm text-gray-500 mt-1">Define the different phases of the hackathon</p>
+                                <p className="text-sm text-gray-500 mt-1">Define the different phases of the hackathon and upload requirements</p>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Hackathon Phases <span className="text-red-500">*</span>
-                                </label>
-                                <textarea
-                                    name="phases"
-                                    value={formData.phases}
-                                    onChange={handleInputChange}
-                                    placeholder="Describe the phases (e.g., Registration, Ideation, Development, Submission, Judging)..."
-                                    rows="8"
-                                    required
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none"
-                                />
+                            <div className="space-y-4">
+                                {phases.map((phase, index) => (
+                                    <div key={phase.id} className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <h3 className="text-sm font-semibold text-gray-700">Phase {index + 1}</h3>
+                                            {phases.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemovePhase(phase.id)}
+                                                    className="text-red-600 hover:text-red-800"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                    Phase Name <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={phase.name}
+                                                    onChange={(e) => handlePhaseChange(phase.id, 'name', e.target.value)}
+                                                    placeholder="e.g., Ideation, Development, Submission"
+                                                    required
+                                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                    Submission Deadline <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={phase.deadline}
+                                                    onChange={(e) => handlePhaseChange(phase.id, 'deadline', e.target.value)}
+                                                    required
+                                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                Phase Description <span className="text-red-500">*</span>
+                                            </label>
+                                            <textarea
+                                                value={phase.description}
+                                                onChange={(e) => handlePhaseChange(phase.id, 'description', e.target.value)}
+                                                placeholder="Describe what participants need to do in this phase..."
+                                                rows="3"
+                                                required
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                Upload Format <span className="text-red-500">*</span>
+                                            </label>
+                                            <select
+                                                value={phase.uploadFormat}
+                                                onChange={(e) => handlePhaseChange(phase.id, 'uploadFormat', e.target.value)}
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                            >
+                                                <option value="document">Document (PDF, DOC)</option>
+                                                <option value="video">Video (MP4, AVI)</option>
+                                                <option value="image">Image (JPG, PNG)</option>
+                                                <option value="code">Code (ZIP, GitHub Link)</option>
+                                                <option value="presentation">Presentation (PPT, PDF)</option>
+                                                <option value="link">Link (URL)</option>
+                                                <option value="any">Any Format</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <button
+                                    type="button"
+                                    onClick={handleAddPhase}
+                                    className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-purple-400 hover:text-purple-600 transition-colors flex items-center justify-center gap-2 font-medium"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Add Another Phase
+                                </button>
                             </div>
                         </div>
                     )}
@@ -518,6 +676,48 @@ export default function PostHackathon() {
                                     <option value="Hybrid">Hybrid</option>
                                 </select>
                             </div>
+
+                            {/* Conditional fields for Hybrid/Offline mode */}
+                            {(formData.mode === 'Hybrid' || formData.mode === 'Offline') && (
+                                <div className="space-y-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                                    <h3 className="text-sm font-semibold text-purple-900">Physical Venue Details</h3>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Venue Location <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="location"
+                                            value={formData.location}
+                                            onChange={handleInputChange}
+                                            placeholder="e.g., Tech Hub, 123 Innovation Street, Bangalore"
+                                            required={formData.mode === 'Hybrid' || formData.mode === 'Offline'}
+                                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                        />
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            Provide the complete address where participants need to report
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Reporting Date & Time <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            name="reportingDate"
+                                            value={formData.reportingDate}
+                                            onChange={handleInputChange}
+                                            required={formData.mode === 'Hybrid' || formData.mode === 'Offline'}
+                                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                                        />
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            When should participants arrive at the venue?
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

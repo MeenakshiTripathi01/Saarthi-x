@@ -13,6 +13,7 @@ export default function IndustryHackathons() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hackathonToDelete, setHackathonToDelete] = useState(null);
+  const [selectedHackathon, setSelectedHackathon] = useState(null); // For viewing details
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -610,22 +611,18 @@ export default function IndustryHackathons() {
                       </div>
                     )}
 
-                    {/* Submission URL */}
-                    {hackathon.submissionUrl && (
-                      <div className="mt-4 pt-4 border-t border-gray-100">
-                        <a
-                          href={hackathon.submissionUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700"
-                        >
-                          View Details
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
-                      </div>
-                    )}
+                    {/* View Full Details Button */}
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <button
+                        onClick={() => setSelectedHackathon(hackathon)}
+                        className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        View Full Details
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -682,6 +679,195 @@ export default function IndustryHackathons() {
                     Cancel
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Hackathon Details Modal */}
+        {selectedHackathon && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn overflow-y-auto">
+            <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-gray-100 animate-slideIn my-8">
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-t-2xl">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold mb-2">{selectedHackathon.title}</h2>
+                    <p className="text-purple-100 text-sm">{selectedHackathon.company}</p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedHackathon(null)}
+                    className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                {/* Description */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">📝 Description</h3>
+                  <p className="text-gray-700 text-sm leading-relaxed">{selectedHackathon.description}</p>
+                </div>
+
+                {/* Problem Statement */}
+                {selectedHackathon.problemStatement && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <h3 className="text-lg font-bold text-purple-900 mb-2">🎯 Problem Statement</h3>
+                    <p className="text-gray-700 text-sm leading-relaxed">{selectedHackathon.problemStatement}</p>
+                  </div>
+                )}
+
+                {/* Skills */}
+                {selectedHackathon.skills && selectedHackathon.skills.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-3">💡 Required Skills</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedHackathon.skills.map((skill, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm font-medium"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Phases */}
+                {selectedHackathon.phases && selectedHackathon.phases.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-3">📅 Hackathon Phases</h3>
+                    <div className="space-y-3">
+                      {selectedHackathon.phases.map((phase, index) => (
+                        <div key={phase.id || index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="font-semibold text-gray-900">Phase {index + 1}: {phase.name}</h4>
+                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                              {phase.uploadFormat}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 mb-2">{phase.description}</p>
+                          <div className="text-xs text-gray-600">
+                            <span className="font-medium">Deadline:</span> {new Date(phase.deadline).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dates & Mode */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="text-sm font-bold text-blue-900 mb-2">📆 Start Date</h3>
+                    <p className="text-gray-700 text-sm">
+                      {selectedHackathon.startDate ? new Date(selectedHackathon.startDate).toLocaleDateString() : 'TBD'}
+                    </p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="text-sm font-bold text-blue-900 mb-2">📆 End Date</h3>
+                    <p className="text-gray-700 text-sm">
+                      {selectedHackathon.endDate ? new Date(selectedHackathon.endDate).toLocaleDateString() : 'TBD'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Mode & Location */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">🌐 Mode & Venue</h3>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="mb-3">
+                      <span className="text-sm font-semibold text-green-900">Mode:</span>
+                      <span className="ml-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                        {selectedHackathon.mode || 'Online'}
+                      </span>
+                    </div>
+                    {(selectedHackathon.mode === 'Hybrid' || selectedHackathon.mode === 'Offline') && selectedHackathon.location && (
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-sm font-semibold text-green-900">Location:</span>
+                          <p className="text-gray-700 text-sm mt-1">{selectedHackathon.location}</p>
+                        </div>
+                        {selectedHackathon.reportingDate && (
+                          <div>
+                            <span className="text-sm font-semibold text-green-900">Reporting Date & Time:</span>
+                            <p className="text-gray-700 text-sm mt-1">
+                              {new Date(selectedHackathon.reportingDate).toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Eligibility */}
+                {selectedHackathon.eligibility && (
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">👥 Eligibility</h3>
+                    <p className="text-gray-700 text-sm leading-relaxed">{selectedHackathon.eligibility}</p>
+                  </div>
+                )}
+
+                {/* Team & Prizes */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  {selectedHackathon.teamSize > 0 && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <h3 className="text-sm font-bold text-orange-900 mb-2">👥 Team Size</h3>
+                      <p className="text-gray-700 text-sm">Max {selectedHackathon.teamSize} members</p>
+                    </div>
+                  )}
+                  {selectedHackathon.prize && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h3 className="text-sm font-bold text-yellow-900 mb-2">🏆 Prize Pool</h3>
+                      <p className="text-gray-700 text-sm font-semibold">{selectedHackathon.prize}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Submission */}
+                {(selectedHackathon.submissionUrl || selectedHackathon.submissionGuidelines) && (
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-3">📤 Submission Details</h3>
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-3">
+                      {selectedHackathon.submissionUrl && (
+                        <div>
+                          <span className="text-sm font-semibold text-indigo-900">Submission URL:</span>
+                          <a
+                            href={selectedHackathon.submissionUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-indigo-600 hover:text-indigo-800 text-sm mt-1 break-all"
+                          >
+                            {selectedHackathon.submissionUrl}
+                          </a>
+                        </div>
+                      )}
+                      {selectedHackathon.submissionGuidelines && (
+                        <div>
+                          <span className="text-sm font-semibold text-indigo-900">Guidelines:</span>
+                          <p className="text-gray-700 text-sm mt-1">{selectedHackathon.submissionGuidelines}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-6 bg-gray-50 rounded-b-2xl border-t border-gray-200">
+                <button
+                  onClick={() => setSelectedHackathon(null)}
+                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
