@@ -1,4 +1,4 @@
-package com.saarthix.jobs.controller;
+package com.saarthix.jobs.controller.Hackathon;
 
 import com.saarthix.jobs.model.Hackathon;
 import com.saarthix.jobs.model.HackathonApplication;

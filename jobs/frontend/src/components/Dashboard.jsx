@@ -17,7 +17,7 @@ export default function Dashboard() {
     // Check if user has a redirectRoute set (from login button clicks or login page)
     const redirectRoute = localStorage.getItem('redirectRoute');
     const loginIntent = localStorage.getItem('loginIntent');
-    
+
     if (redirectRoute) {
       // Check if user has a role
       if (!user.userType || user.userType === '') {
@@ -50,7 +50,7 @@ export default function Dashboard() {
         navigate(`/choose-role?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}&picture=${encodeURIComponent(picture || '')}`);
         return;
       }
-      
+
       // If redirectRoute doesn't match user's role, clear it and stay on dashboard
       localStorage.removeItem('redirectRoute');
       localStorage.removeItem('loginIntent');
@@ -88,11 +88,10 @@ export default function Dashboard() {
         )}
 
         {/* Two/Three Card Layout */}
-        <div className={`grid gap-6 ${
-          isAuthenticated && isIndustry ? 'md:grid-cols-3' :
-          isAuthenticated && !isIndustry ? 'md:grid-cols-1 max-w-2xl mx-auto' : 
-          'md:grid-cols-2'
-        }`}>
+        <div className={`grid gap-6 ${isAuthenticated && isIndustry ? 'md:grid-cols-3' :
+          isAuthenticated && !isIndustry ? 'md:grid-cols-1 max-w-2xl mx-auto' :
+            'md:grid-cols-2'
+          }`}>
           {/* Browse Jobs Card */}
           <div
             onClick={() => {

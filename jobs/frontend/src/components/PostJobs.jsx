@@ -25,11 +25,11 @@ export default function PostJobs() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Handle salary validation
     if (name === "minSalary" || name === "maxSalary") {
       const numValue = value === "" ? "" : parseFloat(value);
-      
+
       if (name === "minSalary") {
         // When minimum salary changes, validate against maximum
         setFormData((prev) => {
@@ -37,14 +37,14 @@ export default function PostJobs() {
             ...prev,
             [name]: value,
           };
-          
+
           // Check if maxSalary exists and is less than new minSalary
           if (newData.maxSalary && numValue !== "" && parseFloat(newData.maxSalary) < numValue) {
             setSalaryError("Maximum salary cannot be less than minimum salary");
           } else {
             setSalaryError("");
           }
-          
+
           return newData;
         });
       } else if (name === "maxSalary") {
@@ -54,20 +54,20 @@ export default function PostJobs() {
             ...prev,
             [name]: value,
           };
-          
+
           // Check if maxSalary is less than minSalary
           if (newData.minSalary && numValue !== "" && numValue < parseFloat(newData.minSalary)) {
             setSalaryError("Maximum salary cannot be less than minimum salary");
           } else {
             setSalaryError("");
           }
-          
+
           return newData;
         });
         return; // Early return since we already set formData above
       }
     }
-    
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -76,7 +76,7 @@ export default function PostJobs() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!isAuthenticated) {
       alert("Please sign in to post a job");
       return;
@@ -86,7 +86,7 @@ export default function PostJobs() {
     if (formData.minSalary && formData.maxSalary) {
       const minSalary = parseFloat(formData.minSalary);
       const maxSalary = parseFloat(formData.maxSalary);
-      
+
       if (maxSalary < minSalary) {
         setSalaryError("Maximum salary cannot be less than minimum salary");
         toast.error("Please fix the salary range before submitting", {
@@ -125,7 +125,7 @@ export default function PostJobs() {
       );
 
       console.log("Job Posted Successfully:", response.data);
-      
+
       // Show success toast
       toast.success("Job posted successfully! Redirecting to jobs page...", {
         position: "top-right",
@@ -137,7 +137,7 @@ export default function PostJobs() {
         progress: undefined,
         theme: "light",
       });
-      
+
       // Reset form
       setFormData({
         title: "",
@@ -158,15 +158,15 @@ export default function PostJobs() {
       }, 2000);
     } catch (error) {
       console.error("Error posting job:", error);
-      
+
       // Show error toast
       let errorMessage = "Failed to post job. Please try again.";
       if (error.response?.data) {
-        errorMessage = typeof error.response.data === 'string' 
-          ? error.response.data 
+        errorMessage = typeof error.response.data === 'string'
+          ? error.response.data
           : error.response.data.message || errorMessage;
       }
-      
+
       toast.error(errorMessage, {
         position: "top-right",
         autoClose: 5000,
@@ -205,7 +205,7 @@ export default function PostJobs() {
           >
             ← Back to Dashboard
           </button>
-          
+
           <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-3">
               Authentication Required
@@ -222,10 +222,10 @@ export default function PostJobs() {
               className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors duration-200 font-semibold"
             >
               <svg width="20" height="20" viewBox="0 0 18 18" fill="none">
-                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
-                <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.951H.957C.348 6.174 0 7.55 0 9s.348 2.826.957 4.049l3.007-2.342z" fill="#FBBC05"/>
-                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.582C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.951L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4" />
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853" />
+                <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.951H.957C.348 6.174 0 7.55 0 9s.348 2.826.957 4.049l3.007-2.342z" fill="#FBBC05" />
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.582C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.951L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335" />
               </svg>
               Sign in with Google
             </button>
@@ -246,7 +246,7 @@ export default function PostJobs() {
           >
             ← Back to Dashboard
           </button>
-          
+
           <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-3">
               Access Denied
@@ -283,7 +283,7 @@ export default function PostJobs() {
             </button>
             <div className="flex gap-3">
               <button
-                onClick={() => navigate("/manage-hackathons")}
+                onClick={() => navigate("/post-hackathons")}
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors duration-200 text-sm flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -465,11 +465,10 @@ export default function PostJobs() {
                   }}
                   placeholder="e.g., 1500000"
                   min={formData.minSalary || "0"}
-                  className={`w-full rounded-md border px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:outline-none focus:ring-1 ${
-                    salaryError 
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50" 
-                      : "border-gray-300 bg-white focus:border-gray-400 focus:ring-gray-400"
-                  }`}
+                  className={`w-full rounded-md border px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:outline-none focus:ring-1 ${salaryError
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50"
+                    : "border-gray-300 bg-white focus:border-gray-400 focus:ring-gray-400"
+                    }`}
                 />
                 {salaryError && (
                   <p className="mt-1 text-sm text-red-600">{salaryError}</p>

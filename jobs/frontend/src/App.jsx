@@ -15,6 +15,7 @@ import ProfileBuilder from './components/ProfileBuilder';
 import ViewProfile from './components/ViewProfile';
 import IndustryApplications from './components/IndustryApplications';
 import IndustryHackathons from './components/IndustryHackathons';
+import PostHackathon from './components/PostHackathon';
 import ApplicantHackathons from './components/ApplicantHackathons';
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
             <Route path="/view-profile" element={<ViewProfile />} />
             <Route path="/manage-applications" element={<IndustryApplications />} />
             <Route path="/manage-hackathons" element={<IndustryHackathons />} />
+            <Route path="/post-hackathons" element={<PostHackathon />} />
             <Route path="/browse-hackathons" element={<ApplicantHackathons />} />
           </Routes>
           <ToastContainer

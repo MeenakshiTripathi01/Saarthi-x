@@ -21,7 +21,7 @@ export default function IndustryApplications() {
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [applicationsWithProfiles, setApplicationsWithProfiles] = useState([]);
-  
+
   // Search and filter states
   const [jobSearchQuery, setJobSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
@@ -85,7 +85,7 @@ export default function IndustryApplications() {
       setLoading(true);
       setError(null);
       const allJobs = await getMyPostedJobs();
-      
+
       if (!Array.isArray(allJobs)) {
         setError('Invalid response format from server');
         return;
@@ -95,7 +95,7 @@ export default function IndustryApplications() {
     } catch (err) {
       console.error('Error loading jobs:', err);
       let errorMessage = 'Failed to load your posted jobs';
-      
+
       if (err.response) {
         if (typeof err.response.data === 'string') {
           errorMessage = err.response.data;
@@ -107,7 +107,7 @@ export default function IndustryApplications() {
           errorMessage = 'Access denied. Only INDUSTRY users can view their posted jobs.';
         }
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -124,9 +124,9 @@ export default function IndustryApplications() {
         return { jobId: job.id, count: 0 };
       }
     });
-    
+
     const counts = await Promise.all(countPromises);
-    setJobs(prevJobs => 
+    setJobs(prevJobs =>
       prevJobs.map(job => {
         const countData = counts.find(c => c.jobId === job.id);
         return { ...job, applicationCount: countData?.count || 0 };
@@ -140,7 +140,7 @@ export default function IndustryApplications() {
       setError(null);
       const data = await getApplicationsByJobId(jobId);
       setApplications(data);
-      
+
       // Also load applications with profiles
       try {
         const profilesData = await getApplicantProfilesByJobId(jobId);
@@ -161,23 +161,23 @@ export default function IndustryApplications() {
     try {
       setLoadingProfile(true);
       setError(null);
-      
+
       // Find the profile from the loaded profiles data
       const appWithProfile = applicationsWithProfiles.find(
-        item => item.application?.id === application.id || 
-                item.application?.applicantEmail === application.applicantEmail
+        item => item.application?.id === application.id ||
+          item.application?.applicantEmail === application.applicantEmail
       );
-      
+
       if (appWithProfile?.userProfile) {
         setSelectedProfile(appWithProfile.userProfile);
       } else {
         // If not found, try to fetch it again
         const profilesData = await getApplicantProfilesByJobId(selectedJob.id);
         const foundProfile = profilesData.find(
-          item => item.application?.id === application.id || 
-                  item.application?.applicantEmail === application.applicantEmail
+          item => item.application?.id === application.id ||
+            item.application?.applicantEmail === application.applicantEmail
         );
-        
+
         if (foundProfile?.userProfile) {
           setSelectedProfile(foundProfile.userProfile);
         } else {
@@ -213,13 +213,13 @@ export default function IndustryApplications() {
   const handleStatusUpdate = async (applicationId, newStatus) => {
     try {
       setUpdatingStatus(true);
-      
+
       const updated = await updateApplicationStatusByIndustry(applicationId, newStatus);
-      
-      setApplications(prev => prev.map(app => 
+
+      setApplications(prev => prev.map(app =>
         app.id === applicationId ? { ...app, ...updated, status: newStatus } : app
       ));
-      
+
       if (selectedApplication?.id === applicationId) {
         setSelectedApplication(prev => ({ ...prev, ...updated, status: newStatus }));
       }
@@ -311,12 +311,12 @@ export default function IndustryApplications() {
         position: "top-right",
         autoClose: 3000,
       });
-      
+
       if (selectedJob?.id === jobToDelete.id) {
         setSelectedJob(null);
         setApplications([]);
       }
-      
+
       await loadJobs();
       setJobToDelete(null);
     } catch (err) {
@@ -369,24 +369,24 @@ export default function IndustryApplications() {
         job.location?.toLowerCase().includes(query)
       );
     })();
-    
+
     // Role filter
     const matchesRole = roleFilter === 'All' || job.title === roleFilter;
-    
+
     // Company filter
     const matchesCompany = companyFilter === 'All' || job.company === companyFilter;
-    
+
     return matchesSearch && matchesRole && matchesCompany;
   });
 
   // Filter applications based on search and status
   const filteredApplications = applications.filter(app => {
-    const matchesSearch = !applicationSearchQuery || 
+    const matchesSearch = !applicationSearchQuery ||
       app.fullName?.toLowerCase().includes(applicationSearchQuery.toLowerCase()) ||
       app.applicantEmail?.toLowerCase().includes(applicationSearchQuery.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'All' || app.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -425,7 +425,7 @@ export default function IndustryApplications() {
           >
             ← Back to Dashboard
           </button>
-          
+
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-200">
@@ -455,8 +455,8 @@ export default function IndustryApplications() {
                   Back to Jobs
                 </button>
               )}
-            {/* <button
-              onClick={() => navigate('/manage-hackathons')}
+              {/* <button
+              onClick={() => navigate('/post-hackathons')}
               className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-md hover:shadow-lg flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -464,15 +464,15 @@ export default function IndustryApplications() {
               </svg>
               Manage Hackathonss
             </button> */}
-            <button
-              onClick={() => navigate('/post-jobs')}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-md hover:shadow-lg flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Post New Job
-            </button>
+              <button
+                onClick={() => navigate('/post-jobs')}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-md hover:shadow-lg flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Post New Job
+              </button>
             </div>
           </div>
         </div>
@@ -597,7 +597,7 @@ export default function IndustryApplications() {
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                       <div className="flex items-center gap-2">
                         <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -822,7 +822,7 @@ export default function IndustryApplications() {
                     <p className="text-sm text-gray-600 mt-1">This action cannot be undone</p>
                   </div>
                 </div>
-                
+
                 <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
                   <p className="text-sm font-semibold text-gray-900 mb-1">{jobToDelete.title}</p>
                   <p className="text-xs text-gray-600">{jobToDelete.company} • {jobToDelete.location}</p>
@@ -1473,11 +1473,10 @@ export default function IndustryApplications() {
                         key={status.value}
                         onClick={() => handleStatusUpdate(selectedApplication.id, status.value)}
                         disabled={updatingStatus || selectedApplication.status === status.value}
-                        className={`p-3 rounded-xl border-2 transition-all duration-200 text-sm font-semibold ${
-                          selectedApplication.status === status.value
+                        className={`p-3 rounded-xl border-2 transition-all duration-200 text-sm font-semibold ${selectedApplication.status === status.value
                             ? 'border-gray-900 bg-gray-900 text-white'
                             : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed'
-                        }`}
+                          }`}
                       >
                         <div className="text-xs mb-1">{status.label}</div>
                       </button>

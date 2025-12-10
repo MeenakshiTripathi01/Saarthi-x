@@ -44,16 +44,16 @@ export default function IndustryHackathons() {
       setLoading(true);
       setError(null);
       console.log('Loading hackathons for industry user...');
-      
+
       // Load both my hackathons and all hackathons in parallel
       const [myHackathonsData, allHackathonsData] = await Promise.all([
         getMyHackathons(),
         getAllHackathons()
       ]);
-      
+
       console.log('My Hackathons fetched:', myHackathonsData);
       console.log('All Hackathons fetched:', allHackathonsData);
-      
+
       if (!Array.isArray(myHackathonsData)) {
         console.error('Invalid my hackathons response format');
         setMyHackathons([]);
@@ -67,13 +67,13 @@ export default function IndustryHackathons() {
       } else {
         setAllHackathons(allHackathonsData);
       }
-      
+
       console.log('Hackathons set to state - My: ', myHackathonsData?.length || 0, ' All: ', allHackathonsData?.length || 0);
     } catch (err) {
       console.error('Error loading hackathons:', err);
       console.error('Error details:', err.response?.data, err.message);
       let errorMessage = 'Failed to load hackathons';
-      
+
       if (err.response) {
         if (typeof err.response.data === 'string') {
           errorMessage = err.response.data;
@@ -85,7 +85,7 @@ export default function IndustryHackathons() {
           errorMessage = 'Access denied. Only INDUSTRY users can view their hackathons.';
         }
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -106,7 +106,7 @@ export default function IndustryHackathons() {
         position: "top-right",
         autoClose: 3000,
       });
-      
+
       await loadHackathons();
       setHackathonToDelete(null);
     } catch (err) {
@@ -150,7 +150,7 @@ export default function IndustryHackathons() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.title || !formData.description || !formData.company) {
       toast.error('Please fill in all required fields', {
         position: "top-right",
@@ -265,7 +265,7 @@ export default function IndustryHackathons() {
           >
             ← Back to Dashboard
           </button>
-          
+
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-200">
@@ -279,10 +279,7 @@ export default function IndustryHackathons() {
               </div>
             </div>
             <button
-              onClick={() => {
-                resetForm();
-                setShowForm(!showForm);
-              }}
+              onClick={() => navigate('/post-hackathons')}
               className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-md hover:shadow-lg flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -463,11 +460,10 @@ export default function IndustryHackathons() {
                     setActiveTab('my-hackathons');
                     setSearchQuery('');
                   }}
-                  className={`flex-1 py-4 px-6 font-semibold text-sm transition-all duration-200 border-b-2 ${
-                    activeTab === 'my-hackathons'
-                      ? 'text-purple-600 border-b-purple-600'
-                      : 'text-gray-600 border-b-transparent hover:text-gray-900'
-                  }`}
+                  className={`flex-1 py-4 px-6 font-semibold text-sm transition-all duration-200 border-b-2 ${activeTab === 'my-hackathons'
+                    ? 'text-purple-600 border-b-purple-600'
+                    : 'text-gray-600 border-b-transparent hover:text-gray-900'
+                    }`}
                 >
                   <div className="flex items-center justify-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -481,11 +477,10 @@ export default function IndustryHackathons() {
                     setActiveTab('all-hackathons');
                     setSearchQuery('');
                   }}
-                  className={`flex-1 py-4 px-6 font-semibold text-sm transition-all duration-200 border-b-2 ${
-                    activeTab === 'all-hackathons'
-                      ? 'text-purple-600 border-b-purple-600'
-                      : 'text-gray-600 border-b-transparent hover:text-gray-900'
-                  }`}
+                  className={`flex-1 py-4 px-6 font-semibold text-sm transition-all duration-200 border-b-2 ${activeTab === 'all-hackathons'
+                    ? 'text-purple-600 border-b-purple-600'
+                    : 'text-gray-600 border-b-transparent hover:text-gray-900'
+                    }`}
                 >
                   <div className="flex items-center justify-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -499,144 +494,141 @@ export default function IndustryHackathons() {
 
             {/* Search Bar */}
             {displayHackathons.length > 0 && (
-          <div className="mb-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+              <div className="mb-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search hackathons by title, company, or description..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                  />
+                </div>
               </div>
-              <input
-                type="text"
-                placeholder="Search hackathons by title, company, or description..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 placeholder-gray-400 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Hackathons Grid */}
-        {displayHackathons.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
-            <div className="text-5xl mb-4">⚡</div>
-            <h3 className="font-bold text-xl text-gray-900 mb-2">
-              {activeTab === 'my-hackathons' ? 'No Hackathons Posted Yet' : 'No Hackathons Available'}
-            </h3>
-            <p className="text-gray-600 text-base mb-6">
-              {activeTab === 'my-hackathons' 
-                ? 'Get started by posting your first hackathon' 
-                : 'No hackathons have been posted yet'}
-            </p>
-            {activeTab === 'my-hackathons' && (
-              <button
-                onClick={() => {
-                  resetForm();
-                  setShowForm(true);
-                }}
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-md hover:shadow-lg"
-              >
-                Post Your First Hackathon
-              </button>
             )}
-          </div>
-        ) : filteredHackathons.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
-            <p className="text-gray-600 text-base">No hackathons match your search criteria</p>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredHackathons.map((hackathon) => (
-              <div
-                key={hackathon.id}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-lg transition-all duration-200 group"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2 group-hover:text-purple-600 transition-colors">
-                      {hackathon.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-1">{hackathon.company}</p>
-                  </div>
-                </div>
 
-                <p className="text-sm text-gray-700 mb-4 line-clamp-3">
-                  {hackathon.description}
+            {/* Hackathons Grid */}
+            {displayHackathons.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+                <div className="text-5xl mb-4">⚡</div>
+                <h3 className="font-bold text-xl text-gray-900 mb-2">
+                  {activeTab === 'my-hackathons' ? 'No Hackathons Posted Yet' : 'No Hackathons Available'}
+                </h3>
+                <p className="text-gray-600 text-base mb-6">
+                  {activeTab === 'my-hackathons'
+                    ? 'Get started by posting your first hackathon'
+                    : 'No hackathons have been posted yet'}
                 </p>
-
-                {/* Prize Display */}
-                {hackathon.prize && (
-                  <div className="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-200">
-                    <p className="text-xs text-gray-600">Prize Pool</p>
-                    <p className="text-sm font-semibold text-purple-700">{hackathon.prize}</p>
-                  </div>
-                )}
-
-                {/* Metadata */}
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                  {hackathon.teamSize > 0 && (
-                    <span className="flex items-center gap-1">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
-                      </svg>
-                      Max team: {hackathon.teamSize}
-                    </span>
-                  )}
-                  {hackathon.views !== undefined && (
-                    <span className="flex items-center gap-1">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      {hackathon.views} views
-                    </span>
-                  )}
-                </div>
-
-                {/* Actions - Only show for owned hackathons */}
                 {activeTab === 'my-hackathons' && (
-                  <div className="flex gap-2 pt-4 border-t border-gray-100">
-                    <button
-                      onClick={() => handleEditClick(hackathon)}
-                      className="flex-1 p-2 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-1"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClick(hackathon)}
-                      className="flex-1 p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-1"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Delete
-                    </button>
-                  </div>
-                )}
-
-                {/* Submission URL */}
-                {hackathon.submissionUrl && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <a
-                      href={hackathon.submissionUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700"
-                    >
-                      View Details
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                  </div>
+                  <button
+                    onClick={() => navigate('/post-hackathons')}
+                    className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-md hover:shadow-lg"
+                  >
+                    Post Your First Hackathon
+                  </button>
                 )}
               </div>
-            ))}
-          </div>
+            ) : filteredHackathons.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+                <p className="text-gray-600 text-base">No hackathons match your search criteria</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredHackathons.map((hackathon) => (
+                  <div
+                    key={hackathon.id}
+                    className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-lg transition-all duration-200 group"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2 group-hover:text-purple-600 transition-colors">
+                          {hackathon.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-1">{hackathon.company}</p>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-gray-700 mb-4 line-clamp-3">
+                      {hackathon.description}
+                    </p>
+
+                    {/* Prize Display */}
+                    {hackathon.prize && (
+                      <div className="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-200">
+                        <p className="text-xs text-gray-600">Prize Pool</p>
+                        <p className="text-sm font-semibold text-purple-700">{hackathon.prize}</p>
+                      </div>
+                    )}
+
+                    {/* Metadata */}
+                    <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                      {hackathon.teamSize > 0 && (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                          </svg>
+                          Max team: {hackathon.teamSize}
+                        </span>
+                      )}
+                      {hackathon.views !== undefined && (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          {hackathon.views} views
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Actions - Only show for owned hackathons */}
+                    {activeTab === 'my-hackathons' && (
+                      <div className="flex gap-2 pt-4 border-t border-gray-100">
+                        <button
+                          onClick={() => handleEditClick(hackathon)}
+                          className="flex-1 p-2 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(hackathon)}
+                          className="flex-1 p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Submission URL */}
+                    {hackathon.submissionUrl && (
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <a
+                          href={hackathon.submissionUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700"
+                        >
+                          View Details
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </>
         )}
@@ -657,7 +649,7 @@ export default function IndustryHackathons() {
                     <p className="text-sm text-gray-600 mt-1">This action cannot be undone</p>
                   </div>
                 </div>
-                
+
                 <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
                   <p className="text-sm font-semibold text-gray-900 mb-1">{hackathonToDelete.title}</p>
                   <p className="text-xs text-gray-600">{hackathonToDelete.company}</p>
