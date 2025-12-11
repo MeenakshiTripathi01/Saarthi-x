@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getHackathonById, applyForHackathon, getMyHackathonApplications } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { Calendar, MapPin, Users, Trophy, Clock, CheckCircle, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, Users, Trophy, Clock, CheckCircle, ArrowRight, User, Mail, Phone } from 'lucide-react';
 
 export default function HackathonDetails() {
     const { id } = useParams();
@@ -254,7 +254,7 @@ export default function HackathonDetails() {
                                             </div>
 
                                             {asTeam && (
-                                                <div className="space-y-3 animate-fadeIn">
+                                                <div className="space-y-4 animate-fadeIn">
                                                     <div>
                                                         <label className="block text-sm font-medium text-gray-700 mb-1">Team Name</label>
                                                         <input
@@ -284,56 +284,107 @@ export default function HackathonDetails() {
                                                         <p className="text-xs text-gray-500 mt-1">Max size: 10</p>
                                                     </div>
 
-                                                    <div className="space-y-4">
-                                                        <label className="block text-sm font-medium text-gray-700">Team Members Details</label>
-                                                        {teamMembers.map((member, index) => (
-                                                            <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
-                                                                <h4 className="text-sm font-bold text-gray-800">
-                                                                    {index === 0 ? 'Team Lead (You)' : `Member ${index + 1}`}
-                                                                </h4>
+                                                    {/* Team Members Section */}
+                                                    <div className="border-t border-gray-200 pt-4 mt-4">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <h4 className="text-sm font-semibold text-gray-900">Team Members</h4>
+                                                            <span className="text-xs text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full font-medium">
+                                                                {teamMembers.length} / {teamSize}
+                                                            </span>
+                                                        </div>
 
-                                                                <div className="grid grid-cols-1 gap-3">
-                                                                    <input
-                                                                        type="text"
-                                                                        required
-                                                                        value={member.name}
-                                                                        onChange={(e) => {
-                                                                            const newMembers = [...teamMembers];
-                                                                            newMembers[index] = { ...newMembers[index], name: e.target.value };
-                                                                            setTeamMembers(newMembers);
-                                                                        }}
-                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                                        placeholder="Full Name"
-                                                                        readOnly={index === 0} // Lock name for lead if desired, or allow edit
-                                                                    />
-                                                                    <input
-                                                                        type="email"
-                                                                        required
-                                                                        value={member.email}
-                                                                        onChange={(e) => {
-                                                                            const newMembers = [...teamMembers];
-                                                                            newMembers[index] = { ...newMembers[index], email: e.target.value };
-                                                                            setTeamMembers(newMembers);
-                                                                        }}
-                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                                        placeholder="Email Address"
-                                                                        readOnly={index === 0}
-                                                                    />
-                                                                    <input
-                                                                        type="tel"
-                                                                        required
-                                                                        value={member.phone}
-                                                                        onChange={(e) => {
-                                                                            const newMembers = [...teamMembers];
-                                                                            newMembers[index] = { ...newMembers[index], phone: e.target.value };
-                                                                            setTeamMembers(newMembers);
-                                                                        }}
-                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                                        placeholder="Phone Number"
-                                                                    />
+                                                        <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                                                            {teamMembers.map((member, index) => (
+                                                                <div
+                                                                    key={index}
+                                                                    className={`rounded-lg border p-4 transition-all ${index === 0
+                                                                            ? 'border-purple-300 bg-purple-50/50'
+                                                                            : 'border-gray-200 bg-white'
+                                                                        }`}
+                                                                >
+                                                                    {/* Member Header */}
+                                                                    <div className="flex items-center gap-2 mb-3">
+                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${index === 0 ? 'bg-purple-600 text-white' : 'bg-gray-300 text-gray-700'
+                                                                            }`}>
+                                                                            {index === 0 ? '★' : index + 1}
+                                                                        </div>
+                                                                        <div className="flex-1">
+                                                                            <h5 className={`text-sm font-bold ${index === 0 ? 'text-purple-900' : 'text-gray-800'}`}>
+                                                                                {index === 0 ? 'Team Lead (You)' : `Team Member ${index + 1}`}
+                                                                            </h5>
+                                                                            {index === 0 && <p className="text-xs text-purple-600">Primary Contact</p>}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Input Fields */}
+                                                                    <div className="space-y-3">
+                                                                        {/* Name */}
+                                                                        <div>
+                                                                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                                                                                <User className="inline w-3 h-3 mr-1" />
+                                                                                Full Name
+                                                                            </label>
+                                                                            <input
+                                                                                type="text"
+                                                                                required
+                                                                                value={member.name}
+                                                                                onChange={(e) => {
+                                                                                    const newMembers = [...teamMembers];
+                                                                                    newMembers[index] = { ...newMembers[index], name: e.target.value };
+                                                                                    setTeamMembers(newMembers);
+                                                                                }}
+                                                                                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${index === 0 ? 'bg-gray-50 border-gray-200 text-gray-500' : 'bg-white border-gray-300'
+                                                                                    }`}
+                                                                                placeholder="Enter full name"
+                                                                                readOnly={index === 0}
+                                                                            />
+                                                                        </div>
+
+                                                                        {/* Email */}
+                                                                        <div>
+                                                                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                                                                                <Mail className="inline w-3 h-3 mr-1" />
+                                                                                Email Address
+                                                                            </label>
+                                                                            <input
+                                                                                type="email"
+                                                                                required
+                                                                                value={member.email}
+                                                                                onChange={(e) => {
+                                                                                    const newMembers = [...teamMembers];
+                                                                                    newMembers[index] = { ...newMembers[index], email: e.target.value };
+                                                                                    setTeamMembers(newMembers);
+                                                                                }}
+                                                                                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${index === 0 ? 'bg-gray-50 border-gray-200 text-gray-500' : 'bg-white border-gray-300'
+                                                                                    }`}
+                                                                                placeholder="Enter email address"
+                                                                                readOnly={index === 0}
+                                                                            />
+                                                                        </div>
+
+                                                                        {/* Phone */}
+                                                                        <div>
+                                                                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                                                                                <Phone className="inline w-3 h-3 mr-1" />
+                                                                                Phone Number
+                                                                            </label>
+                                                                            <input
+                                                                                type="tel"
+                                                                                required
+                                                                                value={member.phone}
+                                                                                onChange={(e) => {
+                                                                                    const newMembers = [...teamMembers];
+                                                                                    newMembers[index] = { ...newMembers[index], phone: e.target.value };
+                                                                                    setTeamMembers(newMembers);
+                                                                                }}
+                                                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                                                                                placeholder="Enter phone number"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        ))}
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )}
