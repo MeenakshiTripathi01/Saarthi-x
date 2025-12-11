@@ -19,6 +19,28 @@ export default function HackathonDetails() {
     const [asTeam, setAsTeam] = useState(false);
     const [teamName, setTeamName] = useState('');
     const [teamSize, setTeamSize] = useState(2);
+    const [teamMembers, setTeamMembers] = useState(['']); // Start with one empty member for size 2
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const day = date.getDate();
+        const month = date.toLocaleString('default', { month: 'short' });
+        const year = date.getFullYear();
+
+        // Suffix logic
+        const getSuffix = (d) => {
+            if (d > 3 && d < 21) return 'th';
+            switch (d % 10) {
+                case 1: return "st";
+                case 2: return "nd";
+                case 3: return "rd";
+                default: return "th";
+            }
+        };
+
+        return `${day.toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${year} (${day}${getSuffix(day)} ${month} ${year})`;
+    };
 
     useEffect(() => {
         loadData();
@@ -60,7 +82,8 @@ export default function HackathonDetails() {
             const applicationData = {
                 asTeam,
                 teamName: asTeam ? teamName : null,
-                teamSize: asTeam ? teamSize : 1
+                teamSize: asTeam ? teamSize : 1,
+                teamMembers: asTeam ? teamMembers : []
             };
 
             const response = await applyForHackathon(id, applicationData);
@@ -114,7 +137,7 @@ export default function HackathonDetails() {
                         <div className="flex flex-wrap gap-4 mb-8 text-sm text-gray-600">
                             <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
                                 <Calendar className="w-4 h-4 text-purple-600" />
-                                <span>{new Date(hackathon.startDate).toLocaleDateString()} - {new Date(hackathon.endDate).toLocaleDateString()}</span>
+                                <span>{formatDate(hackathon.startDate)} - {formatDate(hackathon.endDate)}</span>
                             </div>
                             <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
                                 <MapPin className="w-4 h-4 text-purple-600" />
@@ -160,7 +183,7 @@ export default function HackathonDetails() {
                                                 </div>
                                                 <div className="pb-6">
                                                     <h4 className="font-semibold text-gray-900">{phase.name}</h4>
-                                                    <p className="text-sm text-gray-500 mb-1">Deadline: {new Date(phase.deadline).toLocaleDateString()}</p>
+                                                    <p className="text-sm text-gray-500 mb-1">Deadline: {formatDate(phase.deadline)}</p>
                                                     <p className="text-gray-600 text-sm">{phase.description}</p>
                                                 </div>
                                             </div>
@@ -226,6 +249,26 @@ export default function HackathonDetails() {
                                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                         />
                                                         <p className="text-xs text-gray-500 mt-1">Max size: {hackathon.teamSize}</p>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-medium text-gray-700">Team Members</label>
+                                                        {Array.from({ length: teamSize - 1 }).map((_, index) => (
+                                                            <input
+                                                                key={index}
+                                                                type="text"
+                                                                required
+                                                                value={teamMembers[index] || ''}
+                                                                onChange={(e) => {
+                                                                    const newMembers = [...teamMembers];
+                                                                    newMembers[index] = e.target.value;
+                                                                    setTeamMembers(newMembers);
+                                                                }}
+                                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                                                placeholder={`Member ${index + 2} Name`}
+                                                            />
+                                                        ))}
+                                                        <p className="text-xs text-gray-500">Enter names of other team members</p>
                                                     </div>
                                                 </div>
                                             )}

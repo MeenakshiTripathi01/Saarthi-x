@@ -212,6 +212,28 @@ export default function PostHackathon() {
     };
 
     const handlePhaseChange = (phaseId, field, value) => {
+        if (field === 'deadline') {
+            const index = phases.findIndex(p => p.id === phaseId);
+
+            // Check against previous phase
+            if (index > 0) {
+                const prevDeadline = phases[index - 1].deadline;
+                if (prevDeadline && value < prevDeadline) {
+                    toast.error('Deadline cannot be earlier than the previous phase deadline');
+                    return;
+                }
+            }
+
+            // Check against next phase
+            if (index < phases.length - 1) {
+                const nextDeadline = phases[index + 1].deadline;
+                if (nextDeadline && value > nextDeadline) {
+                    toast.error('Deadline cannot be later than the next phase deadline');
+                    return;
+                }
+            }
+        }
+
         setPhases(phases.map(phase =>
             phase.id === phaseId ? { ...phase, [field]: value } : phase
         ));
@@ -255,6 +277,14 @@ export default function PostHackathon() {
                 autoClose: 5000,
             });
             return;
+        }
+
+        // Validate phase deadlines order
+        for (let i = 1; i < phases.length; i++) {
+            if (phases[i].deadline < phases[i - 1].deadline) {
+                toast.error(`Phase ${i + 1} deadline cannot be earlier than Phase ${i} deadline`);
+                return;
+            }
         }
 
         setSaving(true);
@@ -509,12 +539,20 @@ export default function PostHackathon() {
                                 <textarea
                                     name="problemStatement"
                                     value={formData.problemStatement}
-                                    onChange={handleInputChange}
+                                    onChange={(e) => {
+                                        if (e.target.value.length <= 500) {
+                                            handleInputChange(e);
+                                        }
+                                    }}
                                     placeholder="Describe the problem participants will solve..."
                                     rows="6"
+                                    maxLength={500}
                                     required
                                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                 />
+                                <div className="mt-1 text-xs text-right text-gray-500">
+                                    {formData.problemStatement.length}/500 characters
+                                </div>
                             </div>
 
                             <div>

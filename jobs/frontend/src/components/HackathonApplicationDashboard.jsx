@@ -19,6 +19,37 @@ export default function HackathonApplicationDashboard() {
     const [solutionText, setSolutionText] = useState('');
     const [selectedFile, setSelectedFile] = useState(null);
 
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const day = date.getDate();
+        const month = date.toLocaleString('default', { month: 'short' });
+        const year = date.getFullYear();
+
+        const getSuffix = (d) => {
+            if (d > 3 && d < 21) return 'th';
+            switch (d % 10) {
+                case 1: return "st";
+                case 2: return "nd";
+                case 3: return "rd";
+                default: return "th";
+            }
+        };
+
+        return `${day.toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${year} (${day}${getSuffix(day)} ${month} ${year})`;
+    };
+
+    const getAllowedExtensions = (format) => {
+        switch (format) {
+            case 'document': return '.pdf,.doc,.docx';
+            case 'video': return '.mp4,.avi,.mov';
+            case 'image': return '.jpg,.jpeg,.png';
+            case 'code': return '.zip,.rar,.7z';
+            case 'presentation': return '.ppt,.pptx,.pdf';
+            default: return '*';
+        }
+    };
+
     useEffect(() => {
         loadData();
     }, [applicationId]);
@@ -39,13 +70,24 @@ export default function HackathonApplicationDashboard() {
         }
     };
 
-    const handleFileChange = (e) => {
+    const handleFileChange = (e, format) => {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) { // 5MB limit
                 toast.error('File size must be less than 5MB');
                 return;
             }
+
+            // Validate format
+            if (format && format !== 'any' && format !== 'link') {
+                const allowed = getAllowedExtensions(format).split(',');
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+                if (allowed[0] !== '*' && !allowed.includes(ext)) {
+                    toast.error(`Invalid file format. Allowed: ${allowed.join(', ')}`);
+                    return;
+                }
+            }
+
             setSelectedFile(file);
         }
     };
@@ -59,8 +101,19 @@ export default function HackathonApplicationDashboard() {
         });
     };
 
-    const handleSubmit = async (phaseId) => {
+    const handleSubmit = async (phaseId, format) => {
         try {
+            // Validation
+            if (!solutionText.trim()) {
+                toast.error('Please provide a solution description/statement');
+                return;
+            }
+
+            if (format !== 'link' && !selectedFile) {
+                toast.error('Please upload a file');
+                return;
+            }
+
             setSubmitting(true);
 
             const submissionData = {
@@ -150,6 +203,46 @@ export default function HackathonApplicationDashboard() {
                     </div>
                 </div>
 
+                {/* Notifications Area */}
+                {(application.status === 'REJECTED' || hackathon.phases.some(p => application.phaseSubmissions?.[p.id]?.status === 'ACCEPTED' || application.phaseSubmissions?.[p.id]?.status === 'REJECTED')) && (
+                    <div className="mb-6 space-y-2">
+                        {application.status === 'REJECTED' && (
+                            <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-center gap-3 text-red-700 animate-fadeIn">
+                                <XCircle className="w-5 h-5" />
+                                <div>
+                                    <p className="font-bold">Application Rejected</p>
+                                    <p className="text-sm">Unfortunately, your application has been rejected.</p>
+                                </div>
+                            </div>
+                        )}
+                        {hackathon.phases.map((phase, idx) => {
+                            const status = application.phaseSubmissions?.[phase.id]?.status;
+                            if (status === 'ACCEPTED') {
+                                return (
+                                    <div key={phase.id} className="bg-green-50 border border-green-200 p-4 rounded-xl flex items-center gap-3 text-green-700 animate-fadeIn">
+                                        <CheckCircle className="w-5 h-5" />
+                                        <div>
+                                            <p className="font-bold">Phase {idx + 1} Accepted!</p>
+                                            <p className="text-sm">Congratulations! You have passed {phase.name}.</p>
+                                        </div>
+                                    </div>
+                                );
+                            } else if (status === 'REJECTED') {
+                                return (
+                                    <div key={phase.id} className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-center gap-3 text-red-700 animate-fadeIn">
+                                        <XCircle className="w-5 h-5" />
+                                        <div>
+                                            <p className="font-bold">Phase {idx + 1} Rejected</p>
+                                            <p className="text-sm">Your submission for {phase.name} was not accepted.</p>
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })}
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Phases Timeline (Left Col) */}
                     <div className="lg:col-span-2 space-y-6">
@@ -184,7 +277,7 @@ export default function HackathonApplicationDashboard() {
                                                     <h3 className={`font-semibold ${isActive ? 'text-purple-900' : 'text-gray-900'}`}>
                                                         {phase.name}
                                                     </h3>
-                                                    <p className="text-xs text-gray-500">Deadline: {new Date(phase.deadline).toLocaleDateString()}</p>
+                                                    <p className="text-xs text-gray-500">Deadline: {formatDate(phase.deadline)}</p>
                                                 </div>
                                             </div>
 
@@ -275,7 +368,12 @@ export default function HackathonApplicationDashboard() {
                                                                         <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
                                                                         <p className="text-xs text-gray-500">MAX. 5MB</p>
                                                                     </div>
-                                                                    <input type="file" className="hidden" onChange={handleFileChange} />
+                                                                    <input
+                                                                        type="file"
+                                                                        className="hidden"
+                                                                        onChange={(e) => handleFileChange(e, phase.uploadFormat)}
+                                                                        accept={getAllowedExtensions(phase.uploadFormat)}
+                                                                    />
                                                                 </label>
                                                             </div>
                                                             {selectedFile && (
@@ -287,7 +385,7 @@ export default function HackathonApplicationDashboard() {
                                                     )}
 
                                                     <button
-                                                        onClick={() => handleSubmit(phase.id)}
+                                                        onClick={() => handleSubmit(phase.id, phase.uploadFormat)}
                                                         disabled={submitting || (!solutionText && !selectedFile)}
                                                         className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
