@@ -581,7 +581,16 @@ export default function IndustryHackathons() {
 
                     {/* Actions - Only show for owned hackathons */}
                     {activeTab === 'my-hackathons' && (
-                      <div className="flex gap-2 pt-4 border-t border-gray-100">
+                      <div className="flex gap-2 pt-4 border-t border-gray-100 flex-wrap">
+                        <button
+                          onClick={() => navigate(`/industry/hackathon/${hackathon.id}/dashboard`)}
+                          className="w-full p-2 text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-1 mb-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                          </svg>
+                          Manage Applications
+                        </button>
                         <button
                           onClick={() => handleEditClick(hackathon)}
                           className="flex-1 p-2 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-1"

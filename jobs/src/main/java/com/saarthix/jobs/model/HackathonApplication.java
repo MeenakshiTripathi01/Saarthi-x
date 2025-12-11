@@ -17,43 +17,187 @@ public class HackathonApplication {
 
     @JsonProperty("asTeam")
     private Boolean asTeam = false;
-    
+
     private String teamName;
     private int teamSize = 1;
 
-    private List<String> teamMembers;  // team member IDs
+    private List<String> teamMembers; // team member IDs
 
     private LocalDateTime appliedAt;
+
+    private String currentPhaseId;
+    private String status; // "ACTIVE", "REJECTED", "COMPLETED"
+
+    // Map phaseId -> PhaseSubmission
+    private java.util.Map<String, PhaseSubmission> phaseSubmissions = new java.util.HashMap<>();
 
     // Default Constructor
     public HackathonApplication() {
         this.asTeam = false;
         this.teamSize = 1;
+        this.status = "ACTIVE";
     }
 
     // Getters & Setters
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public String getId() {
+        return id;
+    }
 
-    public String getHackathonId() { return hackathonId; }
-    public void setHackathonId(String hackathonId) { this.hackathonId = hackathonId; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getApplicantId() { return applicantId; }
-    public void setApplicantId(String applicantId) { this.applicantId = applicantId; }
+    public String getHackathonId() {
+        return hackathonId;
+    }
 
-    public Boolean getAsTeam() { return asTeam != null ? asTeam : false; }
-    public void setAsTeam(Boolean asTeam) { this.asTeam = asTeam != null ? asTeam : false; }
+    public void setHackathonId(String hackathonId) {
+        this.hackathonId = hackathonId;
+    }
 
-    public String getTeamName() { return teamName; }
-    public void setTeamName(String teamName) { this.teamName = teamName; }
+    public String getApplicantId() {
+        return applicantId;
+    }
 
-    public int getTeamSize() { return teamSize > 0 ? teamSize : 1; }
-    public void setTeamSize(int teamSize) { this.teamSize = teamSize > 0 ? teamSize : 1; }
+    public void setApplicantId(String applicantId) {
+        this.applicantId = applicantId;
+    }
 
-    public List<String> getTeamMembers() { return teamMembers; }
-    public void setTeamMembers(List<String> teamMembers) { this.teamMembers = teamMembers; }
+    public Boolean getAsTeam() {
+        return asTeam != null ? asTeam : false;
+    }
 
-    public LocalDateTime getAppliedAt() { return appliedAt; }
-    public void setAppliedAt(LocalDateTime appliedAt) { this.appliedAt = appliedAt; }
+    public void setAsTeam(Boolean asTeam) {
+        this.asTeam = asTeam != null ? asTeam : false;
+    }
+
+    public String getTeamName() {
+        return teamName;
+    }
+
+    public void setTeamName(String teamName) {
+        this.teamName = teamName;
+    }
+
+    public int getTeamSize() {
+        return teamSize > 0 ? teamSize : 1;
+    }
+
+    public void setTeamSize(int teamSize) {
+        this.teamSize = teamSize > 0 ? teamSize : 1;
+    }
+
+    public List<String> getTeamMembers() {
+        return teamMembers;
+    }
+
+    public void setTeamMembers(List<String> teamMembers) {
+        this.teamMembers = teamMembers;
+    }
+
+    public LocalDateTime getAppliedAt() {
+        return appliedAt;
+    }
+
+    public void setAppliedAt(LocalDateTime appliedAt) {
+        this.appliedAt = appliedAt;
+    }
+
+    public String getCurrentPhaseId() {
+        return currentPhaseId;
+    }
+
+    public void setCurrentPhaseId(String currentPhaseId) {
+        this.currentPhaseId = currentPhaseId;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public java.util.Map<String, PhaseSubmission> getPhaseSubmissions() {
+        return phaseSubmissions;
+    }
+
+    public void setPhaseSubmissions(java.util.Map<String, PhaseSubmission> phaseSubmissions) {
+        this.phaseSubmissions = phaseSubmissions;
+    }
+
+    // Inner class for Phase Submission details
+    public static class PhaseSubmission {
+        private String solutionStatement; // For initial phase or text submissions
+        private String fileUrl; // For file uploads
+        private String fileName;
+        private LocalDateTime submittedAt;
+
+        private String status; // "PENDING", "ACCEPTED", "REJECTED"
+        private String remarks;
+        private Integer score;
+
+        public PhaseSubmission() {
+            this.status = "PENDING";
+            this.submittedAt = LocalDateTime.now();
+        }
+
+        public String getSolutionStatement() {
+            return solutionStatement;
+        }
+
+        public void setSolutionStatement(String solutionStatement) {
+            this.solutionStatement = solutionStatement;
+        }
+
+        public String getFileUrl() {
+            return fileUrl;
+        }
+
+        public void setFileUrl(String fileUrl) {
+            this.fileUrl = fileUrl;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+
+        public void setFileName(String fileName) {
+            this.fileName = fileName;
+        }
+
+        public LocalDateTime getSubmittedAt() {
+            return submittedAt;
+        }
+
+        public void setSubmittedAt(LocalDateTime submittedAt) {
+            this.submittedAt = submittedAt;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public String getRemarks() {
+            return remarks;
+        }
+
+        public void setRemarks(String remarks) {
+            this.remarks = remarks;
+        }
+
+        public Integer getScore() {
+            return score;
+        }
+
+        public void setScore(Integer score) {
+            this.score = score;
+        }
+    }
 }

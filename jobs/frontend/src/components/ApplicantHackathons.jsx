@@ -26,8 +26,8 @@ export default function ApplicantHackathons() {
   useEffect(() => {
     if (!authLoading) {
       if (!isAuthenticated || !isApplicant) {
-        navigate('/');
-        return;
+        // navigate('/'); // Commented out for debugging
+        // return;
       }
       if (isAuthenticated && isApplicant) {
         loadHackathons();
@@ -40,11 +40,11 @@ export default function ApplicantHackathons() {
       setLoading(true);
       setError(null);
       console.log('Loading hackathons for applicant...');
-      
+
       // Load all hackathons first (this should work regardless)
       const hackathonsData = await getAllHackathons();
       console.log('All Hackathons fetched:', hackathonsData);
-      
+
       if (!Array.isArray(hackathonsData)) {
         console.error('Invalid hackathons response format from server');
         setError('Invalid response format from server');
@@ -54,12 +54,12 @@ export default function ApplicantHackathons() {
       }
 
       setAllHackathons(hackathonsData);
-      
+
       // Try to load applications, but don't fail if it errors
       try {
         const applicationsData = await getMyHackathonApplications();
         console.log('My Applications fetched:', applicationsData);
-        
+
         if (Array.isArray(applicationsData)) {
           setMyApplications(applicationsData);
         } else {
@@ -76,7 +76,7 @@ export default function ApplicantHackathons() {
       console.error('Error loading hackathons:', err);
       console.error('Error response:', err.response?.data);
       let errorMessage = 'Failed to load hackathons';
-      
+
       if (err.response) {
         if (typeof err.response.data === 'string') {
           errorMessage = err.response.data;
@@ -84,7 +84,7 @@ export default function ApplicantHackathons() {
           errorMessage = err.response.data.message;
         }
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -109,103 +109,26 @@ export default function ApplicantHackathons() {
     setShowApplicationForm(false);
   };
 
-  const handleApply = async (hackathon) => {
-    setSelectedHackathon(hackathon);
-    resetForm();
-    setShowApplicationForm(true);
+  const handleApply = (hackathon) => {
+    navigate(`/hackathon/${hackathon.id}`);
   };
 
-  const handleSubmitApplication = async (e) => {
-    e.preventDefault();
-    
-    if (formData.asTeam) {
-      if (!formData.teamName || formData.teamName.trim() === '') {
-        toast.error('Team name is required', {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        return;
-      }
-      if (formData.teamSize < 2) {
-        toast.error('Team size must be at least 2', {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        return;
-      }
-    }
-
-    setIsSubmitting(true);
-    try {
-      // Build application data with proper types
-      const applicationData = {
-        asTeam: Boolean(formData.asTeam),
-        teamName: formData.asTeam && formData.teamName ? String(formData.teamName).trim() : null,
-        teamSize: formData.asTeam ? Math.max(2, parseInt(formData.teamSize) || 1) : 1,
-        teamMembers: formData.asTeam && Array.isArray(formData.teamMembers) ? formData.teamMembers : [],
-      };
-
-      console.log('Submitting application for hackathon:', selectedHackathon.id);
-      console.log('Hackathon ID type:', typeof selectedHackathon.id);
-      console.log('Application data:', applicationData);
-      console.log('Application data types:', {
-        asTeam: typeof applicationData.asTeam,
-        teamName: typeof applicationData.teamName,
-        teamSize: typeof applicationData.teamSize,
-        teamMembers: Array.isArray(applicationData.teamMembers)
-      });
-      
-      const response = await applyForHackathon(selectedHackathon.id, applicationData);
-      console.log('Application response:', response);
-      
-      toast.success('Application submitted successfully!', {
-        position: "top-right",
-        autoClose: 3000,
-      });
-
-      resetForm();
-      await loadHackathons();
-      setActiveTab('my-applications');
-    } catch (err) {
-      console.error('Error submitting application:', err);
-      console.error('Error response status:', err.response?.status);
-      console.error('Error response data:', err.response?.data);
-      console.error('Error message:', err.message);
-      
-      let errorMessage = 'Failed to submit application';
-      if (err.response) {
-        if (typeof err.response.data === 'string') {
-          errorMessage = err.response.data;
-        } else if (err.response.data?.message) {
-          errorMessage = err.response.data.message;
-        } else if (err.response.status === 401) {
-          errorMessage = 'Session expired. Please log in again.';
-        } else if (err.response.status === 403) {
-          errorMessage = 'Only applicants can apply for hackathons.';
-        } else if (err.response.status === 404) {
-          errorMessage = 'Hackathon not found.';
-        } else if (err.response.status === 400) {
-          errorMessage = 'Invalid application data. Please check your inputs.';
-        }
-      }
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 5000,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleViewDashboard = (applicationId) => {
+    navigate(`/hackathon-application/${applicationId}`);
   };
 
+  // Filter hackathons based on search
   const filteredHackathons = allHackathons.filter(hackathon => {
     const query = searchQuery.toLowerCase();
     const hasApplied = myApplications.some(app => app.hackathonId === hackathon.id);
-    
+
+    // In browse tab, hide applied hackathons
+    if (activeTab === 'browse' && hasApplied) return false;
+
     return (
-      !hasApplied &&
-      (hackathon.title?.toLowerCase().includes(query) ||
-       hackathon.company?.toLowerCase().includes(query) ||
-       hackathon.description?.toLowerCase().includes(query))
+      hackathon.title?.toLowerCase().includes(query) ||
+      hackathon.company?.toLowerCase().includes(query) ||
+      hackathon.description?.toLowerCase().includes(query)
     );
   });
 
@@ -213,15 +136,33 @@ export default function ApplicantHackathons() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-50">
         <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900"></div>
-          <p className="mt-4 text-gray-600 text-sm font-medium">Loading...</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
+          <p className="mt-4 text-gray-600 text-sm font-medium">Loading Hackathons...</p>
         </div>
       </div>
     );
   }
 
   if (!isAuthenticated || !isApplicant) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-gray-700">Access Denied</h2>
+          <p className="text-gray-500">
+            You must be an applicant to view this page. <br />
+            Authenticated: {isAuthenticated ? 'Yes' : 'No'} <br />
+            Is Applicant: {isApplicant ? 'Yes' : 'No'} <br />
+            User Role: {user?.userType || 'None'}
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -235,7 +176,7 @@ export default function ApplicantHackathons() {
           >
             ← Back to Dashboard
           </button>
-          
+
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-200">
               <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -277,11 +218,10 @@ export default function ApplicantHackathons() {
                 setActiveTab('browse');
                 setSearchQuery('');
               }}
-              className={`flex-1 py-4 px-6 font-semibold text-sm transition-all duration-200 border-b-2 ${
-                activeTab === 'browse'
-                  ? 'text-blue-600 border-b-blue-600'
-                  : 'text-gray-600 border-b-transparent hover:text-gray-900'
-              }`}
+              className={`flex-1 py-4 px-6 font-semibold text-sm transition-all duration-200 border-b-2 ${activeTab === 'browse'
+                ? 'text-blue-600 border-b-blue-600'
+                : 'text-gray-600 border-b-transparent hover:text-gray-900'
+                }`}
             >
               <div className="flex items-center justify-center gap-2">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,11 +235,10 @@ export default function ApplicantHackathons() {
                 setActiveTab('my-applications');
                 setSearchQuery('');
               }}
-              className={`flex-1 py-4 px-6 font-semibold text-sm transition-all duration-200 border-b-2 ${
-                activeTab === 'my-applications'
-                  ? 'text-blue-600 border-b-blue-600'
-                  : 'text-gray-600 border-b-transparent hover:text-gray-900'
-              }`}
+              className={`flex-1 py-4 px-6 font-semibold text-sm transition-all duration-200 border-b-2 ${activeTab === 'my-applications'
+                ? 'text-blue-600 border-b-blue-600'
+                : 'text-gray-600 border-b-transparent hover:text-gray-900'
+                }`}
             >
               <div className="flex items-center justify-center gap-2">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -341,8 +280,8 @@ export default function ApplicantHackathons() {
                   {allHackathons.length === 0 ? 'No Hackathons Available' : 'No New Hackathons'}
                 </h3>
                 <p className="text-gray-600 text-base">
-                  {allHackathons.length === 0 
-                    ? 'Check back soon for hackathons to apply to' 
+                  {allHackathons.length === 0
+                    ? 'Check back soon for hackathons to apply to'
                     : 'You have already applied to all available hackathons'}
                 </p>
               </div>
@@ -398,28 +337,11 @@ export default function ApplicantHackathons() {
                       onClick={() => handleApply(hackathon)}
                       className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
                     >
+                      View Details & Apply
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>
-                      Apply Now
                     </button>
-
-                    {/* View Details Link */}
-                    {hackathon.submissionUrl && (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <a
-                          href={hackathon.submissionUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
-                        >
-                          View Details
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -449,16 +371,25 @@ export default function ApplicantHackathons() {
                   return (
                     <div
                       key={application.id}
-                      className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-lg transition-all duration-200"
+                      onClick={() => handleViewDashboard(application.id)}
+                      className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-lg transition-all duration-200 cursor-pointer group"
                     >
                       <div className="mb-4">
-                        <h3 className="font-bold text-lg text-gray-900 mb-1">
+                        <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
                           {hackathon?.title || 'Unknown Hackathon'}
                         </h3>
                         <p className="text-sm text-gray-600 mb-2">{hackathon?.company || 'N/A'}</p>
-                        <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-semibold border border-green-200">
-                          ✓ Applied
-                        </span>
+                        <div className="flex gap-2">
+                          <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-semibold border border-green-200">
+                            ✓ Applied
+                          </span>
+                          <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border ${application.status === 'ACTIVE' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            application.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-gray-50 text-gray-700 border-gray-200'
+                            }`}>
+                            {application.status || 'Active'}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
@@ -471,8 +402,11 @@ export default function ApplicantHackathons() {
                         )}
                       </div>
 
-                      <div className="text-xs text-gray-500">
-                        Applied on {new Date(application.appliedAt).toLocaleDateString()}
+                      <div className="text-xs text-gray-500 flex justify-between items-center">
+                        <span>Applied on {new Date(application.appliedAt).toLocaleDateString()}</span>
+                        <span className="text-blue-600 font-medium flex items-center gap-1">
+                          Go to Dashboard <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                        </span>
                       </div>
                     </div>
                   );
@@ -481,118 +415,7 @@ export default function ApplicantHackathons() {
             )}
           </>
         )}
-
-        {/* Application Form Modal */}
-        {showApplicationForm && selectedHackathon && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 animate-slideIn">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Apply for Hackathon</h2>
-                    <p className="text-sm text-gray-600 mt-1">{selectedHackathon.title}</p>
-                  </div>
-                  <button
-                    onClick={() => resetForm()}
-                    className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-all duration-200 flex items-center justify-center text-xl font-light shadow-sm hover:shadow-md"
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <form onSubmit={handleSubmitApplication} className="space-y-6">
-                  {/* Application Type */}
-                  <div className="space-y-3">
-                    <label className="block text-sm font-medium text-gray-700">Application Type</label>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="asTeam"
-                          checked={!formData.asTeam}
-                          onChange={() => handleInputChange({ target: { name: 'asTeam', type: 'checkbox', checked: false } })}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm text-gray-700">Apply as Individual</span>
-                      </label>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="asTeam"
-                          checked={formData.asTeam}
-                          onChange={() => handleInputChange({ target: { name: 'asTeam', type: 'checkbox', checked: true } })}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm text-gray-700">Apply as Team</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Team Fields - Show only if team is selected */}
-                  {formData.asTeam && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Team Name *</label>
-                        <input
-                          type="text"
-                          name="teamName"
-                          value={formData.teamName}
-                          onChange={handleInputChange}
-                          placeholder="e.g., Tech Innovators"
-                          required={formData.asTeam}
-                          className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-500 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Team Size *</label>
-                        <input
-                          type="number"
-                          name="teamSize"
-                          value={formData.teamSize}
-                          onChange={handleInputChange}
-                          min="2"
-                          max={selectedHackathon.teamSize || 10}
-                          required={formData.asTeam}
-                          className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
-                        />
-                        <p className="text-xs text-gray-600 mt-1">Max: {selectedHackathon.teamSize || 'No limit'} members</p>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Submit Button */}
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="flex-1 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-2.5 px-6 transition-colors duration-200 disabled:cursor-not-allowed text-sm"
-                    >
-                      {isSubmitting ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                          Submitting...
-                        </span>
-                      ) : (
-                        'Submit Application'
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => resetForm()}
-                      disabled={isSubmitting}
-                      className="flex-1 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-900 font-semibold py-2.5 px-6 transition-colors duration-200 disabled:cursor-not-allowed text-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
 }
-
