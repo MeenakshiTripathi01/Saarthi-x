@@ -793,7 +793,7 @@ export default function PostHackathon() {
                                 <p className="text-sm text-gray-500 mt-1">Provide submission details and guidelines</p>
                             </div>
 
-                            <div>
+                            {/* <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Submission URL
                                 </label>
@@ -805,7 +805,7 @@ export default function PostHackathon() {
                                     placeholder="https://hackathon.example.com/submit"
                                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                 />
-                            </div>
+                            </div> */}
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">

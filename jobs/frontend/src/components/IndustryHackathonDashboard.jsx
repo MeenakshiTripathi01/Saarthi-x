@@ -115,7 +115,7 @@ export default function IndustryHackathonDashboard() {
                         <h1 className="text-2xl font-bold text-gray-900">{hackathon.title} - Dashboard</h1>
                         <p className="text-gray-500">Manage applications and reviews</p>
                     </div>
-                    <button onClick={() => navigate('/industry-hackathons')} className="text-purple-600 hover:underline">
+                    <button onClick={() => navigate('/manage-hackathons')} className="text-purple-600 hover:underline">
                         Back to Hackathons
                     </button>
                 </div>
@@ -137,8 +137,8 @@ export default function IndustryHackathonDashboard() {
                                         key={app.id}
                                         onClick={() => setSelectedApp(app)}
                                         className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedApp?.id === app.id
-                                                ? 'bg-purple-50 border-purple-500 ring-1 ring-purple-200'
-                                                : 'bg-white border-gray-200 hover:border-purple-300'
+                                            ? 'bg-purple-50 border-purple-500 ring-1 ring-purple-200'
+                                            : 'bg-white border-gray-200 hover:border-purple-300'
                                             }`}
                                     >
                                         <div className="flex justify-between items-start">
@@ -149,8 +149,8 @@ export default function IndustryHackathonDashboard() {
                                                 <p className="text-xs text-gray-500">ID: {app.id.substring(0, 8)}...</p>
                                             </div>
                                             <span className={`px-2 py-0.5 text-xs rounded-full ${app.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                                                    app.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                                                        'bg-gray-100 text-gray-700'
+                                                app.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                                    'bg-gray-100 text-gray-700'
                                                 }`}>
                                                 {app.status}
                                             </span>
@@ -181,8 +181,8 @@ export default function IndustryHackathonDashboard() {
                                     </div>
                                     <div className="text-right">
                                         <span className={`px-3 py-1 rounded-full text-sm font-bold ${selectedApp.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                                                selectedApp.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                                                    'bg-gray-100 text-gray-700'
+                                            selectedApp.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                                'bg-gray-100 text-gray-700'
                                             }`}>
                                             {selectedApp.status}
                                         </span>
@@ -200,8 +200,8 @@ export default function IndustryHackathonDashboard() {
                                                     <h3 className="font-bold text-gray-800">Phase {index + 1}: {phase.name}</h3>
                                                     {submission && (
                                                         <span className={`text-xs font-bold px-2 py-1 rounded ${submission.status === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
-                                                                submission.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                                                                    'bg-yellow-100 text-yellow-700'
+                                                            submission.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                                                'bg-yellow-100 text-yellow-700'
                                                             }`}>
                                                             {submission.status}
                                                         </span>
