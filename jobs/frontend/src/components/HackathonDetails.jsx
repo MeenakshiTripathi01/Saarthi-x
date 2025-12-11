@@ -19,7 +19,36 @@ export default function HackathonDetails() {
     const [asTeam, setAsTeam] = useState(false);
     const [teamName, setTeamName] = useState('');
     const [teamSize, setTeamSize] = useState(2);
-    const [teamMembers, setTeamMembers] = useState(['']); // Start with one empty member for size 2
+    const [teamMembers, setTeamMembers] = useState([]);
+
+    // Initialize team members when team size changes or user loads
+    useEffect(() => {
+        if (asTeam && user) {
+            const initialMembers = Array(teamSize).fill(null).map((_, index) => {
+                // Preserve existing data if resizing
+                if (teamMembers[index]) return teamMembers[index];
+
+                // Initialize Team Lead (index 0)
+                if (index === 0) {
+                    return {
+                        name: user.name || '',
+                        email: user.email || '',
+                        phone: '',
+                        role: 'Team Lead'
+                    };
+                }
+
+                // Initialize other members
+                return {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    role: 'Member'
+                };
+            });
+            setTeamMembers(initialMembers);
+        }
+    }, [teamSize, asTeam, user]);
 
     const formatDate = (dateString) => {
         if (!dateString) return '';
@@ -243,32 +272,68 @@ export default function HackathonDetails() {
                                                             type="number"
                                                             required
                                                             min="2"
-                                                            max={hackathon.teamSize}
+                                                            max="10"
                                                             value={teamSize}
-                                                            onChange={(e) => setTeamSize(parseInt(e.target.value))}
+                                                            onWheel={(e) => e.target.blur()}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value);
+                                                                setTeamSize(isNaN(val) ? 0 : val);
+                                                            }}
                                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                         />
-                                                        <p className="text-xs text-gray-500 mt-1">Max size: {hackathon.teamSize}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">Max size: 10</p>
                                                     </div>
 
-                                                    <div className="space-y-2">
-                                                        <label className="block text-sm font-medium text-gray-700">Team Members</label>
-                                                        {Array.from({ length: teamSize - 1 }).map((_, index) => (
-                                                            <input
-                                                                key={index}
-                                                                type="text"
-                                                                required
-                                                                value={teamMembers[index] || ''}
-                                                                onChange={(e) => {
-                                                                    const newMembers = [...teamMembers];
-                                                                    newMembers[index] = e.target.value;
-                                                                    setTeamMembers(newMembers);
-                                                                }}
-                                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                                                                placeholder={`Member ${index + 2} Name`}
-                                                            />
+                                                    <div className="space-y-4">
+                                                        <label className="block text-sm font-medium text-gray-700">Team Members Details</label>
+                                                        {teamMembers.map((member, index) => (
+                                                            <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+                                                                <h4 className="text-sm font-bold text-gray-800">
+                                                                    {index === 0 ? 'Team Lead (You)' : `Member ${index + 1}`}
+                                                                </h4>
+
+                                                                <div className="grid grid-cols-1 gap-3">
+                                                                    <input
+                                                                        type="text"
+                                                                        required
+                                                                        value={member.name}
+                                                                        onChange={(e) => {
+                                                                            const newMembers = [...teamMembers];
+                                                                            newMembers[index] = { ...newMembers[index], name: e.target.value };
+                                                                            setTeamMembers(newMembers);
+                                                                        }}
+                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                                                        placeholder="Full Name"
+                                                                        readOnly={index === 0} // Lock name for lead if desired, or allow edit
+                                                                    />
+                                                                    <input
+                                                                        type="email"
+                                                                        required
+                                                                        value={member.email}
+                                                                        onChange={(e) => {
+                                                                            const newMembers = [...teamMembers];
+                                                                            newMembers[index] = { ...newMembers[index], email: e.target.value };
+                                                                            setTeamMembers(newMembers);
+                                                                        }}
+                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                                                        placeholder="Email Address"
+                                                                        readOnly={index === 0}
+                                                                    />
+                                                                    <input
+                                                                        type="tel"
+                                                                        required
+                                                                        value={member.phone}
+                                                                        onChange={(e) => {
+                                                                            const newMembers = [...teamMembers];
+                                                                            newMembers[index] = { ...newMembers[index], phone: e.target.value };
+                                                                            setTeamMembers(newMembers);
+                                                                        }}
+                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                                                        placeholder="Phone Number"
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         ))}
-                                                        <p className="text-xs text-gray-500">Enter names of other team members</p>
                                                     </div>
                                                 </div>
                                             )}

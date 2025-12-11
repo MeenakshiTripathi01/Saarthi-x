@@ -2,6 +2,7 @@ package com.saarthix.jobs.model;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -21,7 +22,7 @@ public class HackathonApplication {
     private String teamName;
     private int teamSize = 1;
 
-    private List<String> teamMembers; // team member IDs
+    private List<TeamMember> teamMembers = new ArrayList<>();
 
     private LocalDateTime appliedAt;
 
@@ -88,11 +89,11 @@ public class HackathonApplication {
         this.teamSize = teamSize > 0 ? teamSize : 1;
     }
 
-    public List<String> getTeamMembers() {
+    public List<TeamMember> getTeamMembers() {
         return teamMembers;
     }
 
-    public void setTeamMembers(List<String> teamMembers) {
+    public void setTeamMembers(List<TeamMember> teamMembers) {
         this.teamMembers = teamMembers;
     }
 
@@ -126,6 +127,56 @@ public class HackathonApplication {
 
     public void setPhaseSubmissions(java.util.Map<String, PhaseSubmission> phaseSubmissions) {
         this.phaseSubmissions = phaseSubmissions;
+    }
+
+    // Inner class for Team Member details
+    public static class TeamMember {
+        private String name;
+        private String email;
+        private String phone;
+        private String role; // "Team Lead" or "Member"
+
+        public TeamMember() {
+        }
+
+        public TeamMember(String name, String email, String phone, String role) {
+            this.name = name;
+            this.email = email;
+            this.phone = phone;
+            this.role = role;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
     }
 
     // Inner class for Phase Submission details

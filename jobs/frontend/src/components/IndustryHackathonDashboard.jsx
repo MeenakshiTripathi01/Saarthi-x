@@ -189,6 +189,30 @@ export default function IndustryHackathonDashboard() {
                                     </div>
                                 </div>
 
+                                {selectedApp.asTeam && selectedApp.teamMembers && selectedApp.teamMembers.length > 0 && (
+                                    <div className="mb-8 bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                        <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                            <Users className="w-4 h-4" /> Team Members
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {selectedApp.teamMembers.map((member, idx) => (
+                                                <div key={idx} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className="font-semibold text-gray-900">{member.name}</span>
+                                                        <span className={`text-xs px-2 py-0.5 rounded-full ${member.role === 'Team Lead' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                            {member.role}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 space-y-0.5">
+                                                        <p>{member.email}</p>
+                                                        <p>{member.phone}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="space-y-8">
                                     {hackathon.phases.map((phase, index) => {
                                         const submission = selectedApp.phaseSubmissions?.[phase.id];
