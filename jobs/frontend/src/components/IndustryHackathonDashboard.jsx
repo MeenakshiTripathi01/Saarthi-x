@@ -115,9 +115,18 @@ export default function IndustryHackathonDashboard() {
                         <h1 className="text-2xl font-bold text-gray-900">{hackathon.title} - Dashboard</h1>
                         <p className="text-gray-500">Manage applications and reviews</p>
                     </div>
-                    <button onClick={() => navigate('/manage-hackathons')} className="text-purple-600 hover:underline">
-                        Back to Hackathons
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => navigate(`/industry/hackathon/${hackathonId}/results`)}
+                            className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center gap-2"
+                        >
+                            View Results
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => navigate('/manage-hackathons')} className="text-purple-600 hover:underline">
+                            Back to Hackathons
+                        </button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

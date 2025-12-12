@@ -179,6 +179,12 @@ export default function HackathonApplicationDashboard() {
         }
     }
 
+    // Check if all phases are completed (all submitted and reviewed)
+    const allPhasesCompleted = hackathon.phases.every(phase => {
+        const submission = application.phaseSubmissions?.[phase.id];
+        return submission && (submission.status === 'ACCEPTED' || submission.status === 'REJECTED');
+    });
+
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
@@ -202,6 +208,25 @@ export default function HackathonApplicationDashboard() {
                         )}
                     </div>
                 </div>
+
+                {/* View Results Button - Shows when all phases are completed */}
+                {allPhasesCompleted && (
+                    <div className="mb-6 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl shadow-lg p-6 text-white animate-fadeIn">
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-xl font-bold mb-1">🎉 All Phases Completed!</h3>
+                                <p className="text-purple-100">Your hackathon journey is complete. View your results and performance.</p>
+                            </div>
+                            <button
+                                onClick={() => navigate(`/hackathon-application/${applicationId}/results`)}
+                                className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+                            >
+                                View Results
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Notifications Area */}
                 {(application.status === 'REJECTED' || hackathon.phases.some(p => application.phaseSubmissions?.[p.id]?.status === 'ACCEPTED' || application.phaseSubmissions?.[p.id]?.status === 'REJECTED')) && (

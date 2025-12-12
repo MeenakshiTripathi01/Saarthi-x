@@ -32,6 +32,12 @@ public class HackathonApplication {
     // Map phaseId -> PhaseSubmission
     private java.util.Map<String, PhaseSubmission> phaseSubmissions = new java.util.HashMap<>();
 
+    // Result and Ranking fields
+    private Integer finalRank; // 1, 2, 3, or null for others
+    private Double totalScore; // Sum of all phase scores
+    private String certificateUrl; // URL to generated certificate
+    private ShowcaseContent showcaseContent; // For top 3 winners
+
     // Default Constructor
     public HackathonApplication() {
         this.asTeam = false;
@@ -250,5 +256,90 @@ public class HackathonApplication {
         public void setScore(Integer score) {
             this.score = score;
         }
+    }
+
+    // Inner class for Showcase Content (for top 3 winners)
+    public static class ShowcaseContent {
+        private String title;
+        private String description;
+        private String innovationHighlights;
+        private List<String> fileUrls = new ArrayList<>();
+        private LocalDateTime publishedAt;
+
+        public ShowcaseContent() {
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
+
+        public String getInnovationHighlights() {
+            return innovationHighlights;
+        }
+
+        public void setInnovationHighlights(String innovationHighlights) {
+            this.innovationHighlights = innovationHighlights;
+        }
+
+        public List<String> getFileUrls() {
+            return fileUrls;
+        }
+
+        public void setFileUrls(List<String> fileUrls) {
+            this.fileUrls = fileUrls;
+        }
+
+        public LocalDateTime getPublishedAt() {
+            return publishedAt;
+        }
+
+        public void setPublishedAt(LocalDateTime publishedAt) {
+            this.publishedAt = publishedAt;
+        }
+    }
+
+    // Getters and Setters for Result fields
+    public Integer getFinalRank() {
+        return finalRank;
+    }
+
+    public void setFinalRank(Integer finalRank) {
+        this.finalRank = finalRank;
+    }
+
+    public Double getTotalScore() {
+        return totalScore;
+    }
+
+    public void setTotalScore(Double totalScore) {
+        this.totalScore = totalScore;
+    }
+
+    public String getCertificateUrl() {
+        return certificateUrl;
+    }
+
+    public void setCertificateUrl(String certificateUrl) {
+        this.certificateUrl = certificateUrl;
+    }
+
+    public ShowcaseContent getShowcaseContent() {
+        return showcaseContent;
+    }
+
+    public void setShowcaseContent(ShowcaseContent showcaseContent) {
+        this.showcaseContent = showcaseContent;
     }
 }

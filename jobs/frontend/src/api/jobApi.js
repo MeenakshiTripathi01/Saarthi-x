@@ -553,3 +553,70 @@ export const getHackathonApplicationDetails = async (applicationId) => {
     throw error;
   }
 };
+
+// Hackathon Results API functions
+export const finalizeHackathonResults = async (hackathonId) => {
+  try {
+    const response = await axios.post(
+      `http://localhost:8080/api/hackathon-applications/hackathon/${hackathonId}/finalize-results`,
+      {},
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error finalizing hackathon results:', error);
+    throw error;
+  }
+};
+
+export const publishShowcaseContent = async (applicationId, showcaseData) => {
+  try {
+    const response = await axios.put(
+      `http://localhost:8080/api/hackathon-applications/${applicationId}/showcase`,
+      showcaseData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error publishing showcase content:', error);
+    throw error;
+  }
+};
+
+export const getApplicationResults = async (applicationId) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8080/api/hackathon-applications/${applicationId}/results`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching application results:', error);
+    throw error;
+  }
+};
+
+export const getHackathonResults = async (hackathonId) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8080/api/hackathon-applications/hackathon/${hackathonId}/results`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching hackathon results:', error);
+    throw error;
+  }
+};
+

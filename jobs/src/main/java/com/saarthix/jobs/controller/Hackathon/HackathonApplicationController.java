@@ -15,6 +15,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/hackathon-applications")
@@ -307,6 +308,192 @@ public class HackathonApplicationController {
             return ResponseEntity.status(403).body("Access denied.");
         }
 
+        return ResponseEntity.ok(app);
+    }
+
+    // --------------------------------------------
+    // FINALIZE RESULTS & CALCULATE RANKINGS (Industry)
+    // POST /api/hackathon-applications/hackathon/{hackathonId}/finalize-results
+    // --------------------------------------------
+    @PostMapping("/hackathon/{hackathonId}/finalize-results")
+    public ResponseEntity<?> finalizeResults(
+            @PathVariable String hackathonId,
+            Authentication auth) {
+
+        User user = resolveUser(auth);
+        if (user == null || !"INDUSTRY".equals(user.getUserType())) {
+            return ResponseEntity.status(403).body("Only industry users can finalize results");
+        }
+
+        // Get all applications for this hackathon
+        List<HackathonApplication> applications = applicationRepository.findByHackathonId(hackathonId);
+
+        // Calculate total scores for each application
+        for (HackathonApplication app : applications) {
+            double totalScore = 0.0;
+            for (HackathonApplication.PhaseSubmission submission : app.getPhaseSubmissions().values()) {
+                if (submission.getScore() != null) {
+                    totalScore += submission.getScore();
+                }
+            }
+            app.setTotalScore(totalScore);
+        }
+
+        // Sort by total score (descending)
+        applications.sort((a, b) -> Double.compare(
+                b.getTotalScore() != null ? b.getTotalScore() : 0.0,
+                a.getTotalScore() != null ? a.getTotalScore() : 0.0));
+
+        // Assign ranks (1, 2, 3)
+        for (int i = 0; i < Math.min(3, applications.size()); i++) {
+            applications.get(i).setFinalRank(i + 1);
+        }
+
+        // Save all applications
+        applicationRepository.saveAll(applications);
+
+        return ResponseEntity.ok("Results finalized successfully");
+    }
+
+    // --------------------------------------------
+    // PUBLISH SHOWCASE CONTENT (Industry - for top 3)
+    // PUT /api/hackathon-applications/{applicationId}/showcase
+    // --------------------------------------------
+    @PutMapping("/{applicationId}/showcase")
+    public ResponseEntity<?> publishShowcase(
+            @PathVariable String applicationId,
+            @RequestBody HackathonApplication.ShowcaseContent showcase,
+            Authentication auth) {
+
+        User user = resolveUser(auth);
+        if (user == null || !"INDUSTRY".equals(user.getUserType())) {
+            return ResponseEntity.status(403).body("Only industry users can publish showcase");
+        }
+
+        Optional<HackathonApplication> appOpt = applicationRepository.findById(applicationId);
+        if (appOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        HackathonApplication app = appOpt.get();
+
+        // Only allow for top 3
+        if (app.getFinalRank() == null || app.getFinalRank() > 3) {
+            return ResponseEntity.status(400).body("Showcase only available for top 3 winners");
+        }
+
+        showcase.setPublishedAt(LocalDateTime.now());
+        app.setShowcaseContent(showcase);
+        applicationRepository.save(app);
+
+        return ResponseEntity.ok(app);
+    }
+
+    // --------------------------------------------
+    // GET RESULTS (Applicant - view own results)
+    // GET /api/hackathon-applications/{applicationId}/results
+    // --------------------------------------------
+    @GetMapping("/{applicationId}/results")
+    public ResponseEntity<?> getResults(
+            @PathVariable String applicationId,
+            Authentication auth) {
+
+        User user = resolveUser(auth);
+        if (user == null) {
+            return ResponseEntity.status(401).body("Authentication required");
+        }
+
+        Optional<HackathonApplication> appOpt = applicationRepository.findById(applicationId);
+        if (appOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        HackathonApplication app = appOpt.get();
+
+        // Applicants can only view their own results
+        if ("APPLICANT".equals(user.getUserType()) && !app.getApplicantId().equals(user.getId())) {
+            return ResponseEntity.status(403).body("Access denied");
+        }
+
+        return ResponseEntity.ok(app);
+    }
+
+    // --------------------------------------------
+    // GET ALL RESULTS FOR HACKATHON (Industry)
+    // GET /api/hackathon-applications/hackathon/{hackathonId}/results
+    // --------------------------------------------
+    @GetMapping("/hackathon/{hackathonId}/results")
+    public ResponseEntity<?> getHackathonResults(
+            @PathVariable String hackathonId,
+            Authentication auth) {
+
+        User user = resolveUser(auth);
+        if (user == null || !"INDUSTRY".equals(user.getUserType())) {
+            return ResponseEntity.status(403).body("Only industry users can view all results");
+        }
+
+        List<HackathonApplication> applications = applicationRepository.findByHackathonId(hackathonId);
+
+        // Sort by rank (nulls last) then by total score
+        applications.sort((a, b) -> {
+            if (a.getFinalRank() != null && b.getFinalRank() != null) {
+                return Integer.compare(a.getFinalRank(), b.getFinalRank());
+            }
+            if (a.getFinalRank() != null)
+                return -1;
+            if (b.getFinalRank() != null)
+                return 1;
+            return Double.compare(
+                    b.getTotalScore() != null ? b.getTotalScore() : 0.0,
+                    a.getTotalScore() != null ? a.getTotalScore() : 0.0);
+        });
+
+        return ResponseEntity.ok(applications);
+    }
+
+    // --------------------------------------------
+    // UPDATE APPLICATION RANK (Industry - Manual Selection)
+    // PATCH /api/hackathon-applications/{applicationId}
+    // --------------------------------------------
+    @PatchMapping("/{applicationId}")
+    public ResponseEntity<?> updateApplicationRank(
+            @PathVariable String applicationId,
+            @RequestBody Map<String, Object> updates,
+            Authentication auth) {
+
+        User user = resolveUser(auth);
+        System.out.println("PATCH /api/hackathon-applications/" + applicationId);
+        System.out.println("User: " + (user != null ? user.getEmail() : "null"));
+        System.out.println("User Type: " + (user != null ? user.getUserType() : "null"));
+
+        if (user == null || !"INDUSTRY".equals(user.getUserType())) {
+            System.out.println("Authorization failed - returning 403");
+            return ResponseEntity.status(403).body("Only industry users can update rankings");
+        }
+
+        Optional<HackathonApplication> appOpt = applicationRepository.findById(applicationId);
+        if (appOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        HackathonApplication app = appOpt.get();
+
+        // Update finalRank if provided
+        if (updates.containsKey("finalRank")) {
+            Integer rank = (Integer) updates.get("finalRank");
+            app.setFinalRank(rank);
+            System.out.println("Setting finalRank to: " + rank);
+        }
+
+        // Update totalScore if provided
+        if (updates.containsKey("totalScore")) {
+            Double score = ((Number) updates.get("totalScore")).doubleValue();
+            app.setTotalScore(score);
+            System.out.println("Setting totalScore to: " + score);
+        }
+
+        applicationRepository.save(app);
+        System.out.println("Application saved successfully");
         return ResponseEntity.ok(app);
     }
 
