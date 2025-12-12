@@ -37,6 +37,7 @@ public class Hackathon {
     private String submissionGuidelines;
 
     // Capacity & Prizes
+    private int minTeamSize;
     private int teamSize;
     private int maxTeams;
     private String prize;
@@ -169,6 +170,14 @@ public class Hackathon {
 
     public void setSubmissionGuidelines(String submissionGuidelines) {
         this.submissionGuidelines = submissionGuidelines;
+    }
+
+    public int getMinTeamSize() {
+        return minTeamSize;
+    }
+
+    public void setMinTeamSize(int minTeamSize) {
+        this.minTeamSize = minTeamSize;
     }
 
     public int getTeamSize() {

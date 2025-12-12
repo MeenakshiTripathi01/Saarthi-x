@@ -16,8 +16,10 @@ export default function HackathonApplicationDashboard() {
     const [submitting, setSubmitting] = useState(false);
 
     // Submission State
+    // Submission State
     const [solutionText, setSolutionText] = useState('');
     const [selectedFile, setSelectedFile] = useState(null);
+    const [submissionLink, setSubmissionLink] = useState('');
 
     const formatDate = (dateString) => {
         if (!dateString) return '';
@@ -40,12 +42,15 @@ export default function HackathonApplicationDashboard() {
     };
 
     const getAllowedExtensions = (format) => {
-        switch (format) {
-            case 'document': return '.pdf,.doc,.docx';
-            case 'video': return '.mp4,.avi,.mov';
-            case 'image': return '.jpg,.jpeg,.png';
-            case 'code': return '.zip,.rar,.7z';
+        if (!format) return '*';
+        const lowerFormat = format.toLowerCase();
+        switch (lowerFormat) {
+            case 'document': return '.pdf,.doc,.docx,.txt';
+            case 'video': return '.mp4,.avi,.mov,.mkv';
+            case 'image': return '.jpg,.jpeg,.png,.gif';
+            case 'code': return '.zip,.rar,.7z,.tar,.gz';
             case 'presentation': return '.ppt,.pptx,.pdf';
+            case 'link': return '';
             default: return '*';
         }
     };
@@ -82,6 +87,8 @@ export default function HackathonApplicationDashboard() {
             if (format && format !== 'any' && format !== 'link') {
                 const allowed = getAllowedExtensions(format).split(',');
                 const ext = '.' + file.name.split('.').pop().toLowerCase();
+
+                // If allowed is *, accept anything. Otherwise check extension.
                 if (allowed[0] !== '*' && !allowed.includes(ext)) {
                     toast.error(`Invalid file format. Allowed: ${allowed.join(', ')}`);
                     return;
@@ -109,9 +116,24 @@ export default function HackathonApplicationDashboard() {
                 return;
             }
 
-            if (format !== 'link' && !selectedFile) {
-                toast.error('Please upload a file');
-                return;
+            // Validate based on format
+            if (format === 'link') {
+                if (!submissionLink.trim()) {
+                    toast.error('Please provide a submission link');
+                    return;
+                }
+            } else if (format === 'code' || format === 'any') {
+                // For code/any, require EITHER a file OR a link
+                if (!selectedFile && !submissionLink.trim()) {
+                    toast.error('Please upload a file OR provide a submission link');
+                    return;
+                }
+            } else {
+                // For specific formats (document, image, etc.), require a file
+                if (!selectedFile) {
+                    toast.error('Please upload a file');
+                    return;
+                }
             }
 
             setSubmitting(true);
@@ -119,7 +141,8 @@ export default function HackathonApplicationDashboard() {
             const submissionData = {
                 solutionStatement: solutionText,
                 fileName: selectedFile ? selectedFile.name : null,
-                fileUrl: selectedFile ? await convertFileToBase64(selectedFile) : null // Sending base64 as fileUrl for simplicity
+                fileUrl: selectedFile ? await convertFileToBase64(selectedFile) : null,
+                submissionLink: submissionLink.trim() || null // Add link to submission data
             };
 
             await submitHackathonPhase(applicationId, phaseId, submissionData);
@@ -127,6 +150,7 @@ export default function HackathonApplicationDashboard() {
             toast.success('Solution submitted successfully!');
             setSolutionText('');
             setSelectedFile(null);
+            setSubmissionLink('');
             loadData(); // Reload to show updated status
 
         } catch (error) {
@@ -366,16 +390,34 @@ export default function HackathonApplicationDashboard() {
                                                     <div className="mb-4">
                                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                                             Solution Statement / Description
-                                                            {phase.uploadFormat === 'link' && <span className="text-xs text-gray-500 ml-2">(Please paste your link here)</span>}
                                                         </label>
                                                         <textarea
-                                                            rows="4"
+                                                            rows="3"
                                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                                            placeholder={phase.uploadFormat === 'link' ? "Paste your submission link here..." : "Describe your solution here..."}
+                                                            placeholder="Describe your solution approach..."
                                                             value={solutionText}
                                                             onChange={(e) => setSolutionText(e.target.value)}
                                                         ></textarea>
                                                     </div>
+
+                                                    {/* Link Submission - Visible for Link, Code, or Any */}
+                                                    {(phase.uploadFormat === 'link' || phase.uploadFormat === 'code' || phase.uploadFormat === 'any') && (
+                                                        <div className="mb-4">
+                                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                                Submission Link
+                                                                <span className="text-xs text-gray-500 ml-2">
+                                                                    {phase.uploadFormat === 'code' ? '(GitHub/GitLab Repository)' : '(Project URL)'}
+                                                                </span>
+                                                            </label>
+                                                            <input
+                                                                type="url"
+                                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                                placeholder="https://..."
+                                                                value={submissionLink}
+                                                                onChange={(e) => setSubmissionLink(e.target.value)}
+                                                            />
+                                                        </div>
+                                                    )}
 
                                                     {/* File Upload - Visible unless format is strictly 'link' */}
                                                     {phase.uploadFormat !== 'link' && (
@@ -387,11 +429,13 @@ export default function HackathonApplicationDashboard() {
                                                                 </span>
                                                             </label>
                                                             <div className="flex items-center justify-center w-full">
-                                                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
                                                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                                                         <Upload className="w-8 h-8 mb-3 text-gray-400" />
                                                                         <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                                                                        <p className="text-xs text-gray-500">MAX. 5MB</p>
+                                                                        <p className="text-xs text-gray-500">
+                                                                            Allowed: {getAllowedExtensions(phase.uploadFormat).replace(/\./g, ' ').toUpperCase()}
+                                                                        </p>
                                                                     </div>
                                                                     <input
                                                                         type="file"
@@ -402,19 +446,38 @@ export default function HackathonApplicationDashboard() {
                                                                 </label>
                                                             </div>
                                                             {selectedFile && (
-                                                                <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
-                                                                    <CheckCircle className="w-4 h-4" /> Selected: {selectedFile.name}
-                                                                </p>
+                                                                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                                                                    <p className="text-sm text-green-700 flex items-center gap-2">
+                                                                        <CheckCircle className="w-4 h-4" />
+                                                                        <span className="font-medium truncate max-w-[200px]">{selectedFile.name}</span>
+                                                                    </p>
+                                                                    <button
+                                                                        onClick={() => setSelectedFile(null)}
+                                                                        className="text-gray-400 hover:text-red-500"
+                                                                    >
+                                                                        <XCircle className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     )}
 
                                                     <button
                                                         onClick={() => handleSubmit(phase.id, phase.uploadFormat)}
-                                                        disabled={submitting || (!solutionText && !selectedFile)}
-                                                        className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        disabled={submitting || (!solutionText && !selectedFile && !submissionLink)}
+                                                        className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                                     >
-                                                        {submitting ? 'Submitting...' : 'Submit Solution'}
+                                                        {submitting ? (
+                                                            <>
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                                                Submitting...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Upload className="w-4 h-4" />
+                                                                Submit Solution
+                                                            </>
+                                                        )}
                                                     </button>
                                                 </div>
                                             )}

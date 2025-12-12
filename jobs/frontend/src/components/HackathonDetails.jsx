@@ -84,6 +84,9 @@ export default function HackathonDetails() {
             ]);
 
             setHackathon(hackathonData);
+            if (hackathonData.teamSize) {
+                setTeamSize(hackathonData.teamSize);
+            }
 
             // Check if already applied
             if (myApps && myApps.length > 0) {
@@ -242,15 +245,17 @@ export default function HackathonDetails() {
                                     ) : (
                                         <form onSubmit={handleApply} className="space-y-4">
                                             <div>
-                                                <label className="flex items-center gap-2 cursor-pointer mb-4">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={asTeam}
-                                                        onChange={(e) => setAsTeam(e.target.checked)}
-                                                        className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
-                                                    />
-                                                    <span className="text-gray-700 font-medium">Apply as a Team</span>
-                                                </label>
+                                                {hackathon.teamSize > 1 && (
+                                                    <label className="flex items-center gap-2 cursor-pointer mb-4">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={asTeam}
+                                                            onChange={(e) => setAsTeam(e.target.checked)}
+                                                            className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                        />
+                                                        <span className="text-gray-700 font-medium">Apply as a Team</span>
+                                                    </label>
+                                                )}
                                             </div>
 
                                             {asTeam && (
@@ -271,17 +276,28 @@ export default function HackathonDetails() {
                                                         <input
                                                             type="number"
                                                             required
-                                                            min="2"
-                                                            max="10"
+                                                            min={hackathon.teamSize}
+                                                            max={hackathon.maxTeams}
                                                             value={teamSize}
                                                             onWheel={(e) => e.target.blur()}
                                                             onChange={(e) => {
                                                                 const val = parseInt(e.target.value);
-                                                                setTeamSize(isNaN(val) ? 0 : val);
+                                                                if (!isNaN(val)) {
+                                                                    if (val > hackathon.maxTeams) {
+                                                                        toast.warning(`Maximum team size allowed is ${hackathon.maxTeams}`);
+                                                                        setTeamSize(hackathon.maxTeams);
+                                                                    } else {
+                                                                        setTeamSize(val);
+                                                                    }
+                                                                } else {
+                                                                    setTeamSize(0);
+                                                                }
                                                             }}
                                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                         />
-                                                        <p className="text-xs text-gray-500 mt-1">Max size: 10</p>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            Allowed size: {hackathon.teamSize} - {hackathon.maxTeams} members
+                                                        </p>
                                                     </div>
 
                                                     {/* Team Members Section */}
@@ -298,8 +314,8 @@ export default function HackathonDetails() {
                                                                 <div
                                                                     key={index}
                                                                     className={`rounded-lg border p-4 transition-all ${index === 0
-                                                                            ? 'border-purple-300 bg-purple-50/50'
-                                                                            : 'border-gray-200 bg-white'
+                                                                        ? 'border-purple-300 bg-purple-50/50'
+                                                                        : 'border-gray-200 bg-white'
                                                                         }`}
                                                                 >
                                                                     {/* Member Header */}

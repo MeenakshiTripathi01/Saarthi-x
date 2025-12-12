@@ -57,6 +57,7 @@ export default function PostHackathon() {
         submissionUrl: '',
         submissionGuidelines: '',
         // Capacity & Prizes
+        minTeamSize: '',
         teamSize: '',
         maxTeams: '',
         prize: '',
@@ -84,6 +85,7 @@ export default function PostHackathon() {
                         reportingDate: hackathon.reportingDate || '',
                         submissionUrl: hackathon.submissionUrl || '',
                         submissionGuidelines: hackathon.submissionGuidelines || '',
+                        minTeamSize: hackathon.minTeamSize || '',
                         teamSize: hackathon.teamSize || '',
                         maxTeams: hackathon.maxTeams || '',
                         prize: hackathon.prize || '',
@@ -287,6 +289,13 @@ export default function PostHackathon() {
             }
         }
 
+        // Validate team size
+        if (formData.minTeamSize && formData.teamSize && parseInt(formData.minTeamSize) > parseInt(formData.teamSize)) {
+            toast.error('Minimum team size cannot be greater than maximum team size');
+            setSaving(false);
+            return;
+        }
+
         setSaving(true);
         setError(null);
         setSuccess(false);
@@ -297,6 +306,7 @@ export default function PostHackathon() {
                 description: formData.description,
                 company: formData.company,
                 prize: formData.prize || null,
+                minTeamSize: formData.minTeamSize ? parseInt(formData.minTeamSize) : 1,
                 teamSize: formData.teamSize ? parseInt(formData.teamSize) : 0,
                 submissionUrl: formData.submissionUrl || null,
                 // Store additional data as JSON in description or separate fields
@@ -869,10 +879,26 @@ export default function PostHackathon() {
                                 <p className="text-sm text-gray-500 mt-1">Set team limits and prize details</p>
                             </div>
 
-                            <div className="grid md:grid-cols-2 gap-6">
+                            <div className="grid md:grid-cols-3 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Team Size (max members)
+                                        Minimum Team Size
+                                    </label>
+                                    <input
+                                        type="number"
+                                        name="minTeamSize"
+                                        value={formData.minTeamSize}
+                                        onChange={handleInputChange}
+                                        placeholder="e.g., 2"
+                                        min="1"
+                                        max={formData.teamSize || 20}
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Maximum Team Size
                                     </label>
                                     <input
                                         type="number"
@@ -880,7 +906,7 @@ export default function PostHackathon() {
                                         value={formData.teamSize}
                                         onChange={handleInputChange}
                                         placeholder="e.g., 5"
-                                        min="1"
+                                        min={formData.minTeamSize || 1}
                                         max="20"
                                         className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />

@@ -190,6 +190,7 @@ public class HackathonApplication {
         private String solutionStatement; // For initial phase or text submissions
         private String fileUrl; // For file uploads
         private String fileName;
+        private String submissionLink; // For URL submissions (GitHub, Project Link)
         private LocalDateTime submittedAt;
 
         private String status; // "PENDING", "ACCEPTED", "REJECTED"
@@ -223,6 +224,14 @@ public class HackathonApplication {
 
         public void setFileName(String fileName) {
             this.fileName = fileName;
+        }
+
+        public String getSubmissionLink() {
+            return submissionLink;
+        }
+
+        public void setSubmissionLink(String submissionLink) {
+            this.submissionLink = submissionLink;
         }
 
         public LocalDateTime getSubmittedAt() {
