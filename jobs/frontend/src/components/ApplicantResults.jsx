@@ -109,7 +109,14 @@ export default function ApplicantResults() {
         return total;
     };
 
+    // Calculate maximum possible score (100 per phase)
+    const calculateMaxScore = () => {
+        const phaseCount = Object.keys(results.phaseSubmissions || {}).length;
+        return phaseCount * 100;
+    };
+
     const totalScore = calculateTotalScore();
+    const maxScore = calculateMaxScore();
     const rankBadge = results.finalRank ? getRankBadge(results.finalRank) : null;
     const RankIcon = rankBadge?.icon;
 
@@ -210,7 +217,7 @@ export default function ApplicantResults() {
                             <p className="text-2xl font-semibold">{rankBadge.label}</p>
                             <div className="mt-4 flex items-center justify-center gap-2">
                                 <Star className="w-6 h-6 fill-current" />
-                                <span className="text-xl">Total Score: {totalScore?.toFixed(2) || 0}</span>
+                                <span className="text-xl">Total Score: {totalScore?.toFixed(2) || 0}/{maxScore}</span>
                                 <Star className="w-6 h-6 fill-current" />
                             </div>
                         </div>
@@ -226,7 +233,7 @@ export default function ApplicantResults() {
                             <h1 className="text-3xl font-bold text-gray-900 mb-2">Hackathon Completed!</h1>
                             <p className="text-lg text-gray-600">Thank you for participating</p>
                             <div className="mt-4">
-                                <span className="text-2xl font-bold text-purple-600">Total Score: {totalScore?.toFixed(2) || 0}</span>
+                                <span className="text-2xl font-bold text-purple-600">Total Score: {totalScore?.toFixed(2) || 0}/{maxScore}</span>
                             </div>
                         </div>
                     </div>
@@ -273,7 +280,7 @@ export default function ApplicantResults() {
                                     <div>
                                         <p className="text-sm text-gray-500 mb-1">Score</p>
                                         <p className="text-2xl font-bold text-purple-600">
-                                            {submission.score !== null && submission.score !== undefined ? submission.score : 'N/A'}
+                                            {submission.score !== null && submission.score !== undefined ? `${submission.score}/100` : 'N/A'}
                                         </p>
                                     </div>
                                     <div>

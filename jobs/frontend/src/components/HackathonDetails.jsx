@@ -84,8 +84,8 @@ export default function HackathonDetails() {
             ]);
 
             setHackathon(hackathonData);
-            if (hackathonData.teamSize) {
-                setTeamSize(hackathonData.teamSize);
+            if (hackathonData.minTeamSize) {
+                setTeamSize(hackathonData.minTeamSize);
             }
 
             // Check if already applied
@@ -107,6 +107,29 @@ export default function HackathonDetails() {
             toast.info('Please log in to apply');
             navigate('/login', { state: { from: `/hackathon/${id}` } });
             return;
+        }
+
+        // Validation for duplicates
+        if (asTeam) {
+            const emails = new Set();
+            const phones = new Set();
+
+            for (let i = 0; i < teamMembers.length; i++) {
+                const member = teamMembers[i];
+                if (!member) continue;
+
+                if (member.email && emails.has(member.email.toLowerCase())) {
+                    toast.error(`Duplicate email found: ${member.email}. Each member must have a unique email.`);
+                    return;
+                }
+                if (member.email) emails.add(member.email.toLowerCase());
+
+                if (member.phone && phones.has(member.phone)) {
+                    toast.error(`Duplicate phone number found: ${member.phone}. Each member must have a unique phone number.`);
+                    return;
+                }
+                if (member.phone) phones.add(member.phone);
+            }
         }
 
         try {
@@ -177,7 +200,7 @@ export default function HackathonDetails() {
                             </div>
                             <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
                                 <Users className="w-4 h-4 text-purple-600" />
-                                <span>Team Size: {hackathon.teamSize} - {hackathon.maxTeams} Members</span>
+                                <span>Team Size: {hackathon.minTeamSize} - {hackathon.teamSize} Members</span>
                             </div>
                             <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
                                 <Trophy className="w-4 h-4 text-purple-600" />
@@ -276,16 +299,16 @@ export default function HackathonDetails() {
                                                         <input
                                                             type="number"
                                                             required
-                                                            min={hackathon.teamSize}
-                                                            max={hackathon.maxTeams}
+                                                            min={hackathon.minTeamSize}
+                                                            max={hackathon.teamSize}
                                                             value={teamSize}
                                                             onWheel={(e) => e.target.blur()}
                                                             onChange={(e) => {
                                                                 const val = parseInt(e.target.value);
                                                                 if (!isNaN(val)) {
-                                                                    if (val > hackathon.maxTeams) {
-                                                                        toast.warning(`Maximum team size allowed is ${hackathon.maxTeams}`);
-                                                                        setTeamSize(hackathon.maxTeams);
+                                                                    if (val > hackathon.teamSize) {
+                                                                        toast.warning(`Maximum team size allowed is ${hackathon.teamSize}`);
+                                                                        setTeamSize(hackathon.teamSize);
                                                                     } else {
                                                                         setTeamSize(val);
                                                                     }
@@ -296,7 +319,7 @@ export default function HackathonDetails() {
                                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                         />
                                                         <p className="text-xs text-gray-500 mt-1">
-                                                            Allowed size: {hackathon.teamSize} - {hackathon.maxTeams} members
+                                                            Allowed size: {hackathon.minTeamSize} - {hackathon.teamSize} members
                                                         </p>
                                                     </div>
 
@@ -310,96 +333,109 @@ export default function HackathonDetails() {
                                                         </div>
 
                                                         <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                                                            {teamMembers.map((member, index) => (
-                                                                <div
-                                                                    key={index}
-                                                                    className={`rounded-lg border p-4 transition-all ${index === 0
-                                                                        ? 'border-purple-300 bg-purple-50/50'
-                                                                        : 'border-gray-200 bg-white'
-                                                                        }`}
-                                                                >
-                                                                    {/* Member Header */}
-                                                                    <div className="flex items-center gap-2 mb-3">
-                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${index === 0 ? 'bg-purple-600 text-white' : 'bg-gray-300 text-gray-700'
-                                                                            }`}>
-                                                                            {index === 0 ? '★' : index + 1}
+                                                            {teamMembers.map((member, index) => {
+                                                                const isEmailDuplicate = member.email && teamMembers.some((m, i) => i !== index && m.email && m.email.toLowerCase() === member.email.toLowerCase());
+                                                                const isPhoneDuplicate = member.phone && teamMembers.some((m, i) => i !== index && m.phone && m.phone === member.phone);
+
+                                                                return (
+                                                                    <div
+                                                                        key={index}
+                                                                        className={`rounded-lg border p-4 transition-all ${index === 0
+                                                                            ? 'border-purple-300 bg-purple-50/50'
+                                                                            : 'border-gray-200 bg-white'
+                                                                            }`}
+                                                                    >
+                                                                        {/* Member Header */}
+                                                                        <div className="flex items-center gap-2 mb-3">
+                                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${index === 0 ? 'bg-purple-600 text-white' : 'bg-gray-300 text-gray-700'
+                                                                                }`}>
+                                                                                {index === 0 ? '★' : index + 1}
+                                                                            </div>
+                                                                            <div className="flex-1">
+                                                                                <h5 className={`text-sm font-bold ${index === 0 ? 'text-purple-900' : 'text-gray-800'}`}>
+                                                                                    {index === 0 ? 'Team Lead (You)' : `Team Member ${index + 1}`}
+                                                                                </h5>
+                                                                                {index === 0 && <p className="text-xs text-purple-600">Primary Contact</p>}
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="flex-1">
-                                                                            <h5 className={`text-sm font-bold ${index === 0 ? 'text-purple-900' : 'text-gray-800'}`}>
-                                                                                {index === 0 ? 'Team Lead (You)' : `Team Member ${index + 1}`}
-                                                                            </h5>
-                                                                            {index === 0 && <p className="text-xs text-purple-600">Primary Contact</p>}
+
+                                                                        {/* Input Fields */}
+                                                                        <div className="space-y-3">
+                                                                            {/* Name */}
+                                                                            <div>
+                                                                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                                                                    <User className="inline w-3 h-3 mr-1" />
+                                                                                    Full Name
+                                                                                </label>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    required
+                                                                                    value={member.name}
+                                                                                    onChange={(e) => {
+                                                                                        const newMembers = [...teamMembers];
+                                                                                        newMembers[index] = { ...newMembers[index], name: e.target.value };
+                                                                                        setTeamMembers(newMembers);
+                                                                                    }}
+                                                                                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${index === 0 ? 'bg-gray-50 border-gray-200 text-gray-500' : 'bg-white border-gray-300'
+                                                                                        }`}
+                                                                                    placeholder="Enter full name"
+                                                                                    readOnly={index === 0}
+                                                                                />
+                                                                            </div>
+
+                                                                            {/* Email */}
+                                                                            <div>
+                                                                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                                                                    <Mail className="inline w-3 h-3 mr-1" />
+                                                                                    Email Address
+                                                                                </label>
+                                                                                <input
+                                                                                    type="email"
+                                                                                    required
+                                                                                    value={member.email}
+                                                                                    onChange={(e) => {
+                                                                                        const newMembers = [...teamMembers];
+                                                                                        newMembers[index] = { ...newMembers[index], email: e.target.value };
+                                                                                        setTeamMembers(newMembers);
+                                                                                    }}
+                                                                                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${isEmailDuplicate ? 'border-red-500 focus:ring-red-500' :
+                                                                                        index === 0 ? 'bg-gray-50 border-gray-200 text-gray-500' : 'bg-white border-gray-300'
+                                                                                        }`}
+                                                                                    placeholder="Enter email address"
+                                                                                    readOnly={index === 0}
+                                                                                />
+                                                                                {isEmailDuplicate && (
+                                                                                    <p className="text-xs text-red-500 mt-1">This email is already used by another member.</p>
+                                                                                )}
+                                                                            </div>
+
+                                                                            {/* Phone */}
+                                                                            <div>
+                                                                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                                                                    <Phone className="inline w-3 h-3 mr-1" />
+                                                                                    Phone Number
+                                                                                </label>
+                                                                                <input
+                                                                                    type="tel"
+                                                                                    required
+                                                                                    value={member.phone}
+                                                                                    onChange={(e) => {
+                                                                                        const newMembers = [...teamMembers];
+                                                                                        newMembers[index] = { ...newMembers[index], phone: e.target.value };
+                                                                                        setTeamMembers(newMembers);
+                                                                                    }}
+                                                                                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white ${isPhoneDuplicate ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                                                                                        }`}
+                                                                                    placeholder="Enter phone number"
+                                                                                />
+                                                                                {isPhoneDuplicate && (
+                                                                                    <p className="text-xs text-red-500 mt-1">This phone number is already used by another member.</p>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
-
-                                                                    {/* Input Fields */}
-                                                                    <div className="space-y-3">
-                                                                        {/* Name */}
-                                                                        <div>
-                                                                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                                                                                <User className="inline w-3 h-3 mr-1" />
-                                                                                Full Name
-                                                                            </label>
-                                                                            <input
-                                                                                type="text"
-                                                                                required
-                                                                                value={member.name}
-                                                                                onChange={(e) => {
-                                                                                    const newMembers = [...teamMembers];
-                                                                                    newMembers[index] = { ...newMembers[index], name: e.target.value };
-                                                                                    setTeamMembers(newMembers);
-                                                                                }}
-                                                                                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${index === 0 ? 'bg-gray-50 border-gray-200 text-gray-500' : 'bg-white border-gray-300'
-                                                                                    }`}
-                                                                                placeholder="Enter full name"
-                                                                                readOnly={index === 0}
-                                                                            />
-                                                                        </div>
-
-                                                                        {/* Email */}
-                                                                        <div>
-                                                                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                                                                                <Mail className="inline w-3 h-3 mr-1" />
-                                                                                Email Address
-                                                                            </label>
-                                                                            <input
-                                                                                type="email"
-                                                                                required
-                                                                                value={member.email}
-                                                                                onChange={(e) => {
-                                                                                    const newMembers = [...teamMembers];
-                                                                                    newMembers[index] = { ...newMembers[index], email: e.target.value };
-                                                                                    setTeamMembers(newMembers);
-                                                                                }}
-                                                                                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${index === 0 ? 'bg-gray-50 border-gray-200 text-gray-500' : 'bg-white border-gray-300'
-                                                                                    }`}
-                                                                                placeholder="Enter email address"
-                                                                                readOnly={index === 0}
-                                                                            />
-                                                                        </div>
-
-                                                                        {/* Phone */}
-                                                                        <div>
-                                                                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                                                                                <Phone className="inline w-3 h-3 mr-1" />
-                                                                                Phone Number
-                                                                            </label>
-                                                                            <input
-                                                                                type="tel"
-                                                                                required
-                                                                                value={member.phone}
-                                                                                onChange={(e) => {
-                                                                                    const newMembers = [...teamMembers];
-                                                                                    newMembers[index] = { ...newMembers[index], phone: e.target.value };
-                                                                                    setTeamMembers(newMembers);
-                                                                                }}
-                                                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-                                                                                placeholder="Enter phone number"
-                                                                            />
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 </div>

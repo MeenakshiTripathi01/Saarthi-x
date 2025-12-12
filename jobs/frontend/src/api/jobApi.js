@@ -554,6 +554,21 @@ export const getHackathonApplicationDetails = async (applicationId) => {
   }
 };
 
+export const deleteHackathonApplication = async (applicationId) => {
+  try {
+    const response = await axios.delete(
+      `http://localhost:8080/api/hackathon-applications/${applicationId}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting hackathon application:', error);
+    throw error;
+  }
+};
+
 // Hackathon Results API functions
 export const finalizeHackathonResults = async (hackathonId) => {
   try {

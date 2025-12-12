@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getHackathonResults, finalizeHackathonResults, publishShowcaseContent } from '../api/jobApi';
+import { getHackathonResults, finalizeHackathonResults, publishShowcaseContent, deleteHackathonApplication } from '../api/jobApi';
 import { toast } from 'react-toastify';
 import { Trophy, Medal, Award, Users, Star, CheckCircle, Upload, X, FileText, Mail } from 'lucide-react';
 
@@ -138,6 +138,21 @@ export default function IndustryHackathonResults() {
         } catch (error) {
             console.error('Error publishing showcase:', error);
             toast.error(error.response?.data || 'Failed to publish showcase');
+        }
+    };
+
+    const handleDeleteApplication = async (applicationId) => {
+        if (!window.confirm('Are you sure you want to delete this application? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            await deleteHackathonApplication(applicationId);
+            toast.success('Application deleted successfully');
+            await loadResults();
+        } catch (error) {
+            console.error('Error deleting application:', error);
+            toast.error(error.response?.data || 'Failed to delete application');
         }
     };
 
@@ -392,9 +407,15 @@ export default function IndustryHackathonResults() {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                 <button
                                                     onClick={() => navigate(`/industry-hackathon-dashboard/${result.id}`)}
-                                                    className="text-purple-600 hover:text-purple-700 font-medium"
+                                                    className="text-purple-600 hover:text-purple-700 font-medium mr-4"
                                                 >
                                                     View Details
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteApplication(result.id)}
+                                                    className="text-red-600 hover:text-red-700 font-medium"
+                                                >
+                                                    Delete
                                                 </button>
                                             </td>
                                         </tr>

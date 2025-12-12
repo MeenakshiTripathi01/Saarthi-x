@@ -136,6 +136,14 @@ public class HackathonController {
                         .body("Only industry users can create hackathons. You are: " + user.getUserType());
             }
 
+            // Validate problem statement length
+            if (hackathon.getProblemStatement() != null) {
+                String[] words = hackathon.getProblemStatement().trim().split("\\s+");
+                if (words.length < 50) {
+                    return ResponseEntity.badRequest().body("Problem statement must be at least 50 words");
+                }
+            }
+
             hackathon.setCreatedByIndustryId(user.getId());
             hackathon.setViews(0);
 
@@ -170,6 +178,14 @@ public class HackathonController {
         // Check if the user owns this hackathon
         if (!user.getId().equals(existingHackathon.getCreatedByIndustryId())) {
             return ResponseEntity.status(403).body("You can only update your own hackathons");
+        }
+
+        // Validate problem statement length
+        if (updatedHackathon.getProblemStatement() != null) {
+            String[] words = updatedHackathon.getProblemStatement().trim().split("\\s+");
+            if (words.length < 50) {
+                return ResponseEntity.badRequest().body("Problem statement must be at least 50 words");
+            }
         }
 
         // Update fields

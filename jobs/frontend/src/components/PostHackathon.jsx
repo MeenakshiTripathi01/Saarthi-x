@@ -29,16 +29,31 @@ export default function PostHackathon() {
     const [activeTab, setActiveTab] = useState('basic');
     const [completedTabs, setCompletedTabs] = useState(new Set());
 
+    // Helper to load saved draft
+    const getSavedState = (key, fallback) => {
+        if (editId) return fallback;
+        try {
+            const saved = localStorage.getItem('hackathonDraft');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                return parsed[key] !== undefined ? parsed[key] : fallback;
+            }
+        } catch (e) {
+            console.error('Error parsing draft:', e);
+        }
+        return fallback;
+    };
+
+    // Phases state
+    const [phases, setPhases] = useState(() => getSavedState('phases', [
+        { id: 1, name: '', description: '', uploadFormat: 'document', deadline: '' }
+    ]));
+
     // Skills state
     const [skillInput, setSkillInput] = useState('');
-    const [skills, setSkills] = useState([]);
+    const [skills, setSkills] = useState(() => getSavedState('skills', []));
 
-    // Phases state - array of phase objects
-    const [phases, setPhases] = useState([
-        { id: 1, name: '', description: '', uploadFormat: 'document', deadline: '' }
-    ]);
-
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState(() => getSavedState('formData', {
         // Basic Info
         title: '',
         company: '',
@@ -61,7 +76,7 @@ export default function PostHackathon() {
         teamSize: '',
         maxTeams: '',
         prize: '',
-    });
+    }));
 
     // Load hackathon data if editing
     useEffect(() => {
@@ -129,6 +144,18 @@ export default function PostHackathon() {
         }
     }, [isAuthenticated, authLoading, isIndustry, navigate, editId]);
 
+    // Save draft to localStorage
+    useEffect(() => {
+        if (!editId && !loading) {
+            const draft = {
+                formData,
+                skills,
+                phases
+            };
+            localStorage.setItem('hackathonDraft', JSON.stringify(draft));
+        }
+    }, [formData, skills, phases, editId, loading]);
+
     useEffect(() => {
         updateCompletedTabs();
     }, [formData, skills, phases]);
@@ -149,7 +176,7 @@ export default function PostHackathon() {
             case 'eligibility':
                 return isFieldFilled('eligibility');
             case 'dates':
-                const basicDatesValid = isFieldFilled('startDate') && isFieldFilled('endDate') && isFieldFilled('mode');
+                const basicDatesValid = isFieldFilled('endDate') && isFieldFilled('mode');
                 if (formData.mode === 'Hybrid' || formData.mode === 'Offline') {
                     return basicDatesValid && isFieldFilled('location') && isFieldFilled('reportingDate');
                 }
@@ -267,7 +294,6 @@ export default function PostHackathon() {
         if (!formData.description) missingFields.push('Hackathon Description');
         if (!formData.problemStatement) missingFields.push('Problem Statement');
         if (phases.length === 0 || !phases.every(p => p.name.trim() && p.description.trim() && p.deadline)) missingFields.push('Phases (all fields required)');
-        if (!formData.startDate) missingFields.push('Start Date');
         if (!formData.endDate) missingFields.push('End Date');
         if (!formData.mode) missingFields.push('Mode');
         if ((formData.mode === 'Hybrid' || formData.mode === 'Offline') && !formData.location) missingFields.push('Venue Location');
@@ -279,6 +305,30 @@ export default function PostHackathon() {
                 autoClose: 5000,
             });
             return;
+        }
+
+        // Validate problem statement length
+        const wordCount = formData.problemStatement.trim().split(/\s+/).length;
+        if (wordCount < 50) {
+            toast.error(`Problem statement must be at least 50 words. Current count: ${wordCount}`, {
+                position: "top-right",
+                autoClose: 5000,
+            });
+            return;
+        }
+
+        // Validate Registration End Date vs First Phase Deadline
+        if (phases.length > 0) {
+            const registrationEnd = new Date(formData.endDate);
+            const firstPhaseDeadline = new Date(phases[0].deadline);
+
+            if (registrationEnd >= firstPhaseDeadline) {
+                toast.error('Last Date of Registration must be before the first phase deadline', {
+                    position: "top-right",
+                    autoClose: 5000,
+                });
+                return;
+            }
         }
 
         // Validate phase deadlines order
@@ -314,13 +364,13 @@ export default function PostHackathon() {
                 skills: skills,
                 phases: phases,
                 eligibility: formData.eligibility,
-                startDate: formData.startDate,
+                startDate: formData.startDate || new Date().toISOString().split('T')[0],
                 endDate: formData.endDate,
                 mode: formData.mode,
                 location: formData.location || null,
                 reportingDate: formData.reportingDate || null,
                 submissionGuidelines: formData.submissionGuidelines,
-                maxTeams: formData.maxTeams ? parseInt(formData.maxTeams) : null,
+                maxTeams: null,
             };
 
             let response;
@@ -340,6 +390,7 @@ export default function PostHackathon() {
                     position: "top-right",
                     autoClose: 3000,
                 });
+                localStorage.removeItem('hackathonDraft');
             }
 
             setTimeout(() => {
@@ -549,19 +600,23 @@ export default function PostHackathon() {
                                 <textarea
                                     name="problemStatement"
                                     value={formData.problemStatement}
-                                    onChange={(e) => {
-                                        if (e.target.value.length <= 500) {
-                                            handleInputChange(e);
+                                    onChange={handleInputChange}
+                                    onBlur={() => {
+                                        const wordCount = formData.problemStatement.trim().split(/\s+/).filter(w => w).length;
+                                        if (formData.problemStatement.trim() && wordCount < 50) {
+                                            toast.warning(`Problem statement is too short (${wordCount} words). It must be at least 50 words.`, {
+                                                position: "top-right",
+                                                autoClose: 5000,
+                                            });
                                         }
                                     }}
                                     placeholder="Describe the problem participants will solve..."
                                     rows="6"
-                                    maxLength={500}
                                     required
                                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                 />
-                                <div className="mt-1 text-xs text-right text-gray-500">
-                                    {formData.problemStatement.length}/500 characters
+                                <div className={`mt-1 text-xs text-right ${formData.problemStatement.trim().split(/\s+/).filter(w => w).length < 50 ? 'text-red-500' : 'text-green-600'}`}>
+                                    {formData.problemStatement.trim().split(/\s+/).filter(w => w).length} words (min 50)
                                 </div>
                             </div>
 
@@ -653,7 +708,21 @@ export default function PostHackathon() {
                                                 <input
                                                     type="date"
                                                     value={phase.deadline}
-                                                    onChange={(e) => handlePhaseChange(phase.id, 'deadline', e.target.value)}
+                                                    onChange={(e) => {
+                                                        const newDeadline = e.target.value;
+                                                        // Check for Phase 1 vs Registration End Date
+                                                        if (index === 0 && formData.endDate && newDeadline <= formData.endDate) {
+                                                            toast.warning(`First Phase Deadline must be after Last Date of Registration (${formData.endDate})`, { autoClose: 3000 });
+                                                            return;
+                                                        }
+                                                        // Check for subsequent phases vs previous phase
+                                                        if (index > 0 && phases[index - 1].deadline && newDeadline <= phases[index - 1].deadline) {
+                                                            toast.warning(`Phase ${index + 1} deadline must be after Phase ${index} deadline`, { autoClose: 3000 });
+                                                            return;
+                                                        }
+                                                        handlePhaseChange(phase.id, 'deadline', newDeadline);
+                                                    }}
+                                                    min={index === 0 ? formData.endDate : (index > 0 ? phases[index - 1].deadline : undefined)}
                                                     required
                                                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                                 />
@@ -744,27 +813,21 @@ export default function PostHackathon() {
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Start Date <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="date"
-                                        name="startDate"
-                                        value={formData.startDate}
-                                        onChange={handleInputChange}
-                                        required
-                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        End Date <span className="text-red-500">*</span>
+                                        Last Date of Registration <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="date"
                                         name="endDate"
                                         value={formData.endDate}
-                                        onChange={handleInputChange}
+                                        onChange={(e) => {
+                                            const newDate = e.target.value;
+                                            if (phases.length > 0 && phases[0].deadline && newDate >= phases[0].deadline) {
+                                                toast.warning(`Last Date of Registration must be before the first phase deadline (${phases[0].deadline})`, { autoClose: 3000 });
+                                                return;
+                                            }
+                                            handleInputChange(e);
+                                        }}
+                                        max={phases.length > 0 ? phases[0].deadline : undefined}
                                         required
                                         className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />
@@ -879,7 +942,7 @@ export default function PostHackathon() {
                                 <p className="text-sm text-gray-500 mt-1">Set team limits and prize details</p>
                             </div>
 
-                            <div className="grid md:grid-cols-3 gap-6">
+                            <div className="grid md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Minimum Team Size
@@ -908,21 +971,6 @@ export default function PostHackathon() {
                                         placeholder="e.g., 5"
                                         min={formData.minTeamSize || 1}
                                         max="20"
-                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Maximum Teams
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="maxTeams"
-                                        value={formData.maxTeams}
-                                        onChange={handleInputChange}
-                                        placeholder="e.g., 100"
-                                        min="1"
                                         className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />
                                 </div>

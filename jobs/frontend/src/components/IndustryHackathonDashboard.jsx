@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getHackathonById, getHackathonApplications, reviewHackathonPhase } from '../api/jobApi';
+import { getHackathonById, getHackathonApplications, reviewHackathonPhase, deleteHackathonApplication } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { Users, Search, Filter, ChevronRight, CheckCircle, XCircle, Clock, FileText, Download } from 'lucide-react';
+import { Users, Search, Filter, ChevronRight, CheckCircle, XCircle, Clock, FileText, Download, Trash2 } from 'lucide-react';
 
 export default function IndustryHackathonDashboard() {
     const { hackathonId } = useParams();
@@ -42,14 +42,46 @@ export default function IndustryHackathonDashboard() {
         }
     };
 
+    const handleDeleteApplication = async (e, applicationId) => {
+        e.stopPropagation(); // Prevent selecting the app
+        if (!window.confirm('Are you sure you want to delete this application? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            await deleteHackathonApplication(applicationId);
+            toast.success('Application deleted successfully');
+
+            // Remove from local state
+            setApplications(applications.filter(app => app.id !== applicationId));
+            if (selectedApp && selectedApp.id === applicationId) {
+                setSelectedApp(null);
+            }
+        } catch (error) {
+            console.error('Error deleting application:', error);
+            toast.error(error.response?.data || 'Failed to delete application');
+        }
+    };
+
     const handleReviewSubmit = async (phaseId) => {
         if (!selectedApp) return;
+
+        // Validate score
+        const scoreValue = reviewScore ? parseInt(reviewScore) : 0;
+        if (scoreValue > 100) {
+            toast.error('Score cannot be more than 100');
+            return;
+        }
+        if (scoreValue < 0) {
+            toast.error('Score cannot be negative');
+            return;
+        }
 
         try {
             setSubmittingReview(true);
             const reviewData = {
                 status: reviewAction,
-                score: reviewScore ? parseInt(reviewScore) : 0,
+                score: scoreValue,
                 remarks: reviewRemarks
             };
 
@@ -157,12 +189,21 @@ export default function IndustryHackathonDashboard() {
                                                 </h3>
                                                 <p className="text-xs text-gray-500">ID: {app.id.substring(0, 8)}...</p>
                                             </div>
-                                            <span className={`px-2 py-0.5 text-xs rounded-full ${app.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                                                app.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                                                    'bg-gray-100 text-gray-700'
-                                                }`}>
-                                                {app.status}
-                                            </span>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className={`px-2 py-0.5 text-xs rounded-full ${app.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                                                    app.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                                        'bg-gray-100 text-gray-700'
+                                                    }`}>
+                                                    {app.status}
+                                                </span>
+                                                <button
+                                                    onClick={(e) => handleDeleteApplication(e, app.id)}
+                                                    className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                                                    title="Delete Application"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="mt-2 text-xs text-gray-500 flex justify-between">
                                             <span>Phase: {app.currentPhaseId ? hackathon.phases.find(p => p.id === app.currentPhaseId)?.name || 'Started' : 'Started'}</span>
@@ -282,7 +323,16 @@ export default function IndustryHackathonDashboard() {
                                                                                 type="number"
                                                                                 min="0" max="100"
                                                                                 value={reviewScore}
-                                                                                onChange={(e) => setReviewScore(e.target.value)}
+                                                                                onChange={(e) => {
+                                                                                    const value = e.target.value;
+                                                                                    const numValue = parseInt(value);
+                                                                                    if (value === '' || (numValue >= 0 && numValue <= 100)) {
+                                                                                        setReviewScore(value);
+                                                                                    } else if (numValue > 100) {
+                                                                                        toast.warning('Score cannot exceed 100');
+                                                                                        setReviewScore('100');
+                                                                                    }
+                                                                                }}
                                                                                 className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500"
                                                                             />
                                                                         </div>
@@ -325,7 +375,7 @@ export default function IndustryHackathonDashboard() {
                                                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                                                         <div>
                                                                             <span className="text-gray-500">Score:</span>
-                                                                            <span className="ml-2 font-bold">{submission.score || 'N/A'}</span>
+                                                                            <span className="ml-2 font-bold">{submission.score !== null && submission.score !== undefined ? `${submission.score}/100` : 'N/A'}</span>
                                                                         </div>
                                                                         <div>
                                                                             <span className="text-gray-500">Decision:</span>

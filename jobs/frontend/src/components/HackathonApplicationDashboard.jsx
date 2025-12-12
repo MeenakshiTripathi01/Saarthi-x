@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getHackathonApplicationDetails, getHackathonById, submitHackathonPhase } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { CheckCircle, XCircle, Clock, Upload, FileText, AlertCircle, ChevronRight } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Upload, FileText, AlertCircle, ChevronRight, Download, Share2, Award } from 'lucide-react';
+import { downloadCertificate, shareOnLinkedIn } from './CertificateGenerator';
+import CertificateTemplate from './CertificateGenerator';
 
 export default function HackathonApplicationDashboard() {
     const { applicationId } = useParams();
@@ -20,6 +22,47 @@ export default function HackathonApplicationDashboard() {
     const [solutionText, setSolutionText] = useState('');
     const [selectedFile, setSelectedFile] = useState(null);
     const [submissionLink, setSubmissionLink] = useState('');
+    const [downloadingCertificate, setDownloadingCertificate] = useState(false);
+
+    const handleDownloadCertificate = async () => {
+        try {
+            setDownloadingCertificate(true);
+            const certificateData = {
+                participantName: user?.name || 'Participant',
+                hackathonTitle: hackathon.title,
+                company: hackathon.company,
+                rank: application.finalRank,
+                isTeam: application.asTeam,
+                teamName: application.teamName
+            };
+
+            await downloadCertificate(certificateData);
+            toast.success('Certificate downloaded successfully!');
+        } catch (error) {
+            console.error('Error downloading certificate:', error);
+            toast.error('Failed to download certificate');
+        } finally {
+            setDownloadingCertificate(false);
+        }
+    };
+
+    const handleShareOnLinkedIn = () => {
+        try {
+            const certificateData = {
+                participantName: user?.name || 'Participant',
+                hackathonTitle: hackathon.title,
+                company: hackathon.company,
+                rank: application.finalRank,
+                isTeam: application.asTeam,
+                teamName: application.teamName
+            };
+
+            shareOnLinkedIn(certificateData);
+        } catch (error) {
+            console.error('Error sharing on LinkedIn:', error);
+            toast.error('Failed to share on LinkedIn');
+        }
+    };
 
     const formatDate = (dateString) => {
         if (!dateString) return '';
@@ -116,22 +159,27 @@ export default function HackathonApplicationDashboard() {
                 return;
             }
 
-            // Validate based on format
+            // Validate based on format - ALL formats require either file or link
             if (format === 'link') {
+                // Link format: MUST have a link
                 if (!submissionLink.trim()) {
                     toast.error('Please provide a submission link');
                     return;
                 }
             } else if (format === 'code' || format === 'any') {
-                // For code/any, require EITHER a file OR a link
-                if (!selectedFile && !submissionLink.trim()) {
-                    toast.error('Please upload a file OR provide a submission link');
+                // Code/Any format: Require BOTH file AND link
+                if (!selectedFile) {
+                    toast.error('Please upload a file (zip/code)');
+                    return;
+                }
+                if (!submissionLink.trim()) {
+                    toast.error('Please provide a GitHub/repository link');
                     return;
                 }
             } else {
-                // For specific formats (document, image, etc.), require a file
+                // Specific formats (document, video, image, presentation): MUST have a file
                 if (!selectedFile) {
-                    toast.error('Please upload a file');
+                    toast.error(`Please upload a ${format} file`);
                     return;
                 }
             }
@@ -247,6 +295,85 @@ export default function HackathonApplicationDashboard() {
                             >
                                 View Results
                                 <ChevronRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Certificate Section - Shows when hackathon is completed */}
+                {allPhasesCompleted && (
+                    <div className="mb-6 bg-white rounded-xl shadow-sm p-6 border-2 border-purple-200">
+                        <div className="mb-4">
+                            <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                                <Award className="w-6 h-6 text-purple-600" />
+                                {application.finalRank ? '🏆 Your Achievement Certificate' : '🎉 Your Participation Certificate'}
+                            </h3>
+                            <p className="text-gray-600 text-sm">
+                                {application.finalRank
+                                    ? `Congratulations on securing ${application.finalRank === 1 ? '1st' : application.finalRank === 2 ? '2nd' : application.finalRank === 3 ? '3rd' : `${application.finalRank}th`} place!`
+                                    : 'Thank you for participating in this hackathon!'
+                                }
+                            </p>
+                        </div>
+
+                        {/* Certificate Preview */}
+                        <div className="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="relative" style={{
+                                width: '100%',
+                                paddingBottom: '70.77%', // Maintain A4 landscape aspect ratio (794/1122)
+                                overflow: 'hidden',
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+                            }}>
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    transform: 'scale(0.95)',
+                                    transformOrigin: 'center center'
+                                }}>
+                                    <CertificateTemplate
+                                        participantName={user?.name || 'Participant'}
+                                        hackathonTitle={hackathon.title}
+                                        company={hackathon.company}
+                                        rank={application.finalRank}
+                                        isTeam={application.asTeam}
+                                        teamName={application.teamName}
+                                        date={new Date().toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                        certificateCode={(() => {
+                                            const now = new Date();
+                                            const year = now.getFullYear();
+                                            const timestamp = now.getTime();
+                                            const uniqueCode = String(timestamp % 100000).padStart(5, '0');
+                                            return `${year} ${uniqueCode}`;
+                                        })()}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap gap-3 justify-center">
+                            <button
+                                onClick={handleDownloadCertificate}
+                                disabled={downloadingCertificate}
+                                className="bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                            >
+                                <Download className="w-5 h-5" />
+                                {downloadingCertificate ? 'Generating PDF...' : 'Download Certificate'}
+                            </button>
+                            <button
+                                onClick={handleShareOnLinkedIn}
+                                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+                            >
+                                <Share2 className="w-5 h-5" />
+                                Share on LinkedIn
                             </button>
                         </div>
                     </div>
@@ -464,7 +591,13 @@ export default function HackathonApplicationDashboard() {
 
                                                     <button
                                                         onClick={() => handleSubmit(phase.id, phase.uploadFormat)}
-                                                        disabled={submitting || (!solutionText && !selectedFile && !submissionLink)}
+                                                        disabled={
+                                                            submitting ||
+                                                            !solutionText.trim() ||
+                                                            (phase.uploadFormat === 'link' && !submissionLink.trim()) ||
+                                                            ((phase.uploadFormat === 'code' || phase.uploadFormat === 'any') && (!selectedFile || !submissionLink.trim())) ||
+                                                            (phase.uploadFormat !== 'link' && phase.uploadFormat !== 'code' && phase.uploadFormat !== 'any' && !selectedFile)
+                                                        }
                                                         className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                                     >
                                                         {submitting ? (

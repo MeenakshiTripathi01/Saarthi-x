@@ -498,6 +498,36 @@ public class HackathonApplicationController {
     }
 
     // --------------------------------------------
+    // DELETE APPLICATION (Industry)
+    // DELETE /api/hackathon-applications/{applicationId}
+    // --------------------------------------------
+    @DeleteMapping("/{applicationId}")
+    public ResponseEntity<?> deleteApplication(
+            @PathVariable String applicationId,
+            Authentication auth) {
+
+        User user = resolveUser(auth);
+        if (user == null || !"INDUSTRY".equals(user.getUserType())) {
+            return ResponseEntity.status(403).body("Only industry users can delete applications");
+        }
+
+        Optional<HackathonApplication> appOpt = applicationRepository.findById(applicationId);
+        if (appOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        HackathonApplication app = appOpt.get();
+
+        // Verify ownership
+        Optional<Hackathon> hackOpt = hackathonRepository.findById(app.getHackathonId());
+        if (hackOpt.isEmpty() || !hackOpt.get().getCreatedByIndustryId().equals(user.getId())) {
+            return ResponseEntity.status(403).body("You can only delete applications for your hackathons");
+        }
+
+        applicationRepository.delete(app);
+        return ResponseEntity.ok("Application deleted successfully");
+    }
+
+    // --------------------------------------------
     // Helper — resolve logged-in user from OAuth
     // --------------------------------------------
     private User resolveUser(Authentication auth) {
