@@ -155,7 +155,7 @@ export const saveUserProfile = async (profileData) => {
       dataKeys: Object.keys(profileData),
       hasResume: !!profileData.resumeBase64
     });
-    
+
     const response = await axios.post(
       'http://localhost:8080/api/profile',
       profileData,
@@ -166,12 +166,12 @@ export const saveUserProfile = async (profileData) => {
         },
       }
     );
-    
+
     console.log('Profile save response:', {
       status: response.status,
       data: response.data
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error saving user profile:', error);
@@ -215,7 +215,7 @@ export const getMyPostedJobs = async () => {
     console.log('getMyPostedJobs response:', response);
     console.log('Response data:', response.data);
     console.log('Response data type:', typeof response.data);
-    
+
     // Handle both direct array and wrapped response
     if (Array.isArray(response.data)) {
       return response.data;
@@ -234,7 +234,7 @@ export const getMyPostedJobs = async () => {
     console.error('Error response:', error.response);
     console.error('Error response data:', error.response?.data);
     console.error('Error response status:', error.response?.status);
-    
+
     // Re-throw with more context
     if (error.response) {
       // Handle string error messages from backend
@@ -352,3 +352,286 @@ export const getRecommendedJobs = async () => {
     throw error;
   }
 };
+
+// Hackathon API functions
+export const getAllHackathons = async () => {
+  try {
+    const response = await axios.get(
+      'http://localhost:8080/api/hackathons',
+      {
+        withCredentials: true,
+      }
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Error fetching all hackathons:', error);
+    throw error;
+  }
+};
+
+export const getMyHackathons = async () => {
+  try {
+    const response = await axios.get(
+      'http://localhost:8080/api/hackathons/my-hackathons',
+      {
+        withCredentials: true,
+      }
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Error fetching my hackathons:', error);
+    throw error;
+  }
+};
+
+export const createHackathon = async (hackathonData) => {
+  try {
+    const response = await axios.post(
+      'http://localhost:8080/api/hackathons',
+      hackathonData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error creating hackathon:', error);
+    throw error;
+  }
+};
+
+export const deleteHackathon = async (hackathonId) => {
+  try {
+    const response = await axios.delete(
+      `http://localhost:8080/api/hackathons/${hackathonId}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting hackathon:', error);
+    throw error;
+  }
+};
+
+export const updateHackathon = async (hackathonId, hackathonData) => {
+  try {
+    const response = await axios.put(
+      `http://localhost:8080/api/hackathons/${hackathonId}`,
+      hackathonData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating hackathon:', error);
+    throw error;
+  }
+};
+
+// Hackathon Application API functions (for Applicants)
+export const applyForHackathon = async (hackathonId, applicationData) => {
+  try {
+    const response = await axios.post(
+      `http://localhost:8080/api/hackathon-applications/${hackathonId}/apply`,
+      applicationData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error applying for hackathon:', error);
+    throw error;
+  }
+};
+
+export const getMyHackathonApplications = async () => {
+  try {
+    const response = await axios.get(
+      'http://localhost:8080/api/hackathon-applications/my-applications',
+      {
+        withCredentials: true,
+      }
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Error fetching my hackathon applications:', error);
+    throw error;
+  }
+};
+export const getHackathonById = async (hackathonId) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8080/api/hackathons/${hackathonId}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching hackathon by ID:', error);
+    throw error;
+  }
+};
+
+export const submitHackathonPhase = async (applicationId, phaseId, submissionData) => {
+  try {
+    const response = await axios.post(
+      `http://localhost:8080/api/hackathon-applications/${applicationId}/phases/${phaseId}/submit`,
+      submissionData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting hackathon phase:', error);
+    throw error;
+  }
+};
+
+export const reviewHackathonPhase = async (applicationId, phaseId, reviewData) => {
+  try {
+    const response = await axios.put(
+      `http://localhost:8080/api/hackathon-applications/${applicationId}/phases/${phaseId}/review`,
+      reviewData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error reviewing hackathon phase:', error);
+    throw error;
+  }
+};
+
+export const getHackathonApplications = async (hackathonId) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8080/api/hackathon-applications/hackathon/${hackathonId}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching hackathon applications:', error);
+    throw error;
+  }
+};
+
+export const getHackathonApplicationDetails = async (applicationId) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8080/api/hackathon-applications/${applicationId}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching hackathon application details:', error);
+    throw error;
+  }
+};
+
+export const deleteHackathonApplication = async (applicationId) => {
+  try {
+    const response = await axios.delete(
+      `http://localhost:8080/api/hackathon-applications/${applicationId}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting hackathon application:', error);
+    throw error;
+  }
+};
+
+// Hackathon Results API functions
+export const finalizeHackathonResults = async (hackathonId) => {
+  try {
+    const response = await axios.post(
+      `http://localhost:8080/api/hackathon-applications/hackathon/${hackathonId}/finalize-results`,
+      {},
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error finalizing hackathon results:', error);
+    throw error;
+  }
+};
+
+export const publishShowcaseContent = async (applicationId, showcaseData) => {
+  try {
+    const response = await axios.put(
+      `http://localhost:8080/api/hackathon-applications/${applicationId}/showcase`,
+      showcaseData,
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error publishing showcase content:', error);
+    throw error;
+  }
+};
+
+export const getApplicationResults = async (applicationId) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8080/api/hackathon-applications/${applicationId}/results`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching application results:', error);
+    throw error;
+  }
+};
+
+export const getHackathonResults = async (hackathonId) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8080/api/hackathon-applications/hackathon/${hackathonId}/results`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching hackathon results:', error);
+    throw error;
+  }
+};
+

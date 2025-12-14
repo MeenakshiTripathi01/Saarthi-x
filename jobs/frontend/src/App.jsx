@@ -14,6 +14,14 @@ import EditProfile from './components/EditProfile';
 import ProfileBuilder from './components/ProfileBuilder';
 import ViewProfile from './components/ViewProfile';
 import IndustryApplications from './components/IndustryApplications';
+import IndustryHackathons from './components/IndustryHackathons';
+import PostHackathon from './components/PostHackathon';
+import ApplicantHackathons from './components/ApplicantHackathons';
+import HackathonDetails from './components/HackathonDetails';
+import HackathonApplicationDashboard from './components/HackathonApplicationDashboard';
+import IndustryHackathonDashboard from './components/IndustryHackathonDashboard';
+import ApplicantResults from './components/ApplicantResults';
+import IndustryHackathonResults from './components/IndustryHackathonResults';
 
 function App() {
   return (
@@ -33,6 +41,14 @@ function App() {
             <Route path="/build-profile" element={<ProfileBuilder />} />
             <Route path="/view-profile" element={<ViewProfile />} />
             <Route path="/manage-applications" element={<IndustryApplications />} />
+            <Route path="/manage-hackathons" element={<IndustryHackathons />} />
+            <Route path="/post-hackathons" element={<PostHackathon />} />
+            <Route path="/browse-hackathons" element={<ApplicantHackathons />} />
+            <Route path="/hackathon/:id" element={<HackathonDetails />} />
+            <Route path="/hackathon-application/:applicationId" element={<HackathonApplicationDashboard />} />
+            <Route path="/industry/hackathon/:hackathonId/dashboard" element={<IndustryHackathonDashboard />} />
+            <Route path="/hackathon-application/:applicationId/results" element={<ApplicantResults />} />
+            <Route path="/industry/hackathon/:hackathonId/results" element={<IndustryHackathonResults />} />
           </Routes>
           <ToastContainer
             position="top-right"

@@ -46,6 +46,7 @@ public class JobService {
             job.setJobMinSalary(updatedJob.getJobMinSalary());
             job.setJobMaxSalary(updatedJob.getJobMaxSalary());
             job.setJobSalaryCurrency(updatedJob.getJobSalaryCurrency());
+            job.setYearsOfExperience(updatedJob.getYearsOfExperience());
             return jobRepository.save(job);
         }).orElseThrow(() -> new RuntimeException("Job not found with id: " + id));
     }
@@ -59,7 +60,7 @@ public class JobService {
     }
 
     /**
-     * Get recommended jobs for an applicant based on their skills and location preferences
+     * Get recommended jobs for an applicant based on their skills, location, and experience
      */
     public List<Map<String, Object>> getRecommendedJobs(UserProfile userProfile) {
         List<Job> allJobs = jobRepository.findAll();
@@ -85,10 +86,13 @@ public class JobService {
             preferredLocations.add(userProfile.getCurrentLocation().toLowerCase());
         }
 
+        // Extract user's years of experience
+        Integer userExperience = parseYearsOfExperience(userProfile.getExperience());
+
         // Calculate match percentage for each job
         List<Map<String, Object>> jobsWithMatch = allJobs.stream()
             .map(job -> {
-                double matchPercentage = calculateJobMatch(job, userSkills, preferredLocations);
+                double matchPercentage = calculateJobMatch(job, userSkills, preferredLocations, userExperience);
                 Map<String, Object> jobWithMatch = new HashMap<>();
                 jobWithMatch.put("job", job);
                 jobWithMatch.put("matchPercentage", matchPercentage);
@@ -102,19 +106,23 @@ public class JobService {
     }
 
     /**
-     * Calculate match percentage between a job and user profile
+     * Calculate match percentage between a job and user profile (50% skills, 30% location, 20% experience)
      */
-    private double calculateJobMatch(Job job, List<String> userSkills, List<String> preferredLocations) {
+    private double calculateJobMatch(Job job, List<String> userSkills, List<String> preferredLocations, Integer userExperience) {
         double matchScore = 0.0;
         double maxScore = 100.0;
 
-        // Skills matching (60% weight)
+        // Skills matching (50% weight)
         double skillsMatchScore = calculateSkillsMatch(job, userSkills);
-        matchScore += skillsMatchScore * 0.60;
+        matchScore += skillsMatchScore * 0.50;
 
-        // Location matching (40% weight)
+        // Location matching (30% weight)
         double locationMatchScore = calculateLocationMatch(job, preferredLocations);
-        matchScore += locationMatchScore * 0.40;
+        matchScore += locationMatchScore * 0.30;
+
+        // Experience matching (20% weight)
+        double experienceMatchScore = calculateExperienceMatch(job, userExperience);
+        matchScore += experienceMatchScore * 0.20;
 
         return Math.min(matchScore, maxScore); // Cap at 100%
     }
@@ -165,5 +173,56 @@ public class JobService {
         }
 
         return isLocationMatch ? 100.0 : 0.0;
+    }
+
+    /**
+     * Calculate experience match percentage based on required job experience and user experience
+     */
+    private double calculateExperienceMatch(Job job, Integer userExperience) {
+        Integer requiredExperience = job.getYearsOfExperience();
+        
+        // If job doesn't specify experience requirement, neutral score
+        if (requiredExperience == null || requiredExperience == 0) {
+            return 50.0;
+        }
+        
+        // If user doesn't have experience data, partial score
+        if (userExperience == null) {
+            return 30.0;
+        }
+        
+        // Perfect match if user has equal or more experience than required
+        if (userExperience >= requiredExperience) {
+            return 100.0;
+        }
+        
+        // Calculate partial match if user has less experience
+        // Gradual penalty based on experience gap
+        int experienceGap = requiredExperience - userExperience;
+        double matchPercentage = Math.max(0, 100.0 - (experienceGap * 15.0)); // 15% penalty per year gap
+        
+        return matchPercentage;
+    }
+
+    /**
+     * Parse years of experience from a string value (e.g., "5", "5 years", "5-7 years")
+     */
+    private Integer parseYearsOfExperience(String experience) {
+        if (experience == null || experience.trim().isEmpty()) {
+            return null;
+        }
+        
+        try {
+            // Extract first number from the string
+            String[] parts = experience.replaceAll("[^0-9]", " ").trim().split("\\s+");
+            if (parts.length > 0 && !parts[0].isEmpty()) {
+                return Integer.parseInt(parts[0]);
+            }
+        } catch (NumberFormatException e) {
+            // Return null if parsing fails
+            return null;
+        }
+        
+        return null;
     }
 }

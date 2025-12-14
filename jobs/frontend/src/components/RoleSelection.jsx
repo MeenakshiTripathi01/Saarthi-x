@@ -112,13 +112,24 @@ export default function RoleSelection() {
       return;
     }
     
-    // Prevent applicants from changing their role (only if no error)
-    if (currentUser?.userType === 'APPLICANT') {
-      console.log('[ROLE_SELECTION] Applicant without role change attempt - redirecting to apply-jobs');
+    // Redirect users who are already logged in with a valid role (only if no error)
+    // Check if this is an EXISTING user (no email in URL params) returning after OAuth
+    const isNewUser = searchParams.get('email') != null;
+    
+    if (currentUser?.userType === 'APPLICANT' && !isNewUser) {
+      // Existing applicant user returning = just coming back, redirect to apply-jobs
+      console.log('[ROLE_SELECTION] Existing Applicant user - redirecting to apply-jobs');
       navigate('/apply-jobs');
       return;
     }
-  }, [mismatchChecked, error, email, currentUser, navigate]);
+    
+    if (currentUser?.userType === 'INDUSTRY' && !isNewUser) {
+      // Existing industry user returning = just coming back, redirect to post-jobs
+      console.log('[ROLE_SELECTION] Existing Industry user - redirecting to post-jobs');
+      navigate('/manage-applications');
+      return;
+    }
+  }, [mismatchChecked, error, searchParams, currentUser, navigate]);
 
   // THIRD: Auto-submit if no mismatch
   useEffect(() => {
@@ -324,7 +335,7 @@ export default function RoleSelection() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      {/* DEBUG PANEL */}
+      {/* DEBUG PANEL
       <div className="fixed top-4 right-4 bg-yellow-100 border-2 border-yellow-400 p-3 rounded text-xs max-w-xs z-50">
         <p className="font-bold mb-1">🔍 Debug Info</p>
         <p>Current User: {currentUser?.userType || 'NONE'}</p>
@@ -332,7 +343,7 @@ export default function RoleSelection() {
         <p>Loading: {loading ? 'YES' : 'NO'}</p>
         <p>Has Error: {error ? 'YES' : 'NO'}</p>
         <p>Email: {email || 'N/A'}</p>
-      </div>
+      </div> */}
 
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">

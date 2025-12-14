@@ -243,10 +243,49 @@ export default function JobList() {
     }
   };
 
+  // Calculate match percentage for a job based on user profile
+  const calculateJobMatch = (job, userProfile) => {
+    if (!userProfile || !userProfile.skills) {
+      return 0;
+    }
+
+    const userSkills = userProfile.skills.map(s => s.toLowerCase());
+    const jobSkills = (job.raw?.skills || []).map(s => s.toLowerCase());
+    const userLocations = [
+      ...(userProfile.preferredLocations || []),
+      userProfile.currentLocation || []
+    ].map(l => l.toLowerCase()).filter(Boolean);
+    const jobLocation = (job.location || '').toLowerCase();
+
+    // Skills match (60% weight)
+    let skillsMatch = 50; // Base score if no skills listed
+    if (jobSkills.length > 0) {
+      const matchedSkills = jobSkills.filter(jobSkill =>
+        userSkills.some(userSkill => 
+          jobSkill.includes(userSkill) || userSkill.includes(jobSkill)
+        )
+      );
+      skillsMatch = (matchedSkills.length / jobSkills.length) * 100;
+    }
+
+    // Location match (40% weight)
+    let locationMatch = 50; // Base score if no location specified
+    if (jobLocation) {
+      const isLocationMatch = userLocations.some(loc =>
+        jobLocation.includes(loc) || loc.includes(jobLocation)
+      );
+      locationMatch = isLocationMatch ? 100 : (jobLocation.includes('remote') ? 75 : 0);
+    }
+
+    const totalMatch = (skillsMatch * 0.6) + (locationMatch * 0.4);
+    return Math.round(Math.min(totalMatch, 100));
+  };
+
   // Load recommended jobs match percentages
   const loadRecommendedJobs = async () => {
     try {
       if (isAuthenticated && isApplicant) {
+        // Try to get recommended jobs from backend first
         const recommendedJobs = await getRecommendedJobs();
         const matchMap = {};
         if (Array.isArray(recommendedJobs)) {
@@ -254,11 +293,29 @@ export default function JobList() {
             matchMap[item.job.id] = item.matchPercentage;
           });
         }
+        
+        // Also calculate matches for all loaded jobs using user profile
+        if (userProfile && jobs && jobs.length > 0) {
+          jobs.forEach(job => {
+            if (matchMap[job.id] === undefined) {
+              // Only calculate if not already in recommended list
+              matchMap[job.id] = calculateJobMatch(job, userProfile);
+            }
+          });
+        }
+        
         setJobMatchPercentages(matchMap);
       }
     } catch (err) {
       console.error("Error loading recommended jobs:", err);
-      // Silent fail - don't show error if recommendations can't be loaded
+      // Fallback: calculate matches for all jobs using user profile
+      if (userProfile && isApplicant && jobs && jobs.length > 0) {
+        const matchMap = {};
+        jobs.forEach(job => {
+          matchMap[job.id] = calculateJobMatch(job, userProfile);
+        });
+        setJobMatchPercentages(matchMap);
+      }
     }
   };
 
@@ -450,6 +507,13 @@ export default function JobList() {
     loadRecommendedJobs();
     loadUserProfile();
   }, []);
+
+  // Recalculate match percentages when jobs or user profile changes
+  useEffect(() => {
+    if (jobs.length > 0 && userProfile) {
+      loadRecommendedJobs();
+    }
+  }, [jobs, userProfile]);
 
   // Check if user returned from build-profile and should open application form
   useEffect(() => {
@@ -1093,6 +1157,26 @@ export default function JobList() {
                       </div>
                     )}
 
+                    {/* Years of Experience Required */}
+                    {(jobDetails?.years_of_experience || selectedJob.raw?.yearsOfExperience) && (
+                      <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Experience Required</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {(() => {
+                              const yearsRequired = jobDetails?.years_of_experience || selectedJob.raw?.yearsOfExperience;
+                              return yearsRequired 
+                                ? `${yearsRequired} year${yearsRequired !== 1 ? 's' : ''} of experience` 
+                                : "Experience not specified";
+                            })()}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Posted Date */}
                     {(jobDetails?.job_posted_at_datetime_utc || selectedJob.raw?.createdAt) && (
                       <div className="flex items-start gap-3">
@@ -1163,6 +1247,16 @@ export default function JobList() {
                           </div>
                         )}
                         
+                        {/* Years of Experience */}
+                        {userProfile?.experience && (
+                          <div className="pt-2 border-t border-indigo-200">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Your Experience:</p>
+                            <div className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+                              📊 {userProfile.experience} years
+                            </div>
+                          </div>
+                        )}
+
                         {/* Work Preference */}
                         {userProfile?.workPreference && (
                           <div className="pt-2 border-t border-indigo-200">
@@ -1214,6 +1308,118 @@ export default function JobList() {
                             </span>
                           );
                         })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Missing Skills & Location Mismatch Section */}
+                  {userProfile && isApplicant && (
+                    <div className="p-5 bg-gradient-to-br from-red-50 to-orange-50 rounded-xl border-2 border-red-200">
+                      <div className="flex items-center gap-2 mb-4">
+                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 0v2m0-6v-2m0 0V7m0 6v2m0 4v2" />
+                        </svg>
+                        <h3 className="text-lg font-bold text-gray-900">What You're Missing</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {/* Experience Mismatch */}
+                        {selectedJob?.raw?.yearsOfExperience && (() => {
+                          const userExpStr = userProfile?.experience || "0";
+                          const userExp = parseInt(userExpStr) || 0;
+                          const requiredExp = selectedJob.raw.yearsOfExperience || 0;
+                          
+                          if (userExp < requiredExp) {
+                            return (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-700 mb-2">Experience Gap:</p>
+                                <div className="flex flex-wrap gap-2">
+                                  <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 border-2 border-red-300 text-red-700 shadow-sm">
+                                    <svg className="w-4 h-4 mr-1.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    You have {userExp} year{userExp !== 1 ? 's' : ''}, need {requiredExp} year{requiredExp !== 1 ? 's' : ''} ({requiredExp - userExp} year{(requiredExp - userExp) !== 1 ? 's' : ''} short)
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                        
+                        {/* Missing Skills */}
+                        {((jobDetails?.skills || selectedJob.raw?.skills) || []).length > 0 && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Skills You Don't Have:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {((jobDetails?.skills || selectedJob.raw?.skills) || [])
+                                .filter(skill => {
+                                  const userSkills = userProfile?.skills?.map(s => s.toLowerCase()) || [];
+                                  return !userSkills.some(userSkill => 
+                                    skill.toLowerCase().includes(userSkill.trim()) || 
+                                    userSkill.includes(skill.toLowerCase())
+                                  );
+                                })
+                                .map((skill, index) => (
+                                  <span
+                                    key={index}
+                                    className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 border-2 border-red-300 text-red-700 shadow-sm"
+                                  >
+                                    <svg className="w-4 h-4 mr-1.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    {skill}
+                                  </span>
+                                ))}
+                              {((jobDetails?.skills || selectedJob.raw?.skills) || [])
+                                .filter(skill => {
+                                  const userSkills = userProfile?.skills?.map(s => s.toLowerCase()) || [];
+                                  return !userSkills.some(userSkill => 
+                                    skill.toLowerCase().includes(userSkill.trim()) || 
+                                    userSkill.includes(skill.toLowerCase())
+                                  );
+                                }).length === 0 && (
+                                <span className="text-xs text-green-700 font-semibold px-3 py-1.5 bg-green-100 rounded-lg border border-green-300">
+                                  ✅ Great! You have all the required skills!
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Location Mismatch - Only show if NOT matching and NOT remote */}
+                        {selectedJob?.location && (() => {
+                          const userLocations = [
+                            ...(userProfile?.preferredLocations || []),
+                            userProfile?.currentLocation || []
+                          ].map(l => l.toLowerCase()).filter(Boolean);
+                          const jobLocation = (selectedJob.location || '').toLowerCase();
+                          
+                          const isMatch = userLocations.some(loc =>
+                            jobLocation.includes(loc) || loc.includes(jobLocation)
+                          );
+                          
+                          const isRemote = jobLocation.includes('remote');
+                          
+                          // Only show location if it doesn't match AND it's not remote
+                          if (isMatch || isRemote) {
+                            return null;
+                          }
+                          
+                          return (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-700 mb-2">Location</p>
+                              <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm bg-red-100 border-2 border-red-300 text-red-700">
+                                <svg className="w-4 h-4 mr-1.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                📍 {selectedJob.location}
+                                <span className="ml-2 px-2 py-0.5 text-xs font-bold rounded-full bg-red-200 text-red-800">
+                                  ✗ No Match
+                                </span>
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}

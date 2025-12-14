@@ -15,7 +15,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
-
 import java.util.List;
 
 @Configuration
@@ -27,7 +26,6 @@ public class SecurityConfig {
         this.userRepository = userRepository;
     }
 
-    
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
@@ -42,49 +40,47 @@ public class SecurityConfig {
 
                 // ✅ Authorization rules
                 .authorizeHttpRequests(auth -> auth
-        // ✅ Allow GET & POST job APIs without Google login
-        .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
-        .requestMatchers(HttpMethod.POST, "/api/jobs/**").permitAll()
-        
-        // Public endpoints
-        .requestMatchers(
-                "/api/auth/**",
-                "/api/test",
-                "/",
-                "/index.html",
-                "/static/**",
-                "/error",
-                "/oauth2/**"
-        ).permitAll()
+                        // ✅ Allow GET & POST job APIs without Google login
+                        .requestMatchers("/api/hackathons/**").permitAll()
+                        .requestMatchers("/api/hackathons/apply/**").permitAll()
 
-        // ✅ Get current user endpoint (requires auth)
-        .requestMatchers(HttpMethod.GET, "/api/user/me").authenticated()
-        
-        // ✅ Save role endpoint (public, called after OAuth)
-        .requestMatchers(HttpMethod.POST, "/api/user/save-role").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/jobs/**").permitAll()
 
-        // Everything else requires Google OAuth
-        .anyRequest().authenticated()
-)
+                        // Public endpoints
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/api/test",
+                                "/",
+                                "/index.html",
+                                "/static/**",
+                                "/error",
+                                "/oauth2/**")
+                        .permitAll()
 
+                        // ✅ Get current user endpoint (requires auth)
+                        .requestMatchers(HttpMethod.GET, "/api/user/me").authenticated()
+
+                        // ✅ Save role endpoint (public, called after OAuth)
+                        .requestMatchers(HttpMethod.POST, "/api/user/save-role").permitAll()
+
+                        // Everything else requires Google OAuth
+                        .anyRequest().authenticated())
 
                 // ✅ OAuth2 Login config
                 .oauth2Login(oauth -> oauth
                         // IMPORTANT: Do not override Google's login page
                         .defaultSuccessUrl("http://localhost:5173", true)
-                        .successHandler(successHandler())
-                )
+                        .successHandler(successHandler()))
 
                 // ✅ Logout config
                 .logout(logout -> logout
                         .logoutSuccessUrl("http://localhost:5173")
                         .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID")
-                );
+                        .deleteCookies("JSESSIONID"));
 
         return http.build();
     }
-
 
     // ✅ Success handler — handles both new and existing users
     @Bean
@@ -103,22 +99,23 @@ public class SecurityConfig {
                 // Get intent from session/cookie if available (from Dashboard click)
                 String intent = request.getParameter("intent");
                 String intentParam = (intent != null && !intent.isEmpty()) ? "&intent=" + intent : "";
-                
+
                 // Encode URL parameters properly
                 String redirectUrl = String.format(
-                    "http://localhost:5173/choose-role?email=%s&name=%s&picture=%s%s",
-                    java.net.URLEncoder.encode(email, "UTF-8"),
-                    java.net.URLEncoder.encode(name != null ? name : "", "UTF-8"),
-                    java.net.URLEncoder.encode(picture != null ? picture : "", "UTF-8"),
-                    intentParam
-                );
+                        "http://localhost:5173/choose-role?email=%s&name=%s&picture=%s%s",
+                        java.net.URLEncoder.encode(email, "UTF-8"),
+                        java.net.URLEncoder.encode(name != null ? name : "", "UTF-8"),
+                        java.net.URLEncoder.encode(picture != null ? picture : "", "UTF-8"),
+                        intentParam);
                 response.sendRedirect(redirectUrl);
             } else {
-                // EXISTING USER - has role saved in database
-                // Redirect to RoleSelection so role mismatch check can happen
-                // RoleSelection will read loginIntent from localStorage and compare
+                // Existing user -> attach userType into session
+                request.getSession().setAttribute("USER_TYPE", existingUser.getUserType());
+                request.getSession().setAttribute("USER_ID", existingUser.getId());
+
                 response.sendRedirect("http://localhost:5173/choose-role");
             }
+
         };
     }
 
@@ -126,8 +123,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
 

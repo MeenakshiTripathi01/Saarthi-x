@@ -17,7 +17,7 @@ export default function Dashboard() {
     // Check if user has a redirectRoute set (from login button clicks or login page)
     const redirectRoute = localStorage.getItem('redirectRoute');
     const loginIntent = localStorage.getItem('loginIntent');
-    
+
     if (redirectRoute) {
       // Check if user has a role
       if (!user.userType || user.userType === '') {
@@ -50,7 +50,7 @@ export default function Dashboard() {
         navigate(`/choose-role?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}&picture=${encodeURIComponent(picture || '')}`);
         return;
       }
-      
+
       // If redirectRoute doesn't match user's role, clear it and stay on dashboard
       localStorage.removeItem('redirectRoute');
       localStorage.removeItem('loginIntent');
@@ -87,8 +87,11 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Two Card Layout */}
-        <div className={`grid gap-6 ${isAuthenticated && !isIndustry ? 'md:grid-cols-1 max-w-2xl mx-auto' : 'md:grid-cols-2'}`}>
+        {/* Two/Three Card Layout */}
+        <div className={`grid gap-6 ${isAuthenticated && isIndustry ? 'md:grid-cols-3' :
+          isAuthenticated && !isIndustry ? 'md:grid-cols-1 max-w-2xl mx-auto' :
+            'md:grid-cols-2'
+          }`}>
           {/* Browse Jobs Card */}
           <div
             onClick={() => {
@@ -127,6 +130,60 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Browse Hackathons Card - Only for Applicants */}
+          {isAuthenticated && !isIndustry && (
+            <div
+              onClick={() => navigate("/browse-hackathons")}
+              className="group cursor-pointer animate-fadeIn"
+              style={{ animationDelay: '0.15s' }}
+            >
+              <div className="h-full bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xl transition-all duration-300 p-12 flex flex-col items-center justify-center text-center hover-lift"
+              >
+                <div className="w-20 h-20 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-10 h-10 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  Hackathons
+                </h2>
+                <p className="text-gray-600 mb-10 text-base leading-relaxed max-w-sm">
+                  Discover and apply for exciting hackathons. Compete, innovate, and showcase your skills with developers from around the world.
+                </p>
+                <button className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
+                  Browse Hackathons
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Manage Hackathons Card - Only for Industry users */}
+          {isAuthenticated && isIndustry && (
+            <div
+              onClick={() => navigate("/manage-hackathons")}
+              className="group cursor-pointer animate-fadeIn"
+              style={{ animationDelay: '0.2s' }}
+            >
+              <div className="h-full bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xl transition-all duration-300 p-12 flex flex-col items-center justify-center text-center hover-lift"
+              >
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-10 h-10 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  Hackathons
+                </h2>
+                <p className="text-gray-600 mb-10 text-base leading-relaxed max-w-sm">
+                  Post and manage hackathons to engage developers and innovators. Discover new talent through coding competitions.
+                </p>
+                <button className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
+                  Manage Hackathons
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Post a Job Card - Only show for Industry users or non-authenticated users */}
           {(isIndustry || !isAuthenticated) && (
             <div
@@ -141,11 +198,11 @@ export default function Dashboard() {
                   loginWithGoogle();
                 } else if (isIndustry) {
                   // Already logged in as INDUSTRY - go to posting form
-                  navigate("/post-jobs");
+                  navigate("/manage-applications");
                 }
               }}
               className="group cursor-pointer animate-fadeIn"
-              style={{ animationDelay: '0.2s' }}
+              style={{ animationDelay: `${isAuthenticated && isIndustry ? '0.3s' : '0.2s'}` }}
             >
               <div className="h-full bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xl transition-all duration-300 p-12 flex flex-col items-center justify-center text-center hover-lift"
               >
