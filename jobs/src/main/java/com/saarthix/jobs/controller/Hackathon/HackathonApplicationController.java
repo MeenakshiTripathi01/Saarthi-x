@@ -349,10 +349,31 @@ public class HackathonApplicationController {
             applications.get(i).setFinalRank(i + 1);
         }
 
+        // Generate certificates for all applications (Participation or Merit)
+        for (HackathonApplication app : applications) {
+            generateCertificateUrls(app);
+        }
+
         // Save all applications
         applicationRepository.saveAll(applications);
 
         return ResponseEntity.ok("Results finalized successfully");
+    }
+
+    private void generateCertificateUrls(HackathonApplication app) {
+        String baseUrl = "http://localhost:8080/api/certificates/view";
+
+        if (Boolean.TRUE.equals(app.getAsTeam())) {
+            // Generate for each team member
+            for (HackathonApplication.TeamMember member : app.getTeamMembers()) {
+                String certUrl = baseUrl + "?applicationId=" + app.getId() + "&email=" + member.getEmail();
+                member.setCertificateUrl(certUrl);
+            }
+        } else {
+            // Generate for individual
+            String certUrl = baseUrl + "?applicationId=" + app.getId();
+            app.setCertificateUrl(certUrl);
+        }
     }
 
     // --------------------------------------------

@@ -231,6 +231,17 @@ const CertificateTemplate = ({ participantName, hackathonTitle, company, rank, i
                             </p>
                         )}
 
+                        {!isTeam && teamName && (
+                            <p style={{
+                                fontSize: '14px',
+                                color: '#9ca3af',
+                                marginTop: '8px',
+                                fontStyle: 'italic'
+                            }}>
+                                Member of Team: {teamName}
+                            </p>
+                        )}
+
                         {/* Achievement Text */}
                         <p style={{
                             fontSize: '15px',

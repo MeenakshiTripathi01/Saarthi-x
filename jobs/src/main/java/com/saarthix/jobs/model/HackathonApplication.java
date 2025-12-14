@@ -141,6 +141,7 @@ public class HackathonApplication {
         private String email;
         private String phone;
         private String role; // "Team Lead" or "Member"
+        private String certificateUrl;
 
         public TeamMember() {
         }
@@ -182,6 +183,14 @@ public class HackathonApplication {
 
         public void setRole(String role) {
             this.role = role;
+        }
+
+        public String getCertificateUrl() {
+            return certificateUrl;
+        }
+
+        public void setCertificateUrl(String certificateUrl) {
+            this.certificateUrl = certificateUrl;
         }
     }
 

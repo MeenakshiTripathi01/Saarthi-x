@@ -358,6 +358,49 @@ export default function HackathonApplicationDashboard() {
                             </div>
                         </div>
 
+                        {/* Team Member Certificates List */}
+                        {application.asTeam && application.teamMembers && application.teamMembers.length > 0 && (
+                            <div className="mb-6 border-t border-gray-200 pt-6">
+                                <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <Award className="w-5 h-5 text-purple-600" />
+                                    Team Member Certificates
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {application.teamMembers.map((member, idx) => (
+                                        <div key={idx} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">
+                                            <div>
+                                                <p className="font-semibold text-gray-900">{member.name}</p>
+                                                <p className="text-xs text-gray-500">{member.role} • {member.email}</p>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const loadingToast = toast.loading(`Generating certificate for ${member.name}...`);
+                                                        await downloadCertificate({
+                                                            participantName: member.name,
+                                                            hackathonTitle: hackathon.title,
+                                                            company: hackathon.company,
+                                                            rank: application.finalRank,
+                                                            isTeam: false,
+                                                            teamName: application.teamName
+                                                        });
+                                                        toast.dismiss(loadingToast);
+                                                        toast.success(`Certificate for ${member.name} downloaded!`);
+                                                    } catch (e) {
+                                                        toast.error('Failed to download certificate');
+                                                    }
+                                                }}
+                                                className="text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 p-2 rounded-lg transition-colors"
+                                                title="Download Certificate"
+                                            >
+                                                <Download className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Action Buttons */}
                         <div className="flex flex-wrap gap-3 justify-center">
                             <button
