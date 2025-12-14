@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getHackathonApplicationDetails, getHackathonById, submitHackathonPhase } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { CheckCircle, XCircle, Clock, Upload, FileText, AlertCircle, ChevronRight, Download, Share2, Award } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Upload, FileText, AlertCircle, ChevronRight, Download, Share2, Award, Eye, X } from 'lucide-react';
 import { downloadCertificate, shareOnLinkedIn } from './CertificateGenerator';
 import CertificateTemplate from './CertificateGenerator';
 
@@ -23,6 +23,10 @@ export default function HackathonApplicationDashboard() {
     const [selectedFile, setSelectedFile] = useState(null);
     const [submissionLink, setSubmissionLink] = useState('');
     const [downloadingCertificate, setDownloadingCertificate] = useState(false);
+    
+    // Certificate Preview State
+    const [previewCertificate, setPreviewCertificate] = useState(null);
+    const [previewingMember, setPreviewingMember] = useState(null);
 
     const handleDownloadCertificate = async () => {
         try {
@@ -366,43 +370,77 @@ export default function HackathonApplicationDashboard() {
                                     Team Member Certificates
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {application.teamMembers.map((member, idx) => (
-                                        <div key={idx} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">
-                                            <div>
-                                                <p className="font-semibold text-gray-900">{member.name}</p>
-                                                <p className="text-xs text-gray-500">{member.role} • {member.email}</p>
+                                    {application.teamMembers.map((member, idx) => {
+                                        const memberCertificateData = {
+                                            participantName: member.name,
+                                            hackathonTitle: hackathon.title,
+                                            company: hackathon.company,
+                                            rank: application.finalRank,
+                                            isTeam: false,
+                                            teamName: application.teamName
+                                        };
+                                        
+                                        return (
+                                            <div key={idx} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">
+                                                <div>
+                                                    <p className="font-semibold text-gray-900">{member.name}</p>
+                                                    <p className="text-xs text-gray-500">{member.role} • {member.email}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setPreviewingMember(member);
+                                                            setPreviewCertificate(memberCertificateData);
+                                                        }}
+                                                        className="text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors"
+                                                        title="Preview Certificate"
+                                                    >
+                                                        <Eye className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                const loadingToast = toast.loading(`Generating certificate for ${member.name}...`);
+                                                                await downloadCertificate(memberCertificateData);
+                                                                toast.dismiss(loadingToast);
+                                                                toast.success(`Certificate for ${member.name} downloaded!`);
+                                                            } catch (e) {
+                                                                toast.dismiss();
+                                                                toast.error('Failed to download certificate');
+                                                            }
+                                                        }}
+                                                        className="text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 p-2 rounded-lg transition-colors"
+                                                        title="Download Certificate"
+                                                    >
+                                                        <Download className="w-5 h-5" />
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <button
-                                                onClick={async () => {
-                                                    try {
-                                                        const loadingToast = toast.loading(`Generating certificate for ${member.name}...`);
-                                                        await downloadCertificate({
-                                                            participantName: member.name,
-                                                            hackathonTitle: hackathon.title,
-                                                            company: hackathon.company,
-                                                            rank: application.finalRank,
-                                                            isTeam: false,
-                                                            teamName: application.teamName
-                                                        });
-                                                        toast.dismiss(loadingToast);
-                                                        toast.success(`Certificate for ${member.name} downloaded!`);
-                                                    } catch (e) {
-                                                        toast.error('Failed to download certificate');
-                                                    }
-                                                }}
-                                                className="text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 p-2 rounded-lg transition-colors"
-                                                title="Download Certificate"
-                                            >
-                                                <Download className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
 
                         {/* Action Buttons */}
                         <div className="flex flex-wrap gap-3 justify-center">
+                            <button
+                                onClick={() => {
+                                    setPreviewCertificate({
+                                        participantName: user?.name || 'Participant',
+                                        hackathonTitle: hackathon.title,
+                                        company: hackathon.company,
+                                        rank: application.finalRank,
+                                        isTeam: application.asTeam,
+                                        teamName: application.teamName
+                                    });
+                                    setPreviewingMember(null);
+                                }}
+                                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+                            >
+                                <Eye className="w-5 h-5" />
+                                Preview Certificate
+                            </button>
                             <button
                                 onClick={handleDownloadCertificate}
                                 disabled={downloadingCertificate}
@@ -413,7 +451,7 @@ export default function HackathonApplicationDashboard() {
                             </button>
                             <button
                                 onClick={handleShareOnLinkedIn}
-                                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+                                className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
                             >
                                 <Share2 className="w-5 h-5" />
                                 Share on LinkedIn
@@ -699,6 +737,95 @@ export default function HackathonApplicationDashboard() {
                     </div>
                 </div>
             </div>
+            
+            {/* Certificate Preview Modal */}
+            {previewCertificate && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => {
+                    setPreviewCertificate(null);
+                    setPreviewingMember(null);
+                }}>
+                    <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900">
+                                    {previewingMember ? `Certificate Preview - ${previewingMember.name}` : 'Certificate Preview'}
+                                </h3>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    {previewingMember ? `${previewingMember.role} • ${previewingMember.email}` : 'Review your certificate before downloading'}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            setDownloadingCertificate(true);
+                                            await downloadCertificate(previewCertificate);
+                                            toast.success('Certificate downloaded successfully!');
+                                            setPreviewCertificate(null);
+                                            setPreviewingMember(null);
+                                        } catch (error) {
+                                            console.error('Error downloading certificate:', error);
+                                            toast.error('Failed to download certificate');
+                                        } finally {
+                                            setDownloadingCertificate(false);
+                                        }
+                                    }}
+                                    disabled={downloadingCertificate}
+                                    className="bg-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Download className="w-5 h-5" />
+                                    {downloadingCertificate ? 'Generating...' : 'Download PDF'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setPreviewCertificate(null);
+                                        setPreviewingMember(null);
+                                    }}
+                                    className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-6 bg-gray-50">
+                            <div className="bg-white rounded-lg p-4 shadow-lg" style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                minHeight: '600px'
+                            }}>
+                                <div style={{
+                                    width: '100%',
+                                    maxWidth: '1122px',
+                                    transform: 'scale(0.85)',
+                                    transformOrigin: 'center center'
+                                }}>
+                                    <CertificateTemplate
+                                        participantName={previewCertificate.participantName}
+                                        hackathonTitle={previewCertificate.hackathonTitle}
+                                        company={previewCertificate.company}
+                                        rank={previewCertificate.rank}
+                                        isTeam={previewCertificate.isTeam}
+                                        teamName={previewCertificate.teamName}
+                                        date={new Date().toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                        certificateCode={(() => {
+                                            const now = new Date();
+                                            const year = now.getFullYear();
+                                            const timestamp = now.getTime();
+                                            const uniqueCode = String(timestamp % 100000).padStart(5, '0');
+                                            return `${year} ${uniqueCode}`;
+                                        })()}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -402,27 +402,64 @@ export const generateCertificatePDF = async (certificateData) => {
     });
 
     const certificateElement = document.getElementById('certificate-content');
+    
+    // Wait a bit more to ensure all styles are rendered
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     const canvas = await html2canvas(certificateElement, {
-        scale: 3,
+        scale: 4, // Higher scale for better quality
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
         windowWidth: 1122,
-        windowHeight: 794
+        windowHeight: 794,
+        allowTaint: false,
+        removeContainer: false,
+        imageTimeout: 15000,
+        onclone: (clonedDoc) => {
+            // Ensure all styles are preserved in the cloned document
+            const clonedElement = clonedDoc.getElementById('certificate-content');
+            if (clonedElement) {
+                clonedElement.style.transform = 'none';
+                clonedElement.style.position = 'relative';
+            }
+        }
     });
 
     const imgData = canvas.toDataURL('image/png', 1.0);
+    
+    // Calculate exact dimensions to match certificate aspect ratio
+    // Certificate is 1122x794 (landscape A4 ratio)
+    const certificateWidth = 1122;
+    const certificateHeight = 794;
+    const aspectRatio = certificateWidth / certificateHeight;
+    
+    // Use A4 landscape dimensions in mm
     const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
-        format: 'a4',
+        format: [297, 210], // A4 landscape: 297mm x 210mm
         compress: true
     });
 
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
+    
+    // Calculate dimensions to maintain aspect ratio and fill the page
+    let imgWidth = pdfWidth;
+    let imgHeight = pdfWidth / aspectRatio;
+    
+    // If height exceeds page, scale down
+    if (imgHeight > pdfHeight) {
+        imgHeight = pdfHeight;
+        imgWidth = pdfHeight * aspectRatio;
+    }
+    
+    // Center the image
+    const xOffset = (pdfWidth - imgWidth) / 2;
+    const yOffset = (pdfHeight - imgHeight) / 2;
 
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, '', 'FAST');
+    pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight, '', 'FAST');
 
     document.body.removeChild(container);
 
