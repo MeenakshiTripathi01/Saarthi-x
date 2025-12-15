@@ -87,6 +87,9 @@ export default function HackathonDetails() {
             if (hackathonData.minTeamSize) {
                 setTeamSize(hackathonData.minTeamSize);
             }
+            if (hackathonData.allowIndividual === false) {
+                setAsTeam(true);
+            }
 
             // Check if already applied
             if (myApps && myApps.length > 0) {
@@ -134,11 +137,17 @@ export default function HackathonDetails() {
 
         try {
             setApplying(true);
+            if (hackathon.allowIndividual === false && !asTeam) {
+                toast.error('This hackathon only accepts team applications.');
+                setApplying(false);
+                return;
+            }
+
             const applicationData = {
-                asTeam,
-                teamName: asTeam ? teamName : null,
-                teamSize: asTeam ? teamSize : 1,
-                teamMembers: asTeam ? teamMembers : []
+                asTeam: hackathon.allowIndividual === false ? true : asTeam,
+                teamName: asTeam || hackathon.allowIndividual === false ? teamName : null,
+                teamSize: asTeam || hackathon.allowIndividual === false ? teamSize : 1,
+                teamMembers: asTeam || hackathon.allowIndividual === false ? teamMembers : []
             };
 
             const response = await applyForHackathon(id, applicationData);
@@ -269,15 +278,22 @@ export default function HackathonDetails() {
                                         <form onSubmit={handleApply} className="space-y-4">
                                             <div>
                                                 {hackathon.teamSize > 1 && (
-                                                    <label className="flex items-center gap-2 cursor-pointer mb-4">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={asTeam}
-                                                            onChange={(e) => setAsTeam(e.target.checked)}
-                                                            className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
-                                                        />
-                                                        <span className="text-gray-700 font-medium">Apply as a Team</span>
-                                                    </label>
+                                                    hackathon.allowIndividual === false ? (
+                                                        <div className="flex items-center gap-2 mb-4 text-gray-600">
+                                                            <CheckCircle className="w-4 h-4 text-purple-600" />
+                                                            <span className="font-medium">Team applications only</span>
+                                                        </div>
+                                                    ) : (
+                                                        <label className="flex items-center gap-2 cursor-pointer mb-4">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={asTeam}
+                                                                onChange={(e) => setAsTeam(e.target.checked)}
+                                                                className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                            />
+                                                            <span className="text-gray-700 font-medium">Apply as a Team</span>
+                                                        </label>
+                                                    )
                                                 )}
                                             </div>
 

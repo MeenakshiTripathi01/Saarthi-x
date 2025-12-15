@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getHackathonApplicationDetails, getHackathonById, submitHackathonPhase } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +28,18 @@ export default function HackathonApplicationDashboard() {
     const [previewCertificate, setPreviewCertificate] = useState(null);
     const [previewingMember, setPreviewingMember] = useState(null);
 
+    // Use any published design chosen by industry (saved locally after publish)
+    const designSettings = useMemo(() => {
+        if (!hackathon?.id) return {};
+        try {
+            const saved = localStorage.getItem(`certificate_design_${hackathon.id}`);
+            return saved ? JSON.parse(saved) : {};
+        } catch (e) {
+            console.warn('Unable to parse certificate design settings', e);
+            return {};
+        }
+    }, [hackathon?.id]);
+
     const handleDownloadCertificate = async () => {
         try {
             setDownloadingCertificate(true);
@@ -37,7 +49,15 @@ export default function HackathonApplicationDashboard() {
                 company: hackathon.company,
                 rank: application.finalRank,
                 isTeam: application.asTeam,
-                teamName: application.teamName
+                teamName: application.teamName,
+                templateStyle: designSettings.templateStyle,
+                logoUrl: designSettings.logoUrl,
+                platformLogoUrl: designSettings.platformLogoUrl,
+                customMessage: designSettings.customMessage,
+                signerLeft: designSettings.signerLeft,
+                signerRight: designSettings.signerRight,
+                signatureLeftUrl: designSettings.signatureLeftUrl,
+                signatureRightUrl: designSettings.signatureRightUrl
             };
 
             await downloadCertificate(certificateData);
@@ -58,7 +78,15 @@ export default function HackathonApplicationDashboard() {
                 company: hackathon.company,
                 rank: application.finalRank,
                 isTeam: application.asTeam,
-                teamName: application.teamName
+                teamName: application.teamName,
+                templateStyle: designSettings.templateStyle,
+                logoUrl: designSettings.logoUrl,
+                platformLogoUrl: designSettings.platformLogoUrl,
+                customMessage: designSettings.customMessage,
+                signerLeft: designSettings.signerLeft,
+                signerRight: designSettings.signerRight,
+                signatureLeftUrl: designSettings.signatureLeftUrl,
+                signatureRightUrl: designSettings.signatureRightUrl
             };
 
             shareOnLinkedIn(certificateData);
@@ -261,6 +289,11 @@ export default function HackathonApplicationDashboard() {
         return submission && (submission.status === 'ACCEPTED' || submission.status === 'REJECTED');
     });
 
+    const hasPublishedResults = Boolean(
+        application.certificateUrl ||
+        (application.teamMembers || []).some(member => member.certificateUrl)
+    );
+
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
@@ -291,21 +324,32 @@ export default function HackathonApplicationDashboard() {
                         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                             <div>
                                 <h3 className="text-xl font-bold mb-1">🎉 All Phases Completed!</h3>
-                                <p className="text-purple-100">Your hackathon journey is complete. View your results and performance.</p>
+                                <p className="text-purple-100">
+                                    {hasPublishedResults
+                                        ? 'Results are live. View your performance and certificates.'
+                                        : 'Waiting for the industry to publish official results.'}
+                                </p>
                             </div>
-                            <button
-                                onClick={() => navigate(`/hackathon-application/${applicationId}/results`)}
-                                className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center gap-2 whitespace-nowrap"
-                            >
-                                View Results
-                                <ChevronRight className="w-5 h-5" />
-                            </button>
+                            {hasPublishedResults ? (
+                                <button
+                                    onClick={() => navigate(`/hackathon-application/${applicationId}/results`)}
+                                    className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+                                >
+                                    View Results
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+                            ) : (
+                                <div className="px-4 py-2 rounded-lg bg-white/10 border border-white/30 text-sm font-semibold text-white flex items-center gap-2">
+                                    <Clock className="w-4 h-4" />
+                                    Publication pending
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
 
                 {/* Certificate Section - Shows when hackathon is completed */}
-                {allPhasesCompleted && (
+                {allPhasesCompleted && hasPublishedResults && (
                     <div className="mb-6 bg-white rounded-xl shadow-sm p-6 border-2 border-purple-200">
                         <div className="mb-4">
                             <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
@@ -345,6 +389,14 @@ export default function HackathonApplicationDashboard() {
                                         rank={application.finalRank}
                                         isTeam={application.asTeam}
                                         teamName={application.teamName}
+                                        templateStyle={designSettings.templateStyle}
+                                        logoUrl={designSettings.logoUrl}
+                                        platformLogoUrl={designSettings.platformLogoUrl}
+                                        customMessage={designSettings.customMessage}
+                                        signerLeft={designSettings.signerLeft}
+                                        signerRight={designSettings.signerRight}
+                                        signatureLeftUrl={designSettings.signatureLeftUrl}
+                                        signatureRightUrl={designSettings.signatureRightUrl}
                                         date={new Date().toLocaleDateString('en-US', {
                                             year: 'numeric',
                                             month: 'long',
@@ -377,7 +429,12 @@ export default function HackathonApplicationDashboard() {
                                             company: hackathon.company,
                                             rank: application.finalRank,
                                             isTeam: false,
-                                            teamName: application.teamName
+                                            teamName: application.teamName,
+                                            templateStyle: designSettings.templateStyle,
+                                            logoUrl: designSettings.logoUrl,
+                                            customMessage: designSettings.customMessage,
+                                            signerLeft: designSettings.signerLeft,
+                                            signerRight: designSettings.signerRight
                                         };
                                         
                                         return (
@@ -390,7 +447,7 @@ export default function HackathonApplicationDashboard() {
                                                     <button
                                                         onClick={() => {
                                                             setPreviewingMember(member);
-                                                            setPreviewCertificate(memberCertificateData);
+                                                        setPreviewCertificate(memberCertificateData);
                                                         }}
                                                         className="text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors"
                                                         title="Preview Certificate"
@@ -432,7 +489,12 @@ export default function HackathonApplicationDashboard() {
                                         company: hackathon.company,
                                         rank: application.finalRank,
                                         isTeam: application.asTeam,
-                                        teamName: application.teamName
+                                        teamName: application.teamName,
+                                        templateStyle: designSettings.templateStyle,
+                                        logoUrl: designSettings.logoUrl,
+                                        customMessage: designSettings.customMessage,
+                                        signerLeft: designSettings.signerLeft,
+                                        signerRight: designSettings.signerRight
                                     });
                                     setPreviewingMember(null);
                                 }}
@@ -456,6 +518,18 @@ export default function HackathonApplicationDashboard() {
                                 <Share2 className="w-5 h-5" />
                                 Share on LinkedIn
                             </button>
+                        </div>
+                    </div>
+                )}
+
+                {allPhasesCompleted && !hasPublishedResults && (
+                    <div className="mb-6 bg-white rounded-xl shadow-sm p-6 border border-dashed border-purple-300 text-sm text-gray-700">
+                        <div className="flex items-center gap-3">
+                            <Clock className="w-5 h-5 text-purple-600" />
+                            <div>
+                                <p className="font-semibold text-gray-900">Results pending publication</p>
+                                <p className="text-gray-600">You will be able to view and download your certificate as soon as the industry partner publishes the final results.</p>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -807,6 +881,14 @@ export default function HackathonApplicationDashboard() {
                                         rank={previewCertificate.rank}
                                         isTeam={previewCertificate.isTeam}
                                         teamName={previewCertificate.teamName}
+                                            templateStyle={previewCertificate.templateStyle || designSettings.templateStyle}
+                                            logoUrl={previewCertificate.logoUrl || designSettings.logoUrl}
+                                            platformLogoUrl={previewCertificate.platformLogoUrl || designSettings.platformLogoUrl}
+                                            customMessage={previewCertificate.customMessage || designSettings.customMessage}
+                                            signerLeft={previewCertificate.signerLeft || designSettings.signerLeft}
+                                            signerRight={previewCertificate.signerRight || designSettings.signerRight}
+                                            signatureLeftUrl={previewCertificate.signatureLeftUrl || designSettings.signatureLeftUrl}
+                                            signatureRightUrl={previewCertificate.signatureRightUrl || designSettings.signatureRightUrl}
                                         date={new Date().toLocaleDateString('en-US', {
                                             year: 'numeric',
                                             month: 'long',

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getApplicationResults } from '../api/jobApi';
 import { toast } from 'react-toastify';
-import { Trophy, Award, Medal, Download, Star, CheckCircle, Clock, FileText } from 'lucide-react';
+import { Trophy, Award, Medal, Download, Star, CheckCircle, Clock, FileText, Eye } from 'lucide-react';
+import CertificateTemplate, { downloadCertificate } from './CertificateGenerator';
 
 export default function ApplicantResults() {
     const { applicationId } = useParams();
@@ -10,6 +11,7 @@ export default function ApplicantResults() {
     const [loading, setLoading] = useState(true);
     const [results, setResults] = useState(null);
     const [showCelebration, setShowCelebration] = useState(false);
+    const [downloading, setDownloading] = useState(false);
 
     useEffect(() => {
         loadResults();
@@ -120,6 +122,50 @@ export default function ApplicantResults() {
     const rankBadge = results.finalRank ? getRankBadge(results.finalRank) : null;
     const RankIcon = rankBadge?.icon;
 
+    const isPublished = Boolean(
+        results.certificateUrl ||
+        results.finalRank ||
+        (results.teamMembers || []).some(m => m.certificateUrl)
+    );
+
+    // Load published design (persisted by industry in localStorage by hackathonId)
+    const designSettings = useMemo(() => {
+        try {
+            const saved = localStorage.getItem(`certificate_design_${results.hackathonId}`);
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            return {};
+        }
+    }, [results.hackathonId]);
+
+    const handleDownloadCertificate = async () => {
+        try {
+            setDownloading(true);
+            const certificateData = {
+                participantName: results.asTeam ? results.teamName : (results.applicantName || 'Participant'),
+                hackathonTitle: results.hackathonTitle || results.title || 'Hackathon',
+                company: results.company || results.organizer || 'Organizer',
+                rank: results.finalRank,
+                isTeam: results.asTeam,
+                teamName: results.teamName,
+                templateStyle: designSettings.templateStyle || 'template1',
+                logoUrl: designSettings.logoUrl,
+                platformLogoUrl: designSettings.platformLogoUrl,
+                customMessage: designSettings.customMessage,
+                signerLeft: designSettings.signerLeft,
+                signerRight: designSettings.signerRight,
+                signatureLeftUrl: designSettings.signatureLeftUrl,
+                signatureRightUrl: designSettings.signatureRightUrl
+            };
+            await downloadCertificate(certificateData);
+        } catch (e) {
+            console.error('Download certificate failed', e);
+            toast.error('Could not generate certificate');
+        } finally {
+            setDownloading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 py-8 px-4 sm:px-6 lg:px-8">
             {/* Confetti Celebration Overlay - Only for 1st Place Winners */}
@@ -204,40 +250,48 @@ export default function ApplicantResults() {
             `}</style>
 
             <div className="max-w-5xl mx-auto">
-                {/* Header with Rank */}
-                {rankBadge ? (
-                    <div className={`bg-gradient-to-r ${rankBadge.gradient} rounded-2xl shadow-2xl overflow-hidden mb-8 transform hover:scale-105 transition-transform duration-300`}>
-                        <div className="p-8 text-center text-white">
-                            <div className="flex justify-center mb-4">
-                                <div className="bg-white/20 backdrop-blur-sm rounded-full p-6">
-                                    <RankIcon className="w-20 h-20" />
-                                </div>
-                            </div>
-                            <h1 className="text-4xl font-bold mb-2">Congratulations!</h1>
-                            <p className="text-2xl font-semibold">{rankBadge.label}</p>
-                            <div className="mt-4 flex items-center justify-center gap-2">
-                                <Star className="w-6 h-6 fill-current" />
-                                <span className="text-xl">Total Score: {totalScore?.toFixed(2) || 0}/{maxScore}</span>
-                                <Star className="w-6 h-6 fill-current" />
+            {/* Header with Rank */}
+            {isPublished && rankBadge ? (
+                <div className={`bg-gradient-to-r ${rankBadge.gradient} rounded-2xl shadow-2xl overflow-hidden mb-8 transform hover:scale-105 transition-transform duration-300`}>
+                    <div className="p-8 text-center text-white">
+                        <div className="flex justify-center mb-4">
+                            <div className="bg-white/20 backdrop-blur-sm rounded-full p-6">
+                                <RankIcon className="w-20 h-20" />
                             </div>
                         </div>
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-2xl shadow-sm p-8 mb-8 border border-gray-200">
-                        <div className="text-center">
-                            <div className="flex justify-center mb-4">
-                                <div className="bg-purple-100 rounded-full p-6">
-                                    <CheckCircle className="w-16 h-16 text-purple-600" />
-                                </div>
-                            </div>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Hackathon Completed!</h1>
-                            <p className="text-lg text-gray-600">Thank you for participating</p>
-                            <div className="mt-4">
-                                <span className="text-2xl font-bold text-purple-600">Total Score: {totalScore?.toFixed(2) || 0}/{maxScore}</span>
-                            </div>
+                        <h1 className="text-4xl font-bold mb-2">Congratulations!</h1>
+                        <p className="text-2xl font-semibold">{rankBadge.label}</p>
+                        <div className="mt-4 flex items-center justify-center gap-2">
+                            <Star className="w-6 h-6 fill-current" />
+                            <span className="text-xl">Total Score: {totalScore?.toFixed(2) || 0}/{maxScore}</span>
+                            <Star className="w-6 h-6 fill-current" />
                         </div>
                     </div>
-                )}
+                </div>
+            ) : (
+                <div className="bg-white rounded-2xl shadow-sm p-8 mb-8 border border-gray-200">
+                    <div className="text-center">
+                        <div className="flex justify-center mb-4">
+                            <div className="bg-purple-100 rounded-full p-6">
+                                <CheckCircle className="w-16 h-16 text-purple-600" />
+                            </div>
+                        </div>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                            {isPublished ? 'Hackathon Completed!' : 'Your Submissions Summary'}
+                        </h1>
+                        <p className="text-lg text-gray-600">
+                            {isPublished
+                                ? 'Thank you for participating'
+                                : 'Official results are not published yet. Here is your phase performance.'}
+                        </p>
+                        <div className="mt-4">
+                            <span className="text-2xl font-bold text-purple-600">
+                                {isPublished ? 'Total Score' : 'Your current score'}: {totalScore?.toFixed(2) || 0}/{maxScore}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
                 {/* Phase-wise Performance */}
                 <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
@@ -302,28 +356,54 @@ export default function ApplicantResults() {
                     </div>
                 </div>
 
-                {/* Certificate Download */}
-                {results.certificateUrl && (
-                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-lg p-6 text-white">
+                {/* Certificate Download/Preview - regenerated with latest template */}
+                {isPublished && (
+                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-lg p-6 text-white space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-xl font-bold mb-2">Your Certificate is Ready!</h3>
-                                <p className="text-purple-100">Download your {rankBadge ? 'winner' : 'participation'} certificate</p>
+                                <p className="text-purple-100">Download with the latest published template</p>
                             </div>
-                            <a
-                                href={results.certificateUrl}
-                                download
-                                className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center gap-2"
+                            <button
+                                onClick={handleDownloadCertificate}
+                                disabled={downloading}
+                                className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center gap-2 disabled:opacity-60"
                             >
                                 <Download className="w-5 h-5" />
-                                Download Certificate
-                            </a>
+                                {downloading ? 'Generating...' : 'Download'}
+                            </button>
+                        </div>
+                        <div className="bg-white rounded-lg p-3">
+                            <div className="w-full" style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
+                                <CertificateTemplate
+                                    participantName={results.asTeam ? results.teamName : (results.applicantName || 'Participant')}
+                                    hackathonTitle={results.hackathonTitle || results.title || 'Hackathon'}
+                                    company={results.company || results.organizer || 'Organizer'}
+                                    rank={results.finalRank}
+                                    isTeam={results.asTeam}
+                                    teamName={results.teamName}
+                                    templateStyle={designSettings.templateStyle || 'template1'}
+                                    logoUrl={designSettings.logoUrl}
+                                    platformLogoUrl={designSettings.platformLogoUrl}
+                                    customMessage={designSettings.customMessage}
+                                    signerLeft={designSettings.signerLeft}
+                                    signerRight={designSettings.signerRight}
+                                    signatureLeftUrl={designSettings.signatureLeftUrl}
+                                    signatureRightUrl={designSettings.signatureRightUrl}
+                                    date={new Date().toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    })}
+                                    certificateCode={results.certificateCode || ''}
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* Showcase Content (if winner) */}
-                {results.showcaseContent && (
+                {isPublished && results.showcaseContent && (
                     <div className="bg-white rounded-2xl shadow-sm p-6 mt-8">
                         <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Winning Solution</h2>
                         <div className="prose max-w-none">
