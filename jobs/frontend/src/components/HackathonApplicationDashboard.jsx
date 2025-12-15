@@ -4,7 +4,7 @@ import { getHackathonApplicationDetails, getHackathonById, submitHackathonPhase 
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { CheckCircle, XCircle, Clock, Upload, FileText, AlertCircle, ChevronRight, Download, Share2, Award, Eye, X } from 'lucide-react';
-import { downloadCertificate, shareOnLinkedIn } from './CertificateGenerator';
+import { downloadCertificate, shareOnLinkedIn, generateCertificateCode } from './CertificateGenerator';
 import CertificateTemplate from './CertificateGenerator';
 
 export default function HackathonApplicationDashboard() {
@@ -402,13 +402,7 @@ export default function HackathonApplicationDashboard() {
                                             month: 'long',
                                             day: 'numeric'
                                         })}
-                                        certificateCode={(() => {
-                                            const now = new Date();
-                                            const year = now.getFullYear();
-                                            const timestamp = now.getTime();
-                                            const uniqueCode = String(timestamp % 100000).padStart(5, '0');
-                                            return `${year} ${uniqueCode}`;
-                                        })()}
+                                        certificateCode={generateCertificateCode()}
                                     />
                                 </div>
                             </div>
@@ -894,13 +888,7 @@ export default function HackathonApplicationDashboard() {
                                             month: 'long',
                                             day: 'numeric'
                                         })}
-                                        certificateCode={(() => {
-                                            const now = new Date();
-                                            const year = now.getFullYear();
-                                            const timestamp = now.getTime();
-                                            const uniqueCode = String(timestamp % 100000).padStart(5, '0');
-                                            return `${year} ${uniqueCode}`;
-                                        })()}
+                                        certificateCode={generateCertificateCode()}
                                     />
                                 </div>
                             </div>

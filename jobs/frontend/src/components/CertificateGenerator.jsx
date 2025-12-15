@@ -2,13 +2,18 @@ import React from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-// Generate unique certificate code in format: YEAR UNIQUECODE
-const generateCertificateCode = () => {
+// Generate unique certificate code in format: dd/mm/yyyy-UNIQUECODE
+export const generateCertificateCode = () => {
     const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
     const year = now.getFullYear();
+
+    // Use timestamp-based suffix for uniqueness (last 6 digits)
     const timestamp = now.getTime();
-    const uniqueCode = String(timestamp % 100000).padStart(5, '0');
-    return `${year} ${uniqueCode}`;
+    const uniqueCode = String(timestamp % 1000000).padStart(6, '0');
+
+    return `${day}/${month}/${year}-${uniqueCode}`;
 };
 
 // Shared helpers
@@ -201,6 +206,12 @@ const CertificateTemplate = ({
                             <div style={{ fontSize: '10px', color: '#6b7280' }}>{signerRight?.title || 'REPRESENTATIVE'}</div>
                         </div>
                     </div>
+
+                    {/* Footer with date & unique certificate code */}
+                    <div style={{ marginTop: '24px', width: '100%', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#6b7280', letterSpacing: '0.06em' }}>
+                        <span>Issued on: {date}</span>
+                        {certificateCode && <span>Certificate ID: {certificateCode}</span>}
+                    </div>
                 </div>
             </div>
         );
@@ -277,10 +288,9 @@ const CertificateTemplate = ({
     // Template 3: Playful Participation (third design)
     const template3 = () => baseWrap(
         <div style={{ background: '#f6fffe', width: '100%', height: '100%', borderRadius: '20px', border: '1px solid #d1fae5', position: 'relative', padding: '60px 70px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                {logoUrl && <img src={logoUrl} alt="logo" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />}
-                <div style={{ fontSize: '34px', fontWeight: 800, color: '#0ea5e9' }}>certificate</div>
-            </div>
+            {/* Header with both platform and organizer logos */}
+            {renderHeaderLogos('#0ea5e9')}
+
             <div style={{ fontWeight: 700, letterSpacing: '2px', color: '#0ea5e9', marginTop: '6px' }}>OF PARTICIPATION</div>
 
             <div style={{ marginTop: '24px', fontSize: '16px', color: '#111' }}>This Certificate Presented to :</div>
@@ -293,6 +303,12 @@ const CertificateTemplate = ({
                 <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: '#e0f2fe', display: 'grid', placeItems: 'center' }}>◇</div>
             </div>
 
+            {/* Footer with date & unique certificate code */}
+            <div style={{ position: 'absolute', bottom: '40px', left: '70px', right: '70px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#6b7280', letterSpacing: '0.06em' }}>
+                <span>Issued on: {date}</span>
+                {certificateCode && <span>Certificate ID: {certificateCode}</span>}
+            </div>
+
             {renderSignatures(signerLeft, signerRight, company, signatureLeftUrl, signatureRightUrl, '#0ea5e9')}
         </div>
     );
@@ -300,16 +316,13 @@ const CertificateTemplate = ({
     // Template 4: Bold Modern (fourth design)
     const template4 = () => baseWrap(
         <div style={{ background: '#ffffff', width: '100%', height: '100%', borderRadius: '20px', border: '1px solid #e5e7eb', position: 'relative', padding: '60px 70px' }}>
+            {/* Header with both platform and organizer logos */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {logoUrl && <img src={logoUrl} alt="logo" style={{ width: '60px', height: '60px', borderRadius: '14px', objectFit: 'cover' }} />}
-                    <div>
-                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#0ea5e9' }}>{company || 'Studio'}</div>
-                        <div style={{ fontSize: '13px', color: '#6b7280' }}>CERTIFICATE</div>
-                    </div>
+                <div style={{ flex: 1, marginRight: '40px' }}>
+                    {renderHeaderLogos('#0f172a')}
                 </div>
                 <div style={{ width: '90px', height: '90px', background: '#fef2f2', borderRadius: '50%', display: 'grid', placeItems: 'center', color: '#e11d48', fontWeight: 800 }}>
-                    2027
+                    {new Date(date).getFullYear?.() || new Date().getFullYear()}
                 </div>
             </div>
 
@@ -325,6 +338,11 @@ const CertificateTemplate = ({
                 <div style={{ background: '#0f172a', color: 'white', padding: '10px 16px', borderRadius: '12px', fontSize: '12px' }}>
                     Date : {date}
                 </div>
+            </div>
+
+            {/* Footer with unique certificate code */}
+            <div style={{ position: 'absolute', bottom: '40px', left: '70px', right: '70px', display: 'flex', justifyContent: 'flex-end', fontSize: '10px', color: '#6b7280', letterSpacing: '0.06em' }}>
+                {certificateCode && <span>Certificate ID: {certificateCode}</span>}
             </div>
 
             {renderSignatures(signerLeft, signerRight, company, signatureLeftUrl, signatureRightUrl, '#0f172a')}

@@ -152,7 +152,7 @@ export default function IndustryHackathonDashboard() {
                             onClick={() => navigate(`/industry/hackathon/${hackathonId}/results`)}
                             className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center gap-2"
                         >
-                            View Results
+                            Publish Results
                             <ChevronRight className="w-4 h-4" />
                         </button>
                         <button onClick={() => navigate('/manage-hackathons')} className="text-purple-600 hover:underline">
