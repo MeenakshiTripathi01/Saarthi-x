@@ -570,11 +570,13 @@ export const deleteHackathonApplication = async (applicationId) => {
 };
 
 // Hackathon Results API functions
-export const finalizeHackathonResults = async (hackathonId) => {
+// payload should contain certificateTemplateId, logoUrl, platformLogoUrl, customMessage, signatureLeftUrl, signatureRightUrl, etc.
+export const finalizeHackathonResults = async (hackathonId, payload) => {
   try {
+    console.log('[API] finalizeHackathonResults', { hackathonId, payload });
     const response = await axios.post(
       `http://localhost:8080/api/hackathon-applications/hackathon/${hackathonId}/finalize-results`,
-      {},
+      payload,
       {
         withCredentials: true,
       }

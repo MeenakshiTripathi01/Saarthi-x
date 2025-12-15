@@ -23,22 +23,12 @@ export default function HackathonApplicationDashboard() {
     const [selectedFile, setSelectedFile] = useState(null);
     const [submissionLink, setSubmissionLink] = useState('');
     const [downloadingCertificate, setDownloadingCertificate] = useState(false);
-    
+
     // Certificate Preview State
     const [previewCertificate, setPreviewCertificate] = useState(null);
     const [previewingMember, setPreviewingMember] = useState(null);
 
-    // Use any published design chosen by industry (saved locally after publish)
-    const designSettings = useMemo(() => {
-        if (!hackathon?.id) return {};
-        try {
-            const saved = localStorage.getItem(`certificate_design_${hackathon.id}`);
-            return saved ? JSON.parse(saved) : {};
-        } catch (e) {
-            console.warn('Unable to parse certificate design settings', e);
-            return {};
-        }
-    }, [hackathon?.id]);
+    // Certificate data comes from backend ONLY - no localStorage fallback
 
     const handleDownloadCertificate = async () => {
         try {
@@ -50,14 +40,15 @@ export default function HackathonApplicationDashboard() {
                 rank: application.finalRank,
                 isTeam: application.asTeam,
                 teamName: application.teamName,
-                templateStyle: designSettings.templateStyle,
-                logoUrl: designSettings.logoUrl,
-                platformLogoUrl: designSettings.platformLogoUrl,
-                customMessage: designSettings.customMessage,
-                signerLeft: designSettings.signerLeft,
-                signerRight: designSettings.signerRight,
-                signatureLeftUrl: designSettings.signatureLeftUrl,
-                signatureRightUrl: designSettings.signatureRightUrl
+                // ONLY use backend data - NO localStorage fallback
+                templateStyle: application.certificateTemplateId || 'template1',
+                logoUrl: application.certificateLogoUrl,
+                platformLogoUrl: application.certificatePlatformLogoUrl,
+                customMessage: application.certificateCustomMessage,
+                signerLeft: null,
+                signerRight: null,
+                signatureLeftUrl: application.certificateSignatureLeftUrl,
+                signatureRightUrl: application.certificateSignatureRightUrl
             };
 
             await downloadCertificate(certificateData);
@@ -79,14 +70,15 @@ export default function HackathonApplicationDashboard() {
                 rank: application.finalRank,
                 isTeam: application.asTeam,
                 teamName: application.teamName,
-                templateStyle: designSettings.templateStyle,
-                logoUrl: designSettings.logoUrl,
-                platformLogoUrl: designSettings.platformLogoUrl,
-                customMessage: designSettings.customMessage,
-                signerLeft: designSettings.signerLeft,
-                signerRight: designSettings.signerRight,
-                signatureLeftUrl: designSettings.signatureLeftUrl,
-                signatureRightUrl: designSettings.signatureRightUrl
+                // ONLY use backend data - NO localStorage fallback
+                templateStyle: application.certificateTemplateId || 'template1',
+                logoUrl: application.certificateLogoUrl,
+                platformLogoUrl: application.certificatePlatformLogoUrl,
+                customMessage: application.certificateCustomMessage,
+                signerLeft: null,
+                signerRight: null,
+                signatureLeftUrl: application.certificateSignatureLeftUrl,
+                signatureRightUrl: application.certificateSignatureRightUrl
             };
 
             shareOnLinkedIn(certificateData);
@@ -389,14 +381,15 @@ export default function HackathonApplicationDashboard() {
                                         rank={application.finalRank}
                                         isTeam={application.asTeam}
                                         teamName={application.teamName}
-                                        templateStyle={designSettings.templateStyle}
-                                        logoUrl={designSettings.logoUrl}
-                                        platformLogoUrl={designSettings.platformLogoUrl}
-                                        customMessage={designSettings.customMessage}
-                                        signerLeft={designSettings.signerLeft}
-                                        signerRight={designSettings.signerRight}
-                                        signatureLeftUrl={designSettings.signatureLeftUrl}
-                                        signatureRightUrl={designSettings.signatureRightUrl}
+                                        // ONLY use backend data - NO localStorage fallback
+                                        templateStyle={application.certificateTemplateId || 'template1'}
+                                        logoUrl={application.certificateLogoUrl}
+                                        platformLogoUrl={application.certificatePlatformLogoUrl}
+                                        customMessage={application.certificateCustomMessage}
+                                        signerLeft={null}
+                                        signerRight={null}
+                                        signatureLeftUrl={application.certificateSignatureLeftUrl}
+                                        signatureRightUrl={application.certificateSignatureRightUrl}
                                         date={new Date().toLocaleDateString('en-US', {
                                             year: 'numeric',
                                             month: 'long',
@@ -424,13 +417,17 @@ export default function HackathonApplicationDashboard() {
                                             rank: application.finalRank,
                                             isTeam: false,
                                             teamName: application.teamName,
-                                            templateStyle: designSettings.templateStyle,
-                                            logoUrl: designSettings.logoUrl,
-                                            customMessage: designSettings.customMessage,
-                                            signerLeft: designSettings.signerLeft,
-                                            signerRight: designSettings.signerRight
+                                            // ONLY use backend data - NO localStorage fallback
+                                            templateStyle: application.certificateTemplateId || 'template1',
+                                            logoUrl: application.certificateLogoUrl,
+                                            platformLogoUrl: application.certificatePlatformLogoUrl,
+                                            customMessage: application.certificateCustomMessage,
+                                            signerLeft: null,
+                                            signerRight: null,
+                                            signatureLeftUrl: application.certificateSignatureLeftUrl,
+                                            signatureRightUrl: application.certificateSignatureRightUrl
                                         };
-                                        
+
                                         return (
                                             <div key={idx} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">
                                                 <div>
@@ -441,7 +438,7 @@ export default function HackathonApplicationDashboard() {
                                                     <button
                                                         onClick={() => {
                                                             setPreviewingMember(member);
-                                                        setPreviewCertificate(memberCertificateData);
+                                                            setPreviewCertificate(memberCertificateData);
                                                         }}
                                                         className="text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors"
                                                         title="Preview Certificate"
@@ -484,11 +481,15 @@ export default function HackathonApplicationDashboard() {
                                         rank: application.finalRank,
                                         isTeam: application.asTeam,
                                         teamName: application.teamName,
-                                        templateStyle: designSettings.templateStyle,
-                                        logoUrl: designSettings.logoUrl,
-                                        customMessage: designSettings.customMessage,
-                                        signerLeft: designSettings.signerLeft,
-                                        signerRight: designSettings.signerRight
+                                        // ONLY use backend data - NO localStorage fallback
+                                        templateStyle: application.certificateTemplateId || 'template1',
+                                        logoUrl: application.certificateLogoUrl,
+                                        platformLogoUrl: application.certificatePlatformLogoUrl,
+                                        customMessage: application.certificateCustomMessage,
+                                        signerLeft: null,
+                                        signerRight: null,
+                                        signatureLeftUrl: application.certificateSignatureLeftUrl,
+                                        signatureRightUrl: application.certificateSignatureRightUrl
                                     });
                                     setPreviewingMember(null);
                                 }}
@@ -805,7 +806,7 @@ export default function HackathonApplicationDashboard() {
                     </div>
                 </div>
             </div>
-            
+
             {/* Certificate Preview Modal */}
             {previewCertificate && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => {
@@ -875,14 +876,14 @@ export default function HackathonApplicationDashboard() {
                                         rank={previewCertificate.rank}
                                         isTeam={previewCertificate.isTeam}
                                         teamName={previewCertificate.teamName}
-                                            templateStyle={previewCertificate.templateStyle || designSettings.templateStyle}
-                                            logoUrl={previewCertificate.logoUrl || designSettings.logoUrl}
-                                            platformLogoUrl={previewCertificate.platformLogoUrl || designSettings.platformLogoUrl}
-                                            customMessage={previewCertificate.customMessage || designSettings.customMessage}
-                                            signerLeft={previewCertificate.signerLeft || designSettings.signerLeft}
-                                            signerRight={previewCertificate.signerRight || designSettings.signerRight}
-                                            signatureLeftUrl={previewCertificate.signatureLeftUrl || designSettings.signatureLeftUrl}
-                                            signatureRightUrl={previewCertificate.signatureRightUrl || designSettings.signatureRightUrl}
+                                        templateStyle={previewCertificate.templateStyle || designSettings.templateStyle}
+                                        logoUrl={previewCertificate.logoUrl || designSettings.logoUrl}
+                                        platformLogoUrl={previewCertificate.platformLogoUrl || designSettings.platformLogoUrl}
+                                        customMessage={previewCertificate.customMessage || designSettings.customMessage}
+                                        signerLeft={previewCertificate.signerLeft || designSettings.signerLeft}
+                                        signerRight={previewCertificate.signerRight || designSettings.signerRight}
+                                        signatureLeftUrl={previewCertificate.signatureLeftUrl || designSettings.signatureLeftUrl}
+                                        signatureRightUrl={previewCertificate.signatureRightUrl || designSettings.signatureRightUrl}
                                         date={new Date().toLocaleDateString('en-US', {
                                             year: 'numeric',
                                             month: 'long',

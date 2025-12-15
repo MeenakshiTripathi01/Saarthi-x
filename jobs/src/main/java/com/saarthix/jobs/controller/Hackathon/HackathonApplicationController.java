@@ -318,12 +318,48 @@ public class HackathonApplicationController {
     @PostMapping("/hackathon/{hackathonId}/finalize-results")
     public ResponseEntity<?> finalizeResults(
             @PathVariable String hackathonId,
+            @RequestBody(required = false) Map<String, Object> body,
             Authentication auth) {
 
         User user = resolveUser(auth);
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can finalize results");
         }
+
+        // Read certificate customization from request (backend is source of truth)
+        String certificateTemplateId = null;
+        String logoUrl = null;
+        String platformLogoUrl = null;
+        String customMessage = null;
+        String signatureLeftUrl = null;
+        String signatureRightUrl = null;
+
+        if (body != null) {
+            if (body.get("certificateTemplateId") != null) {
+                certificateTemplateId = String.valueOf(body.get("certificateTemplateId"));
+            }
+            if (body.get("logoUrl") != null) {
+                logoUrl = String.valueOf(body.get("logoUrl"));
+            }
+            if (body.get("platformLogoUrl") != null) {
+                platformLogoUrl = String.valueOf(body.get("platformLogoUrl"));
+            }
+            if (body.get("customMessage") != null) {
+                customMessage = String.valueOf(body.get("customMessage"));
+            }
+            if (body.get("signatureLeftUrl") != null) {
+                signatureLeftUrl = String.valueOf(body.get("signatureLeftUrl"));
+            }
+            if (body.get("signatureRightUrl") != null) {
+                signatureRightUrl = String.valueOf(body.get("signatureRightUrl"));
+            }
+        }
+        System.out.println("[FinalizeResults] hackathonId=" + hackathonId
+                + ", template=" + certificateTemplateId
+                + ", logoUrl=" + logoUrl
+                + ", platformLogoUrl=" + platformLogoUrl
+                + ", signatureLeftUrl=" + signatureLeftUrl
+                + ", signatureRightUrl=" + signatureRightUrl);
 
         // Get all applications for this hackathon
         List<HackathonApplication> applications = applicationRepository.findByHackathonId(hackathonId);
@@ -344,14 +380,41 @@ public class HackathonApplicationController {
                 b.getTotalScore() != null ? b.getTotalScore() : 0.0,
                 a.getTotalScore() != null ? a.getTotalScore() : 0.0));
 
-        // Assign ranks (1, 2, 3)
-        for (int i = 0; i < Math.min(3, applications.size()); i++) {
-            applications.get(i).setFinalRank(i + 1);
-        }
-
-        // Generate certificates for all applications (Participation or Merit)
-        for (HackathonApplication app : applications) {
+        // Assign ranks (1, 2, 3) and set certificate customization
+        for (int i = 0; i < applications.size(); i++) {
+            HackathonApplication app = applications.get(i);
+            if (i < 3) {
+                app.setFinalRank(i + 1);
+            }
+            // Persist the selected template & design for every application
+            if (certificateTemplateId != null && !certificateTemplateId.isBlank()) {
+                app.setCertificateTemplateId(certificateTemplateId);
+            }
+            if (logoUrl != null) {
+                app.setCertificateLogoUrl(logoUrl);
+            }
+            if (platformLogoUrl != null) {
+                app.setCertificatePlatformLogoUrl(platformLogoUrl);
+            }
+            if (customMessage != null) {
+                app.setCertificateCustomMessage(customMessage);
+            }
+            if (signatureLeftUrl != null) {
+                app.setCertificateSignatureLeftUrl(signatureLeftUrl);
+            }
+            if (signatureRightUrl != null) {
+                app.setCertificateSignatureRightUrl(signatureRightUrl);
+            }
             generateCertificateUrls(app);
+
+            // LOG SAVED CERTIFICATE DATA
+            System.out.println("=== [SAVE] Application " + app.getId() + " Certificate Data ===");
+            System.out.println("  templateId: " + app.getCertificateTemplateId());
+            System.out.println("  logoUrl: " + app.getCertificateLogoUrl());
+            System.out.println("  platformLogoUrl: " + app.getCertificatePlatformLogoUrl());
+            System.out.println("  customMessage: " + app.getCertificateCustomMessage());
+            System.out.println("  signatureLeftUrl: " + app.getCertificateSignatureLeftUrl());
+            System.out.println("  signatureRightUrl: " + app.getCertificateSignatureRightUrl());
         }
 
         // Save all applications
@@ -435,6 +498,15 @@ public class HackathonApplicationController {
         if ("APPLICANT".equals(user.getUserType()) && !app.getApplicantId().equals(user.getId())) {
             return ResponseEntity.status(403).body("Access denied");
         }
+
+        // LOG CERTIFICATE DATA BEING RETURNED TO APPLICANT
+        System.out.println("=== [API RESPONSE] Application " + app.getId() + " Certificate Data ===");
+        System.out.println("  templateId: " + app.getCertificateTemplateId());
+        System.out.println("  logoUrl: " + app.getCertificateLogoUrl());
+        System.out.println("  platformLogoUrl: " + app.getCertificatePlatformLogoUrl());
+        System.out.println("  customMessage: " + app.getCertificateCustomMessage());
+        System.out.println("  signatureLeftUrl: " + app.getCertificateSignatureLeftUrl());
+        System.out.println("  signatureRightUrl: " + app.getCertificateSignatureRightUrl());
 
         return ResponseEntity.ok(app);
     }

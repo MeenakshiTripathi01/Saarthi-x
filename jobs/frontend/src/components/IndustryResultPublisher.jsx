@@ -68,6 +68,16 @@ export default function IndustryResultPublisher() {
             setHackathon(hack);
             if (Array.isArray(res)) {
                 setResults(res);
+
+                // If backend already has a template saved, prefer that as source of truth
+                const firstWithTemplate = res.find(r => r.certificateTemplateId);
+                if (firstWithTemplate && firstWithTemplate.certificateTemplateId) {
+                    console.log('[Publisher] Loaded template from backend:', firstWithTemplate.certificateTemplateId);
+                    setDesign(prev => ({
+                        ...prev,
+                        templateStyle: firstWithTemplate.certificateTemplateId
+                    }));
+                }
             } else {
                 console.warn('Unexpected results payload', res);
                 setResults([]);
@@ -76,9 +86,10 @@ export default function IndustryResultPublisher() {
 
             const saved = localStorage.getItem(`certificate_design_${hackathonId}`);
             if (saved) {
-                setDesign(normalizeDesign(JSON.parse(saved)));
-            } else {
-                setDesign(defaultDesign);
+                setDesign(prev => normalizeDesign({
+                    ...prev,
+                    ...JSON.parse(saved)
+                }));
             }
         } catch (error) {
             console.error('Error loading publish screen:', error);
@@ -135,7 +146,11 @@ export default function IndustryResultPublisher() {
             return;
         }
         const reader = new FileReader();
-        reader.onload = () => setter(reader.result);
+        reader.onload = () => {
+            // We currently keep images as data URLs; they are later persisted via finalizeHackathonResults
+            console.log('[Publisher] Loaded image as data URL');
+            setter(reader.result);
+        };
         reader.readAsDataURL(file);
     };
 
@@ -144,7 +159,17 @@ export default function IndustryResultPublisher() {
         try {
             setPublishing(true);
             localStorage.setItem(`certificate_design_${hackathonId}`, JSON.stringify(design));
-            await finalizeHackathonResults(hackathonId);
+            // Send selected template + visual customization to backend so applicants see the same design
+            const payload = {
+                certificateTemplateId: design.templateStyle,
+                logoUrl: design.logoUrl || '',
+                platformLogoUrl: design.platformLogoUrl || '',
+                customMessage: design.customMessage || '',
+                signatureLeftUrl: design.signatureLeftUrl || '',
+                signatureRightUrl: design.signatureRightUrl || ''
+            };
+            console.log('[Publisher] Publishing with payload:', payload);
+            await finalizeHackathonResults(hackathonId, payload);
             toast.success('Results published and certificates unlocked');
             navigate(`/industry/hackathon/${hackathonId}/results`);
         } catch (error) {

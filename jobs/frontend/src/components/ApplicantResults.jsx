@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getApplicationResults } from '../api/jobApi';
 import { toast } from 'react-toastify';
 import { Trophy, Award, Medal, Download, Star, CheckCircle, Clock, FileText, Eye } from 'lucide-react';
-import CertificateTemplate, { downloadCertificate } from './CertificateGenerator';
+import CertificateTemplate, { downloadCertificate, generateCertificateCode } from './CertificateGenerator';
 
 export default function ApplicantResults() {
     const { applicationId } = useParams();
@@ -22,6 +22,17 @@ export default function ApplicantResults() {
             setLoading(true);
             const data = await getApplicationResults(applicationId);
             setResults(data);
+
+            // LOG FULL API RESPONSE FOR CERTIFICATE DATA
+            console.log('=== [APPLICANT] API Response for Application', applicationId, '===');
+            console.log('Full response:', data);
+            console.log('Certificate Fields from Backend:');
+            console.log('  certificateTemplateId:', data.certificateTemplateId);
+            console.log('  certificateLogoUrl:', data.certificateLogoUrl);
+            console.log('  certificatePlatformLogoUrl:', data.certificatePlatformLogoUrl);
+            console.log('  certificateCustomMessage:', data.certificateCustomMessage);
+            console.log('  certificateSignatureLeftUrl:', data.certificateSignatureLeftUrl);
+            console.log('  certificateSignatureRightUrl:', data.certificateSignatureRightUrl);
 
             // Check if this is a 1st place winner and if they haven't seen the animation
             if (data.finalRank === 1) {
@@ -128,16 +139,6 @@ export default function ApplicantResults() {
         (results.teamMembers || []).some(m => m.certificateUrl)
     );
 
-    // Load published design (persisted by industry in localStorage by hackathonId)
-    const designSettings = useMemo(() => {
-        try {
-            const saved = localStorage.getItem(`certificate_design_${results.hackathonId}`);
-            return saved ? JSON.parse(saved) : {};
-        } catch {
-            return {};
-        }
-    }, [results.hackathonId]);
-
     const handleDownloadCertificate = async () => {
         try {
             setDownloading(true);
@@ -148,15 +149,20 @@ export default function ApplicantResults() {
                 rank: results.finalRank,
                 isTeam: results.asTeam,
                 teamName: results.teamName,
-                templateStyle: designSettings.templateStyle || 'template1',
-                logoUrl: designSettings.logoUrl,
-                platformLogoUrl: designSettings.platformLogoUrl,
-                customMessage: designSettings.customMessage,
-                signerLeft: designSettings.signerLeft,
-                signerRight: designSettings.signerRight,
-                signatureLeftUrl: designSettings.signatureLeftUrl,
-                signatureRightUrl: designSettings.signatureRightUrl
+                // ONLY use backend data - NO localStorage fallback
+                templateStyle: results.certificateTemplateId || 'template1',
+                logoUrl: results.certificateLogoUrl,
+                platformLogoUrl: results.certificatePlatformLogoUrl,
+                customMessage: results.certificateCustomMessage,
+                signerLeft: null, // Not stored in backend
+                signerRight: null, // Not stored in backend
+                signatureLeftUrl: results.certificateSignatureLeftUrl,
+                signatureRightUrl: results.certificateSignatureRightUrl
             };
+
+            console.log('=== [DOWNLOAD] Certificate Data Being Used ===');
+            console.log(certificateData);
+
             await downloadCertificate(certificateData);
         } catch (e) {
             console.error('Download certificate failed', e);
@@ -250,48 +256,48 @@ export default function ApplicantResults() {
             `}</style>
 
             <div className="max-w-5xl mx-auto">
-            {/* Header with Rank */}
-            {isPublished && rankBadge ? (
-                <div className={`bg-gradient-to-r ${rankBadge.gradient} rounded-2xl shadow-2xl overflow-hidden mb-8 transform hover:scale-105 transition-transform duration-300`}>
-                    <div className="p-8 text-center text-white">
-                        <div className="flex justify-center mb-4">
-                            <div className="bg-white/20 backdrop-blur-sm rounded-full p-6">
-                                <RankIcon className="w-20 h-20" />
+                {/* Header with Rank */}
+                {isPublished && rankBadge ? (
+                    <div className={`bg-gradient-to-r ${rankBadge.gradient} rounded-2xl shadow-2xl overflow-hidden mb-8 transform hover:scale-105 transition-transform duration-300`}>
+                        <div className="p-8 text-center text-white">
+                            <div className="flex justify-center mb-4">
+                                <div className="bg-white/20 backdrop-blur-sm rounded-full p-6">
+                                    <RankIcon className="w-20 h-20" />
+                                </div>
+                            </div>
+                            <h1 className="text-4xl font-bold mb-2">Congratulations!</h1>
+                            <p className="text-2xl font-semibold">{rankBadge.label}</p>
+                            <div className="mt-4 flex items-center justify-center gap-2">
+                                <Star className="w-6 h-6 fill-current" />
+                                <span className="text-xl">Total Score: {totalScore?.toFixed(2) || 0}/{maxScore}</span>
+                                <Star className="w-6 h-6 fill-current" />
                             </div>
                         </div>
-                        <h1 className="text-4xl font-bold mb-2">Congratulations!</h1>
-                        <p className="text-2xl font-semibold">{rankBadge.label}</p>
-                        <div className="mt-4 flex items-center justify-center gap-2">
-                            <Star className="w-6 h-6 fill-current" />
-                            <span className="text-xl">Total Score: {totalScore?.toFixed(2) || 0}/{maxScore}</span>
-                            <Star className="w-6 h-6 fill-current" />
-                        </div>
                     </div>
-                </div>
-            ) : (
-                <div className="bg-white rounded-2xl shadow-sm p-8 mb-8 border border-gray-200">
-                    <div className="text-center">
-                        <div className="flex justify-center mb-4">
-                            <div className="bg-purple-100 rounded-full p-6">
-                                <CheckCircle className="w-16 h-16 text-purple-600" />
+                ) : (
+                    <div className="bg-white rounded-2xl shadow-sm p-8 mb-8 border border-gray-200">
+                        <div className="text-center">
+                            <div className="flex justify-center mb-4">
+                                <div className="bg-purple-100 rounded-full p-6">
+                                    <CheckCircle className="w-16 h-16 text-purple-600" />
+                                </div>
+                            </div>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                                {isPublished ? 'Hackathon Completed!' : 'Your Submissions Summary'}
+                            </h1>
+                            <p className="text-lg text-gray-600">
+                                {isPublished
+                                    ? 'Thank you for participating'
+                                    : 'Official results are not published yet. Here is your phase performance.'}
+                            </p>
+                            <div className="mt-4">
+                                <span className="text-2xl font-bold text-purple-600">
+                                    {isPublished ? 'Total Score' : 'Your current score'}: {totalScore?.toFixed(2) || 0}/{maxScore}
+                                </span>
                             </div>
                         </div>
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                            {isPublished ? 'Hackathon Completed!' : 'Your Submissions Summary'}
-                        </h1>
-                        <p className="text-lg text-gray-600">
-                            {isPublished
-                                ? 'Thank you for participating'
-                                : 'Official results are not published yet. Here is your phase performance.'}
-                        </p>
-                        <div className="mt-4">
-                            <span className="text-2xl font-bold text-purple-600">
-                                {isPublished ? 'Total Score' : 'Your current score'}: {totalScore?.toFixed(2) || 0}/{maxScore}
-                            </span>
-                        </div>
                     </div>
-                </div>
-            )}
+                )}
 
                 {/* Phase-wise Performance */}
                 <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
@@ -382,20 +388,21 @@ export default function ApplicantResults() {
                                     rank={results.finalRank}
                                     isTeam={results.asTeam}
                                     teamName={results.teamName}
-                                    templateStyle={designSettings.templateStyle || 'template1'}
-                                    logoUrl={designSettings.logoUrl}
-                                    platformLogoUrl={designSettings.platformLogoUrl}
-                                    customMessage={designSettings.customMessage}
-                                    signerLeft={designSettings.signerLeft}
-                                    signerRight={designSettings.signerRight}
-                                    signatureLeftUrl={designSettings.signatureLeftUrl}
-                                    signatureRightUrl={designSettings.signatureRightUrl}
+                                    // ONLY use backend data - NO localStorage fallback
+                                    templateStyle={results.certificateTemplateId || 'template1'}
+                                    logoUrl={results.certificateLogoUrl}
+                                    platformLogoUrl={results.certificatePlatformLogoUrl}
+                                    customMessage={results.certificateCustomMessage}
+                                    signerLeft={null}
+                                    signerRight={null}
+                                    signatureLeftUrl={results.certificateSignatureLeftUrl}
+                                    signatureRightUrl={results.certificateSignatureRightUrl}
                                     date={new Date().toLocaleDateString('en-US', {
                                         year: 'numeric',
                                         month: 'long',
                                         day: 'numeric'
                                     })}
-                                    certificateCode={results.certificateCode || ''}
+                                    certificateCode={results.certificateCode || generateCertificateCode()}
                                 />
                             </div>
                         </div>

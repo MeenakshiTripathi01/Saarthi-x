@@ -36,6 +36,17 @@ public class HackathonApplication {
     private Integer finalRank; // 1, 2, 3, or null for others
     private Double totalScore; // Sum of all phase scores
     private String certificateUrl; // URL to generated certificate
+
+    // Certificate customization (per application; backend source of truth)
+    // Template id selected by industry (e.g. "template1"..."template4")
+    private String certificateTemplateId;
+    // Visual customization coming from publisher screen
+    private String certificateLogoUrl;
+    private String certificatePlatformLogoUrl;
+    private String certificateCustomMessage;
+    private String certificateSignatureLeftUrl;
+    private String certificateSignatureRightUrl;
+
     private ShowcaseContent showcaseContent; // For top 3 winners
 
     // Default Constructor
@@ -125,6 +136,54 @@ public class HackathonApplication {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getCertificateTemplateId() {
+        return certificateTemplateId;
+    }
+
+    public void setCertificateTemplateId(String certificateTemplateId) {
+        this.certificateTemplateId = certificateTemplateId;
+    }
+
+    public String getCertificateLogoUrl() {
+        return certificateLogoUrl;
+    }
+
+    public void setCertificateLogoUrl(String certificateLogoUrl) {
+        this.certificateLogoUrl = certificateLogoUrl;
+    }
+
+    public String getCertificatePlatformLogoUrl() {
+        return certificatePlatformLogoUrl;
+    }
+
+    public void setCertificatePlatformLogoUrl(String certificatePlatformLogoUrl) {
+        this.certificatePlatformLogoUrl = certificatePlatformLogoUrl;
+    }
+
+    public String getCertificateCustomMessage() {
+        return certificateCustomMessage;
+    }
+
+    public void setCertificateCustomMessage(String certificateCustomMessage) {
+        this.certificateCustomMessage = certificateCustomMessage;
+    }
+
+    public String getCertificateSignatureLeftUrl() {
+        return certificateSignatureLeftUrl;
+    }
+
+    public void setCertificateSignatureLeftUrl(String certificateSignatureLeftUrl) {
+        this.certificateSignatureLeftUrl = certificateSignatureLeftUrl;
+    }
+
+    public String getCertificateSignatureRightUrl() {
+        return certificateSignatureRightUrl;
+    }
+
+    public void setCertificateSignatureRightUrl(String certificateSignatureRightUrl) {
+        this.certificateSignatureRightUrl = certificateSignatureRightUrl;
     }
 
     public java.util.Map<String, PhaseSubmission> getPhaseSubmissions() {
