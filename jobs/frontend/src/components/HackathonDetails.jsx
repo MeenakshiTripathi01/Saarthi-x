@@ -212,7 +212,7 @@ export default function HackathonDetails() {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center">
                 <h2 className="text-2xl font-bold text-gray-800">Hackathon not found</h2>
-                <button onClick={() => navigate('/applicant-hackathons')} className="mt-4 text-purple-600 hover:underline">
+                <button onClick={() => navigate('/browse-hackathons')} className="mt-4 text-purple-600 hover:underline">
                     Back to Hackathons
                 </button>
             </div>

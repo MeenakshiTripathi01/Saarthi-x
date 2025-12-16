@@ -386,8 +386,8 @@ export default function HackathonApplicationDashboard() {
                     </div>
                 )}
 
-                {/* Certificate Section - Shows when hackathon is completed */}
-                {allPhasesCompleted && hasPublishedResults && (
+                {/* Certificate Section - Shows when hackathon is completed AND not rejected */}
+                {allPhasesCompleted && hasPublishedResults && application.status !== 'REJECTED' && (
                     <div className="mb-6 bg-white rounded-xl shadow-sm p-6 border-2 border-purple-200">
                         <div className="mb-4">
                             <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
@@ -459,14 +459,14 @@ export default function HackathonApplicationDashboard() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {application.teamMembers.map((member, idx) => {
                                         const memberCertificateData = {
-                                            participantName: member.name,
+                                            participantName: member.name,  // Individual team member name
                                             hackathonTitle: hackathon.title,
                                             company: hackathon.company,
                                             rank: application.finalRank,
                                             rankTitle: application.rankTitle,
                                             certificateType: application.certificateType,
-                                            isTeam: false,
-                                            teamName: application.teamName,
+                                            isTeam: false,  // Show as individual for each team member
+                                            teamName: application.teamName,  // Still include team name for reference
                                             // ONLY use backend data - NO localStorage fallback
                                             templateStyle: application.certificateTemplateId || 'template1',
                                             logoUrl: application.certificateLogoUrl,
@@ -475,7 +475,13 @@ export default function HackathonApplicationDashboard() {
                                             signerLeft: null,
                                             signerRight: null,
                                             signatureLeftUrl: application.certificateSignatureLeftUrl,
-                                            signatureRightUrl: application.certificateSignatureRightUrl
+                                            signatureRightUrl: application.certificateSignatureRightUrl,
+                                            date: new Date().toLocaleDateString('en-US', {
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric'
+                                            }),
+                                            certificateCode: generateCertificateCode()
                                         };
 
                                         return (
@@ -928,16 +934,19 @@ export default function HackathonApplicationDashboard() {
                                         hackathonTitle={previewCertificate.hackathonTitle}
                                         company={previewCertificate.company}
                                         rank={previewCertificate.rank}
+                                        rankTitle={previewCertificate.rankTitle}
+                                        certificateType={previewCertificate.certificateType}
                                         isTeam={previewCertificate.isTeam}
                                         teamName={previewCertificate.teamName}
-                                        templateStyle={previewCertificate.templateStyle || designSettings.templateStyle}
-                                        logoUrl={previewCertificate.logoUrl || designSettings.logoUrl}
-                                        platformLogoUrl={previewCertificate.platformLogoUrl || designSettings.platformLogoUrl}
-                                        customMessage={previewCertificate.customMessage || designSettings.customMessage}
-                                        signerLeft={previewCertificate.signerLeft || designSettings.signerLeft}
-                                        signerRight={previewCertificate.signerRight || designSettings.signerRight}
-                                        signatureLeftUrl={previewCertificate.signatureLeftUrl || designSettings.signatureLeftUrl}
-                                        signatureRightUrl={previewCertificate.signatureRightUrl || designSettings.signatureRightUrl}
+                                        // ONLY use backend data from previewCertificate - NO fallbacks
+                                        templateStyle={previewCertificate.templateStyle}
+                                        logoUrl={previewCertificate.logoUrl}
+                                        platformLogoUrl={previewCertificate.platformLogoUrl}
+                                        customMessage={previewCertificate.customMessage}
+                                        signerLeft={previewCertificate.signerLeft}
+                                        signerRight={previewCertificate.signerRight}
+                                        signatureLeftUrl={previewCertificate.signatureLeftUrl}
+                                        signatureRightUrl={previewCertificate.signatureRightUrl}
                                         date={new Date().toLocaleDateString('en-US', {
                                             year: 'numeric',
                                             month: 'long',

@@ -101,7 +101,7 @@ export default function ApplicantResults() {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center">
                 <h2 className="text-2xl font-bold text-gray-800">Results not found</h2>
-                <button onClick={() => navigate('/applicant-hackathons')} className="mt-4 text-purple-600 hover:underline">
+                <button onClick={() => navigate('/browse-hackathons')} className="mt-4 text-purple-600 hover:underline">
                     Back to Hackathons
                 </button>
             </div>
@@ -366,8 +366,16 @@ export default function ApplicantResults() {
                     </div>
                 </div>
 
-                {/* Certificate Download/Preview - regenerated with latest template */}
-                {isPublished && (
+                {/* Rejected Status Warning */}
+                {results.status === 'REJECTED' && (
+                    <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center mb-8">
+                        <div className="text-red-600 text-xl font-bold mb-2">❌ Application Not Accepted</div>
+                        <p className="text-red-700">Your application was not accepted for this hackathon. Certificates are only issued to active participants.</p>
+                    </div>
+                )}
+
+                {/* Certificate Download/Preview - regenerated with latest template - ONLY for non-rejected */}
+                {isPublished && results.status !== 'REJECTED' && (
                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-lg p-6 text-white space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
@@ -435,7 +443,7 @@ export default function ApplicantResults() {
                 {/* Back Button */}
                 <div className="mt-8 text-center">
                     <button
-                        onClick={() => navigate('/applicant-hackathons')}
+                        onClick={() => navigate('/browse-hackathons')}
                         className="text-purple-600 hover:text-purple-700 font-medium"
                     >
                         ← Back to Hackathons
