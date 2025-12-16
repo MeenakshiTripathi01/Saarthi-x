@@ -164,7 +164,7 @@ export default function IndustryResultPublisher() {
                 certificateTemplateId: design.templateStyle,
                 logoUrl: design.logoUrl || '',
                 platformLogoUrl: design.platformLogoUrl || '',
-                customMessage: design.customMessage || '',
+                customMessage: '', // No custom message - backend generates based on rank
                 signatureLeftUrl: design.signatureLeftUrl || '',
                 signatureRightUrl: design.signatureRightUrl || ''
             };
@@ -316,19 +316,10 @@ export default function IndustryResultPublisher() {
                             <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-4">
                                 <div className="flex items-center gap-2">
                                     <Sparkles className="w-5 h-5 text-purple-600" />
-                                    <h3 className="font-semibold text-gray-900">Customize placeholders</h3>
+                                    <h3 className="font-semibold text-gray-900">Upload Certificate Assets</h3>
+                                    <p className="text-xs text-gray-500 ml-auto">(Certificate text will be auto-generated based on ranks)</p>
                                 </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Custom message (optional)</label>
-                                        <textarea
-                                            rows={3}
-                                            value={design.customMessage}
-                                            onChange={(e) => setDesign(prev => ({ ...prev, customMessage: e.target.value }))}
-                                            placeholder="e.g. for outstanding performance and innovation..."
-                                            className="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                        />
-                                    </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700">Company logo</label>
                                         <div className="flex items-center gap-3">

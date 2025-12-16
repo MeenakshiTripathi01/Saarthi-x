@@ -294,6 +294,14 @@ export default function PostHackathon() {
 
         if (saving) return;
 
+        // Validate problem statement before allowing navigation away from problem tab
+        if (activeTab === 'problem') {
+            if (!formData.problemStatement || formData.problemStatement.trim().length < 50) {
+                toast.error('Problem Statement must be at least 50 characters before proceeding to the next section');
+                return;
+            }
+        }
+
         // Auto-save and move to next section
         const currentTabIndex = HACKATHON_TABS.findIndex(tab => tab.id === activeTab);
         if (currentTabIndex < HACKATHON_TABS.length - 1) {
@@ -537,7 +545,16 @@ export default function PostHackathon() {
                                 <button
                                     key={tab.id}
                                     type="button"
-                                    onClick={() => setActiveTab(tab.id)}
+                                    onClick={() => {
+                                        // Validate problem statement before allowing navigation away from problem tab
+                                        if (activeTab === 'problem' && tab.id !== 'problem') {
+                                            if (!formData.problemStatement || formData.problemStatement.trim().length < 50) {
+                                                toast.error('Problem Statement must be at least 50 characters before proceeding to another section');
+                                                return;
+                                            }
+                                        }
+                                        setActiveTab(tab.id);
+                                    }}
                                     className={`flex-1 min-w-[140px] px-4 py-4 text-xs font-medium transition-all duration-200 relative border-b-2 ${isActive
                                         ? 'text-blue-700 border-blue-600 bg-blue-50'
                                         : 'text-gray-600 border-transparent hover:text-gray-900 hover:bg-gray-50'
@@ -645,17 +662,9 @@ export default function PostHackathon() {
                                     name="problemStatement"
                                     value={formData.problemStatement}
                                     onChange={handleInputChange}
-                                    onBlur={() => {
-                                        const wordCount = formData.problemStatement.trim().split(/\s+/).filter(w => w).length;
-                                        if (formData.problemStatement.trim() && wordCount < 50) {
-                                            toast.warning(`Problem statement is too short (${wordCount} words). It must be at least 50 words.`, {
-                                                position: "top-right",
-                                                autoClose: 5000,
-                                            });
-                                        }
-                                    }}
-                                    placeholder="Describe the problem participants will solve..."
+                                    placeholder="Describe the problem participants will solve... (minimum 50 characters required)"
                                     rows="6"
+                                    minLength={50}
                                     required
                                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                 />

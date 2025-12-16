@@ -24,6 +24,10 @@ public class HackathonApplication {
 
     private List<TeamMember> teamMembers = new ArrayList<>();
 
+    // Individual applicant details (when asTeam = false)
+    private String individualName;
+    private String individualQualifications;
+
     private LocalDateTime appliedAt;
 
     private String currentPhaseId;
@@ -112,6 +116,22 @@ public class HackathonApplication {
 
     public void setTeamMembers(List<TeamMember> teamMembers) {
         this.teamMembers = teamMembers;
+    }
+
+    public String getIndividualName() {
+        return individualName;
+    }
+
+    public void setIndividualName(String individualName) {
+        this.individualName = individualName;
+    }
+
+    public String getIndividualQualifications() {
+        return individualQualifications;
+    }
+
+    public void setIndividualQualifications(String individualQualifications) {
+        this.individualQualifications = individualQualifications;
     }
 
     public LocalDateTime getAppliedAt() {

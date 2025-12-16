@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getHackathonById, getHackathonApplications, reviewHackathonPhase, deleteHackathonApplication } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { Users, Search, Filter, ChevronRight, CheckCircle, XCircle, Clock, FileText, Download, Trash2 } from 'lucide-react';
+import { Users, Search, Filter, ChevronRight, CheckCircle, XCircle, Clock, FileText, Download, Trash2, User } from 'lucide-react';
 
 export default function IndustryHackathonDashboard() {
     const { hackathonId } = useParams();
@@ -34,6 +34,13 @@ export default function IndustryHackathonDashboard() {
             ]);
             setHackathon(hackData);
             setApplications(appsData);
+            
+            console.log('[Industry Dashboard] Loaded applications:', appsData);
+            appsData.forEach((app, index) => {
+                console.log(`[App ${index}] asTeam:`, app.asTeam, 
+                           '| individualName:', app.individualName,
+                           '| individualQualifications:', app.individualQualifications);
+            });
         } catch (error) {
             console.error('Error loading dashboard:', error);
             toast.error('Failed to load dashboard');
@@ -183,10 +190,21 @@ export default function IndustryHackathonDashboard() {
                                             }`}
                                     >
                                         <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-medium text-gray-900">
-                                                    {app.asTeam ? app.teamName : 'Individual Applicant'}
-                                                </h3>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h3 className="font-medium text-gray-900">
+                                                        {app.asTeam ? app.teamName : (app.individualName || (app.teamMembers && app.teamMembers.length > 0 ? app.teamMembers[0].name : 'Participant'))}
+                                                    </h3>
+                                                    {app.asTeam ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                                            👥 Team
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                                            👤 Individual
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-xs text-gray-500">ID: {app.id.substring(0, 8)}...</p>
                                             </div>
                                             <div className="flex flex-col items-end gap-1">
@@ -221,9 +239,20 @@ export default function IndustryHackathonDashboard() {
                             <div className="p-6">
                                 <div className="flex justify-between items-start mb-6 border-b border-gray-100 pb-4">
                                     <div>
-                                        <h2 className="text-xl font-bold text-gray-900">
-                                            {selectedApp.asTeam ? selectedApp.teamName : 'Individual Applicant'}
-                                        </h2>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <h2 className="text-xl font-bold text-gray-900">
+                                                {selectedApp.asTeam ? selectedApp.teamName : (selectedApp.individualName || (selectedApp.teamMembers && selectedApp.teamMembers.length > 0 ? selectedApp.teamMembers[0].name : 'Participant'))}
+                                            </h2>
+                                            {selectedApp.asTeam ? (
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-700">
+                                                    👥 Team Application
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+                                                    👤 Individual Application
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="text-sm text-gray-500">Applicant ID: {selectedApp.applicantId}</p>
                                         {selectedApp.asTeam && (
                                             <p className="text-sm text-gray-500">Team Size: {selectedApp.teamSize}</p>
@@ -238,6 +267,26 @@ export default function IndustryHackathonDashboard() {
                                         </span>
                                     </div>
                                 </div>
+
+                                {!selectedApp.asTeam && selectedApp.individualName && (
+                                    <div className="mb-8 bg-blue-50 rounded-xl p-4 border border-blue-200">
+                                        <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+                                            <User className="w-4 h-4" /> Individual Applicant Details
+                                        </h3>
+                                        <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Full Name</p>
+                                                    <p className="text-sm font-medium text-gray-900">{selectedApp.individualName}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Qualifications</p>
+                                                    <p className="text-sm text-gray-700 whitespace-pre-line">{selectedApp.individualQualifications}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {selectedApp.asTeam && selectedApp.teamMembers && selectedApp.teamMembers.length > 0 && (
                                     <div className="mb-8 bg-gray-50 rounded-xl p-4 border border-gray-200">

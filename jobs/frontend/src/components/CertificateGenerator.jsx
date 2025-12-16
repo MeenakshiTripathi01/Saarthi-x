@@ -71,12 +71,18 @@ const CertificateTemplate = ({
     signatureRightUrl
 }) => {
     const getAchievementText = () => {
-        if (customMessage) return customMessage;
-        if (rank === 1) return `for securing <strong>First Place</strong> in the <strong>${hackathonTitle}</strong> on <strong>${date}</strong>`;
-        if (rank === 2) return `for securing <strong>Second Place</strong> in the <strong>${hackathonTitle}</strong> on <strong>${date}</strong>`;
-        if (rank === 3) return `for securing <strong>Third Place</strong> in the <strong>${hackathonTitle}</strong> on <strong>${date}</strong>`;
-        // For any non-top-3 (including undefined), show completion message without rank mention
-        return `for successfully completing the <strong>${hackathonTitle}</strong> on <strong>${date}</strong>`;
+        // Always use backend rank-based generation, ignore customMessage
+        if (rank === 1) {
+            return `This certificate is proudly presented to recognize outstanding achievement and exceptional performance in securing <strong>First Place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${date}</strong>. This accomplishment demonstrates remarkable innovation, dedication, and technical excellence.`;
+        }
+        if (rank === 2) {
+            return `This certificate is awarded in recognition of exceptional achievement and distinguished performance in securing <strong>Second Place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${date}</strong>. This achievement showcases impressive skills and innovative thinking.`;
+        }
+        if (rank === 3) {
+            return `This certificate is presented in recognition of notable achievement and commendable performance in securing <strong>Third Place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${date}</strong>. This accomplishment reflects strong technical skills and creative problem-solving.`;
+        }
+        // For any non-top-3 (including undefined), show participation message
+        return `This certificate is awarded in recognition of active participation and successful completion of all phases in the <strong>${hackathonTitle}</strong> held on <strong>${date}</strong>. This participation demonstrates commitment to learning, innovation, and collaborative problem-solving.`;
     };
 
     const renderHeaderLogos = (accentColor = '#0f3d91') => (

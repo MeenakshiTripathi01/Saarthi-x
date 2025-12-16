@@ -440,6 +440,10 @@ export const updateHackathon = async (hackathonId, hackathonData) => {
 // Hackathon Application API functions (for Applicants)
 export const applyForHackathon = async (hackathonId, applicationData) => {
   try {
+    console.log('[API] applyForHackathon - Sending to backend:', applicationData);
+    console.log('[API] individualName being sent:', applicationData.individualName);
+    console.log('[API] individualQualifications being sent:', applicationData.individualQualifications);
+    
     const response = await axios.post(
       `http://localhost:8080/api/hackathon-applications/${hackathonId}/apply`,
       applicationData,
@@ -450,6 +454,11 @@ export const applyForHackathon = async (hackathonId, applicationData) => {
         },
       }
     );
+    
+    console.log('[API] Response from backend:', response.data);
+    console.log('[API] Response individualName:', response.data.individualName);
+    console.log('[API] Response individualQualifications:', response.data.individualQualifications);
+    
     return response.data;
   } catch (error) {
     console.error('Error applying for hackathon:', error);

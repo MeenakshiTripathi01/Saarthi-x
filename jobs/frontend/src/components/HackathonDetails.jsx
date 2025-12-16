@@ -20,6 +20,17 @@ export default function HackathonDetails() {
     const [teamName, setTeamName] = useState('');
     const [teamSize, setTeamSize] = useState(2);
     const [teamMembers, setTeamMembers] = useState([]);
+    
+    // Individual Application State (pre-fill name from logged-in user)
+    const [individualName, setIndividualName] = useState(user?.name || '');
+    const [individualQualifications, setIndividualQualifications] = useState('');
+
+    // Update individual name when user loads
+    useEffect(() => {
+        if (user?.name && !individualName) {
+            setIndividualName(user.name);
+        }
+    }, [user]);
 
     // Initialize team members when team size changes or user loads
     useEffect(() => {
@@ -143,14 +154,37 @@ export default function HackathonDetails() {
                 return;
             }
 
+            // Validation for individual application
+            if (!asTeam && hackathon.allowIndividual !== false) {
+                if (!individualName.trim()) {
+                    toast.error('Please enter your name');
+                    setApplying(false);
+                    return;
+                }
+                if (!individualQualifications.trim()) {
+                    toast.error('Please enter your qualifications');
+                    setApplying(false);
+                    return;
+                }
+            }
+
             const applicationData = {
                 asTeam: hackathon.allowIndividual === false ? true : asTeam,
                 teamName: asTeam || hackathon.allowIndividual === false ? teamName : null,
                 teamSize: asTeam || hackathon.allowIndividual === false ? teamSize : 1,
-                teamMembers: asTeam || hackathon.allowIndividual === false ? teamMembers : []
+                teamMembers: asTeam || hackathon.allowIndividual === false ? teamMembers : [],
+                individualName: !asTeam && hackathon.allowIndividual !== false ? individualName.trim() : null,
+                individualQualifications: !asTeam && hackathon.allowIndividual !== false ? individualQualifications.trim() : null
             };
 
+            console.log('[Apply] Submitting application data:', applicationData);
+
             const response = await applyForHackathon(id, applicationData);
+            
+            console.log('[Apply] Response received:', response);
+            console.log('[Apply] Response individualName:', response.individualName);
+            console.log('[Apply] Response individualQualifications:', response.individualQualifications);
+            
             toast.success('Successfully applied! Redirecting to dashboard...');
 
             // Redirect to application dashboard
@@ -296,6 +330,46 @@ export default function HackathonDetails() {
                                                     )
                                                 )}
                                             </div>
+
+                                            {!asTeam && hackathon.allowIndividual !== false && (
+                                                <div className="space-y-4 animate-fadeIn">
+                                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4">
+                                                        <p className="text-sm text-blue-800 font-medium flex items-center gap-2">
+                                                            <User className="w-4 h-4" />
+                                                            Individual Application
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Your Full Name <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            required
+                                                            value={individualName}
+                                                            onChange={(e) => setIndividualName(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                            placeholder="Enter your full name"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Qualifications <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <textarea
+                                                            required
+                                                            rows={4}
+                                                            value={individualQualifications}
+                                                            onChange={(e) => setIndividualQualifications(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                                                            placeholder="E.g., Bachelor's in Computer Science, 2 years web development experience, proficient in React, Node.js..."
+                                                        />
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            Share your education, skills, and relevant experience
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {asTeam && (
                                                 <div className="space-y-4 animate-fadeIn">

@@ -48,6 +48,10 @@ public class HackathonApplicationController {
         try {
             System.out.println("=== Apply endpoint called ===");
             System.out.println("Hackathon ID: " + hackathonId);
+            System.out.println("Request body asTeam: " + req.getAsTeam());
+            System.out.println("Request body individualName (RAW): " + req.getIndividualName());
+            System.out.println("Request body individualQualifications (RAW): " + req.getIndividualQualifications());
+            System.out.println("Request body teamName: " + req.getTeamName());
             System.out.println("Request body: " + req);
             System.out.println("Auth is null: " + (auth == null));
 
@@ -114,6 +118,8 @@ public class HackathonApplicationController {
                 req.setTeamName(null);
                 req.setTeamSize(1);
                 System.out.println("Individual application set");
+                System.out.println("Individual Name: " + req.getIndividualName());
+                System.out.println("Individual Qualifications: " + req.getIndividualQualifications());
             }
 
             // 4️⃣ Set required fields
@@ -125,6 +131,12 @@ public class HackathonApplicationController {
             // 5️⃣ Save and return
             HackathonApplication saved = applicationRepository.save(req);
             System.out.println("Application saved with ID: " + saved.getId());
+            System.out.println("=== SAVED APPLICATION DATA ===");
+            System.out.println("asTeam: " + saved.getAsTeam());
+            System.out.println("individualName: " + saved.getIndividualName());
+            System.out.println("individualQualifications: " + saved.getIndividualQualifications());
+            System.out.println("teamName: " + saved.getTeamName());
+            System.out.println("=============================");
             return ResponseEntity.ok(saved);
 
         } catch (Exception e) {
