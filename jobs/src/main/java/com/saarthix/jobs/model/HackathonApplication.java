@@ -419,4 +419,29 @@ public class HackathonApplication {
     public void setShowcaseContent(ShowcaseContent showcaseContent) {
         this.showcaseContent = showcaseContent;
     }
+
+    // Computed field: Rank Title for Certificate (Single Source of Truth)
+    public String getRankTitle() {
+        if (finalRank == null) {
+            return "Participation Certificate";
+        }
+        switch (finalRank) {
+            case 1:
+                return "Winner / 1st Rank";
+            case 2:
+                return "2nd Rank";
+            case 3:
+                return "3rd Rank";
+            default:
+                return "Participation Certificate";
+        }
+    }
+
+    // Certificate Type: Achievement for top 3, Participation for others
+    public String getCertificateType() {
+        if (finalRank != null && finalRank >= 1 && finalRank <= 3) {
+            return "Certificate of Achievement";
+        }
+        return "Certificate of Participation";
+    }
 }

@@ -27,6 +27,8 @@ export default function ApplicantResults() {
             console.log('=== [APPLICANT] API Response for Application', applicationId, '===');
             console.log('Full response:', data);
             console.log('Certificate Fields from Backend:');
+            console.log('  rank:', data.finalRank);
+            console.log('  rankTitle:', data.rankTitle);
             console.log('  certificateTemplateId:', data.certificateTemplateId);
             console.log('  certificateLogoUrl:', data.certificateLogoUrl);
             console.log('  certificatePlatformLogoUrl:', data.certificatePlatformLogoUrl);
@@ -147,6 +149,8 @@ export default function ApplicantResults() {
                 hackathonTitle: results.hackathonTitle || results.title || 'Hackathon',
                 company: results.company || results.organizer || 'Organizer',
                 rank: results.finalRank,
+                rankTitle: results.rankTitle, // Backend-computed rank title
+                certificateType: results.certificateType, // Backend-computed certificate type
                 isTeam: results.asTeam,
                 teamName: results.teamName,
                 // ONLY use backend data - NO localStorage fallback
@@ -386,6 +390,8 @@ export default function ApplicantResults() {
                                     hackathonTitle={results.hackathonTitle || results.title || 'Hackathon'}
                                     company={results.company || results.organizer || 'Organizer'}
                                     rank={results.finalRank}
+                                    rankTitle={results.rankTitle} // Backend-computed rank title
+                                    certificateType={results.certificateType} // Backend-computed certificate type
                                     isTeam={results.asTeam}
                                     teamName={results.teamName}
                                     // ONLY use backend data - NO localStorage fallback

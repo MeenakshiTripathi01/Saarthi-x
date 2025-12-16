@@ -38,6 +38,8 @@ export default function HackathonApplicationDashboard() {
                 hackathonTitle: hackathon.title,
                 company: hackathon.company,
                 rank: application.finalRank,
+                rankTitle: application.rankTitle,
+                certificateType: application.certificateType,
                 isTeam: application.asTeam,
                 teamName: application.teamName,
                 // ONLY use backend data - NO localStorage fallback
@@ -68,6 +70,8 @@ export default function HackathonApplicationDashboard() {
                 hackathonTitle: hackathon.title,
                 company: hackathon.company,
                 rank: application.finalRank,
+                rankTitle: application.rankTitle,
+                certificateType: application.certificateType,
                 isTeam: application.asTeam,
                 teamName: application.teamName,
                 // ONLY use backend data - NO localStorage fallback
@@ -379,6 +383,8 @@ export default function HackathonApplicationDashboard() {
                                         hackathonTitle={hackathon.title}
                                         company={hackathon.company}
                                         rank={application.finalRank}
+                                        rankTitle={application.rankTitle}
+                                        certificateType={application.certificateType}
                                         isTeam={application.asTeam}
                                         teamName={application.teamName}
                                         // ONLY use backend data - NO localStorage fallback
@@ -415,6 +421,8 @@ export default function HackathonApplicationDashboard() {
                                             hackathonTitle: hackathon.title,
                                             company: hackathon.company,
                                             rank: application.finalRank,
+                                            rankTitle: application.rankTitle,
+                                            certificateType: application.certificateType,
                                             isTeam: false,
                                             teamName: application.teamName,
                                             // ONLY use backend data - NO localStorage fallback
@@ -479,6 +487,8 @@ export default function HackathonApplicationDashboard() {
                                         hackathonTitle: hackathon.title,
                                         company: hackathon.company,
                                         rank: application.finalRank,
+                                        rankTitle: application.rankTitle,
+                                        certificateType: application.certificateType,
                                         isTeam: application.asTeam,
                                         teamName: application.teamName,
                                         // ONLY use backend data - NO localStorage fallback

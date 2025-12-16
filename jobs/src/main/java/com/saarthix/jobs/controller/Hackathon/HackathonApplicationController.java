@@ -77,6 +77,24 @@ public class HackathonApplicationController {
             }
             System.out.println("Hackathon found: " + hackOpt.get().getTitle());
 
+            // 2.5️⃣ Check registration cutoff (server-side enforcement)
+            Hackathon hackathon = hackOpt.get();
+            if (hackathon.getEndDate() != null && !hackathon.getEndDate().isBlank()) {
+                try {
+                    LocalDateTime endDate = LocalDateTime.parse(hackathon.getEndDate());
+                    LocalDateTime now = LocalDateTime.now();
+                    if (now.isAfter(endDate)) {
+                        System.err.println("Registration closed. End date: " + endDate + ", Current time: " + now);
+                        return ResponseEntity.status(403)
+                                .body("Registration period has ended. Applications are no longer accepted.");
+                    }
+                    System.out.println("Registration is open. End date: " + endDate);
+                } catch (Exception e) {
+                    System.err.println("Error parsing end date: " + e.getMessage());
+                    // Continue if date parsing fails (don't block application)
+                }
+            }
+
             // 3️⃣ Team validation
             Boolean isTeam = req.getAsTeam() != null ? req.getAsTeam() : false;
             System.out.println("Is team application: " + isTeam);
@@ -375,17 +393,16 @@ public class HackathonApplicationController {
             app.setTotalScore(totalScore);
         }
 
-        // Sort by total score (descending)
+        // Sort by total score (descending) for display purposes only
         applications.sort((a, b) -> Double.compare(
                 b.getTotalScore() != null ? b.getTotalScore() : 0.0,
                 a.getTotalScore() != null ? a.getTotalScore() : 0.0));
 
-        // Assign ranks (1, 2, 3) and set certificate customization
+        // DO NOT auto-assign ranks - ranks must be explicitly set by industry via PATCH
+        // endpoint
+        // Only apply certificate customization to all applications
         for (int i = 0; i < applications.size(); i++) {
             HackathonApplication app = applications.get(i);
-            if (i < 3) {
-                app.setFinalRank(i + 1);
-            }
             // Persist the selected template & design for every application
             if (certificateTemplateId != null && !certificateTemplateId.isBlank()) {
                 app.setCertificateTemplateId(certificateTemplateId);
@@ -501,6 +518,8 @@ public class HackathonApplicationController {
 
         // LOG CERTIFICATE DATA BEING RETURNED TO APPLICANT
         System.out.println("=== [API RESPONSE] Application " + app.getId() + " Certificate Data ===");
+        System.out.println("  rank: " + app.getFinalRank());
+        System.out.println("  rankTitle: " + app.getRankTitle());
         System.out.println("  templateId: " + app.getCertificateTemplateId());
         System.out.println("  logoUrl: " + app.getCertificateLogoUrl());
         System.out.println("  platformLogoUrl: " + app.getCertificatePlatformLogoUrl());
