@@ -24,6 +24,12 @@ public class HackathonApplication {
 
     private List<TeamMember> teamMembers = new ArrayList<>();
 
+    // Individual applicant details (when asTeam = false)
+    private String individualName;
+    private String individualEmail;
+    private String individualPhone;
+    private String individualQualifications;
+
     private LocalDateTime appliedAt;
 
     private String currentPhaseId;
@@ -36,6 +42,17 @@ public class HackathonApplication {
     private Integer finalRank; // 1, 2, 3, or null for others
     private Double totalScore; // Sum of all phase scores
     private String certificateUrl; // URL to generated certificate
+
+    // Certificate customization (per application; backend source of truth)
+    // Template id selected by industry (e.g. "template1"..."template4")
+    private String certificateTemplateId;
+    // Visual customization coming from publisher screen
+    private String certificateLogoUrl;
+    private String certificatePlatformLogoUrl;
+    private String certificateCustomMessage;
+    private String certificateSignatureLeftUrl;
+    private String certificateSignatureRightUrl;
+
     private ShowcaseContent showcaseContent; // For top 3 winners
 
     // Default Constructor
@@ -103,6 +120,38 @@ public class HackathonApplication {
         this.teamMembers = teamMembers;
     }
 
+    public String getIndividualName() {
+        return individualName;
+    }
+
+    public void setIndividualName(String individualName) {
+        this.individualName = individualName;
+    }
+
+    public String getIndividualEmail() {
+        return individualEmail;
+    }
+
+    public void setIndividualEmail(String individualEmail) {
+        this.individualEmail = individualEmail;
+    }
+
+    public String getIndividualPhone() {
+        return individualPhone;
+    }
+
+    public void setIndividualPhone(String individualPhone) {
+        this.individualPhone = individualPhone;
+    }
+
+    public String getIndividualQualifications() {
+        return individualQualifications;
+    }
+
+    public void setIndividualQualifications(String individualQualifications) {
+        this.individualQualifications = individualQualifications;
+    }
+
     public LocalDateTime getAppliedAt() {
         return appliedAt;
     }
@@ -125,6 +174,54 @@ public class HackathonApplication {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getCertificateTemplateId() {
+        return certificateTemplateId;
+    }
+
+    public void setCertificateTemplateId(String certificateTemplateId) {
+        this.certificateTemplateId = certificateTemplateId;
+    }
+
+    public String getCertificateLogoUrl() {
+        return certificateLogoUrl;
+    }
+
+    public void setCertificateLogoUrl(String certificateLogoUrl) {
+        this.certificateLogoUrl = certificateLogoUrl;
+    }
+
+    public String getCertificatePlatformLogoUrl() {
+        return certificatePlatformLogoUrl;
+    }
+
+    public void setCertificatePlatformLogoUrl(String certificatePlatformLogoUrl) {
+        this.certificatePlatformLogoUrl = certificatePlatformLogoUrl;
+    }
+
+    public String getCertificateCustomMessage() {
+        return certificateCustomMessage;
+    }
+
+    public void setCertificateCustomMessage(String certificateCustomMessage) {
+        this.certificateCustomMessage = certificateCustomMessage;
+    }
+
+    public String getCertificateSignatureLeftUrl() {
+        return certificateSignatureLeftUrl;
+    }
+
+    public void setCertificateSignatureLeftUrl(String certificateSignatureLeftUrl) {
+        this.certificateSignatureLeftUrl = certificateSignatureLeftUrl;
+    }
+
+    public String getCertificateSignatureRightUrl() {
+        return certificateSignatureRightUrl;
+    }
+
+    public void setCertificateSignatureRightUrl(String certificateSignatureRightUrl) {
+        this.certificateSignatureRightUrl = certificateSignatureRightUrl;
     }
 
     public java.util.Map<String, PhaseSubmission> getPhaseSubmissions() {
@@ -359,5 +456,30 @@ public class HackathonApplication {
 
     public void setShowcaseContent(ShowcaseContent showcaseContent) {
         this.showcaseContent = showcaseContent;
+    }
+
+    // Computed field: Rank Title for Certificate (Single Source of Truth)
+    public String getRankTitle() {
+        if (finalRank == null) {
+            return "Participation Certificate";
+        }
+        switch (finalRank) {
+            case 1:
+                return "Winner / 1st Rank";
+            case 2:
+                return "2nd Rank";
+            case 3:
+                return "3rd Rank";
+            default:
+                return "Participation Certificate";
+        }
+    }
+
+    // Certificate Type: Achievement for top 3, Participation for others
+    public String getCertificateType() {
+        if (finalRank != null && finalRank >= 1 && finalRank <= 3) {
+            return "Certificate of Achievement";
+        }
+        return "Certificate of Participation";
     }
 }

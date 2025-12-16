@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getHackathonResults, finalizeHackathonResults, publishShowcaseContent, deleteHackathonApplication } from '../api/jobApi';
+import { getHackathonResults, finalizeHackathonResults, publishShowcaseContent, deleteHackathonApplication, getHackathonById } from '../api/jobApi';
 import { toast } from 'react-toastify';
 import { Trophy, Medal, Award, Users, Star, CheckCircle, Upload, X, FileText, Mail } from 'lucide-react';
 
@@ -9,6 +9,8 @@ export default function IndustryHackathonResults() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [results, setResults] = useState([]);
+    const [hackathon, setHackathon] = useState(null);
+    const [loadError, setLoadError] = useState('');
     const [finalizing, setFinalizing] = useState(false);
     const [showcaseModal, setShowcaseModal] = useState(null);
     const [showcaseData, setShowcaseData] = useState({
@@ -29,11 +31,22 @@ export default function IndustryHackathonResults() {
     const loadResults = async () => {
         try {
             setLoading(true);
-            const data = await getHackathonResults(hackathonId);
-            setResults(data);
+            const [data, hackData] = await Promise.all([
+                getHackathonResults(hackathonId),
+                getHackathonById(hackathonId)
+            ]);
+            if (Array.isArray(data)) {
+                setResults(data);
+            } else {
+                console.warn('Unexpected results payload', data);
+                setResults([]);
+                setLoadError('Could not load results. Please try again.');
+            }
+            setHackathon(hackData);
         } catch (error) {
             console.error('Error loading results:', error);
             toast.error('Failed to load results');
+            setLoadError('Failed to load results');
         } finally {
             setLoading(false);
         }
@@ -183,12 +196,62 @@ export default function IndustryHackathonResults() {
         return total;
     };
 
+    const renderPhaseBadges = (result) => {
+        if (!hackathon?.phases?.length) {
+            return <span className="text-xs text-gray-400">No phase data</span>;
+        }
+
+        return (
+            <div className="flex flex-wrap gap-1">
+                {hackathon.phases.map((phase, idx) => {
+                    const submission = result.phaseSubmissions?.[phase.id];
+                    const status = submission?.status;
+                    const score = submission?.score;
+                    const badgeClass = status === 'ACCEPTED'
+                        ? 'bg-green-100 text-green-700'
+                        : status === 'REJECTED'
+                            ? 'bg-red-100 text-red-700'
+                            : status === 'PENDING'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-gray-100 text-gray-700';
+
+                    const label = score !== null && score !== undefined
+                        ? `${score}/100`
+                        : status || 'N/A';
+
+                    return (
+                        <span key={phase.id} className={`px-2 py-1 rounded-full text-xs font-medium ${badgeClass}`}>
+                            P{idx + 1}: {label}
+                        </span>
+                    );
+                })}
+            </div>
+        );
+    };
+
     const hasRankings = results.some(r => r.finalRank);
 
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            </div>
+        );
+    }
+
+    if (loadError) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm max-w-md w-full text-center">
+                    <p className="text-lg font-semibold text-gray-900 mb-2">Unable to load results</p>
+                    <p className="text-sm text-gray-600 mb-4">{loadError}</p>
+                    <button
+                        onClick={loadResults}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700"
+                    >
+                        Retry
+                    </button>
+                </div>
             </div>
         );
     }
@@ -203,11 +266,19 @@ export default function IndustryHackathonResults() {
                             <h1 className="text-3xl font-bold text-gray-900">Hackathon Results</h1>
                             <p className="text-gray-600 mt-1">Total Participants: {results.length}</p>
                         </div>
-                        {!hasRankings && results.length > 0 && (
-                            <div className="text-sm text-gray-500">
-                                Select winners below to finalize results
-                            </div>
-                        )}
+                        <div className="flex items-center gap-3">
+                            {!hasRankings && results.length > 0 && (
+                                <div className="text-sm text-gray-500">
+                                    Select winners below to finalize results
+                                </div>
+                            )}
+                            <button
+                                onClick={() => navigate(`/industry/hackathon/${hackathonId}/publish`)}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+                            >
+                                Publish & Design Certificates
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -360,6 +431,7 @@ export default function IndustryHackathonResults() {
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team/Individual</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Score</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phase Scores</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
@@ -395,6 +467,9 @@ export default function IndustryHackathonResults() {
                                                 <span className="text-lg font-semibold text-purple-600">
                                                     {getTotalScore(result)?.toFixed(2) || '0.00'}
                                                 </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {renderPhaseBadges(result)}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${result.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :

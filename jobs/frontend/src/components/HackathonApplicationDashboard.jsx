@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getHackathonApplicationDetails, getHackathonById, submitHackathonPhase } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { CheckCircle, XCircle, Clock, Upload, FileText, AlertCircle, ChevronRight, Download, Share2, Award, Eye, X } from 'lucide-react';
-import { downloadCertificate, shareOnLinkedIn } from './CertificateGenerator';
+import { CheckCircle, XCircle, Clock, Upload, FileText, AlertCircle, ChevronRight, Download, Share2, Award, Eye, X, User } from 'lucide-react';
+import { downloadCertificate, shareOnLinkedIn, generateCertificateCode } from './CertificateGenerator';
 import CertificateTemplate from './CertificateGenerator';
 
 export default function HackathonApplicationDashboard() {
@@ -23,10 +23,12 @@ export default function HackathonApplicationDashboard() {
     const [selectedFile, setSelectedFile] = useState(null);
     const [submissionLink, setSubmissionLink] = useState('');
     const [downloadingCertificate, setDownloadingCertificate] = useState(false);
-    
+
     // Certificate Preview State
     const [previewCertificate, setPreviewCertificate] = useState(null);
     const [previewingMember, setPreviewingMember] = useState(null);
+
+    // Certificate data comes from backend ONLY - no localStorage fallback
 
     const handleDownloadCertificate = async () => {
         try {
@@ -36,8 +38,25 @@ export default function HackathonApplicationDashboard() {
                 hackathonTitle: hackathon.title,
                 company: hackathon.company,
                 rank: application.finalRank,
+                rankTitle: application.rankTitle,
+                certificateType: application.certificateType,
                 isTeam: application.asTeam,
-                teamName: application.teamName
+                teamName: application.teamName,
+                // ONLY use backend data - NO localStorage fallback
+                templateStyle: application.certificateTemplateId || 'template1',
+                logoUrl: application.certificateLogoUrl,
+                platformLogoUrl: application.certificatePlatformLogoUrl,
+                customMessage: application.certificateCustomMessage,
+                signerLeft: null,
+                signerRight: null,
+                signatureLeftUrl: application.certificateSignatureLeftUrl,
+                signatureRightUrl: application.certificateSignatureRightUrl,
+                date: new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }),
+                certificateCode: generateCertificateCode()
             };
 
             await downloadCertificate(certificateData);
@@ -57,8 +76,19 @@ export default function HackathonApplicationDashboard() {
                 hackathonTitle: hackathon.title,
                 company: hackathon.company,
                 rank: application.finalRank,
+                rankTitle: application.rankTitle,
+                certificateType: application.certificateType,
                 isTeam: application.asTeam,
-                teamName: application.teamName
+                teamName: application.teamName,
+                // ONLY use backend data - NO localStorage fallback
+                templateStyle: application.certificateTemplateId || 'template1',
+                logoUrl: application.certificateLogoUrl,
+                platformLogoUrl: application.certificatePlatformLogoUrl,
+                customMessage: application.certificateCustomMessage,
+                signerLeft: null,
+                signerRight: null,
+                signatureLeftUrl: application.certificateSignatureLeftUrl,
+                signatureRightUrl: application.certificateSignatureRightUrl
             };
 
             shareOnLinkedIn(certificateData);
@@ -163,21 +193,39 @@ export default function HackathonApplicationDashboard() {
                 return;
             }
 
+            // URL validation helper
+            const isValidURL = (string) => {
+                try {
+                    const url = new URL(string);
+                    return url.protocol === 'http:' || url.protocol === 'https:';
+                } catch (_) {
+                    return false;
+                }
+            };
+
             // Validate based on format - ALL formats require either file or link
             if (format === 'link') {
-                // Link format: MUST have a link
+                // Link format: MUST have a valid URL link
                 if (!submissionLink.trim()) {
                     toast.error('Please provide a submission link');
                     return;
                 }
+                if (!isValidURL(submissionLink.trim())) {
+                    toast.error('Please enter a valid URL (must start with http:// or https://)');
+                    return;
+                }
             } else if (format === 'code' || format === 'any') {
-                // Code/Any format: Require BOTH file AND link
+                // Code/Any format: Require BOTH file AND valid URL link
                 if (!selectedFile) {
                     toast.error('Please upload a file (zip/code)');
                     return;
                 }
                 if (!submissionLink.trim()) {
                     toast.error('Please provide a GitHub/repository link');
+                    return;
+                }
+                if (!isValidURL(submissionLink.trim())) {
+                    toast.error('Please enter a valid URL for your repository (must start with http:// or https://)');
                     return;
                 }
             } else {
@@ -261,6 +309,11 @@ export default function HackathonApplicationDashboard() {
         return submission && (submission.status === 'ACCEPTED' || submission.status === 'REJECTED');
     });
 
+    const hasPublishedResults = Boolean(
+        application.certificateUrl ||
+        (application.teamMembers || []).some(member => member.certificateUrl)
+    );
+
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
@@ -277,13 +330,37 @@ export default function HackathonApplicationDashboard() {
                             }`}>
                             Status: {application.status}
                         </span>
-                        {application.asTeam && (
+                        {application.asTeam ? (
                             <span className="px-4 py-2 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                                Team: {application.teamName}
+                                👥 Team: {application.teamName}
+                            </span>
+                        ) : (
+                            <span className="px-4 py-2 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                👤 Individual Application
                             </span>
                         )}
                     </div>
                 </div>
+
+                {/* Individual Applicant Details Section - Show for individual applications */}
+                {!application.asTeam && application.individualName && (
+                    <div className="mb-6 bg-white rounded-xl shadow-sm p-6 border border-blue-200">
+                        <h2 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
+                            <User className="w-5 h-5" />
+                            Your Application Details
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-blue-50 p-4 rounded-lg">
+                                <p className="text-xs font-semibold text-blue-600 uppercase mb-2">Full Name</p>
+                                <p className="text-sm font-medium text-gray-900">{application.individualName}</p>
+                            </div>
+                            <div className="bg-blue-50 p-4 rounded-lg md:col-span-2">
+                                <p className="text-xs font-semibold text-blue-600 uppercase mb-2">Qualifications</p>
+                                <p className="text-sm text-gray-700 whitespace-pre-line">{application.individualQualifications}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* View Results Button - Shows when all phases are completed */}
                 {allPhasesCompleted && (
@@ -291,21 +368,32 @@ export default function HackathonApplicationDashboard() {
                         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                             <div>
                                 <h3 className="text-xl font-bold mb-1">🎉 All Phases Completed!</h3>
-                                <p className="text-purple-100">Your hackathon journey is complete. View your results and performance.</p>
+                                <p className="text-purple-100">
+                                    {hasPublishedResults
+                                        ? 'Results are live. View your performance and certificates.'
+                                        : 'Waiting for the industry to publish official results.'}
+                                </p>
                             </div>
-                            <button
-                                onClick={() => navigate(`/hackathon-application/${applicationId}/results`)}
-                                className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center gap-2 whitespace-nowrap"
-                            >
-                                View Results
-                                <ChevronRight className="w-5 h-5" />
-                            </button>
+                            {hasPublishedResults ? (
+                                <button
+                                    onClick={() => navigate(`/hackathon-application/${applicationId}/results`)}
+                                    className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+                                >
+                                    View Results
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+                            ) : (
+                                <div className="px-4 py-2 rounded-lg bg-white/10 border border-white/30 text-sm font-semibold text-white flex items-center gap-2">
+                                    <Clock className="w-4 h-4" />
+                                    Publication pending
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
 
-                {/* Certificate Section - Shows when hackathon is completed */}
-                {allPhasesCompleted && (
+                {/* Certificate Section - Shows when hackathon is completed AND not rejected */}
+                {allPhasesCompleted && hasPublishedResults && application.status !== 'REJECTED' && (
                     <div className="mb-6 bg-white rounded-xl shadow-sm p-6 border-2 border-purple-200">
                         <div className="mb-4">
                             <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
@@ -343,20 +431,25 @@ export default function HackathonApplicationDashboard() {
                                         hackathonTitle={hackathon.title}
                                         company={hackathon.company}
                                         rank={application.finalRank}
+                                        rankTitle={application.rankTitle}
+                                        certificateType={application.certificateType}
                                         isTeam={application.asTeam}
                                         teamName={application.teamName}
+                                        // ONLY use backend data - NO localStorage fallback
+                                        templateStyle={application.certificateTemplateId || 'template1'}
+                                        logoUrl={application.certificateLogoUrl}
+                                        platformLogoUrl={application.certificatePlatformLogoUrl}
+                                        customMessage={application.certificateCustomMessage}
+                                        signerLeft={null}
+                                        signerRight={null}
+                                        signatureLeftUrl={application.certificateSignatureLeftUrl}
+                                        signatureRightUrl={application.certificateSignatureRightUrl}
                                         date={new Date().toLocaleDateString('en-US', {
                                             year: 'numeric',
                                             month: 'long',
                                             day: 'numeric'
                                         })}
-                                        certificateCode={(() => {
-                                            const now = new Date();
-                                            const year = now.getFullYear();
-                                            const timestamp = now.getTime();
-                                            const uniqueCode = String(timestamp % 100000).padStart(5, '0');
-                                            return `${year} ${uniqueCode}`;
-                                        })()}
+                                        certificateCode={generateCertificateCode()}
                                     />
                                 </div>
                             </div>
@@ -372,14 +465,31 @@ export default function HackathonApplicationDashboard() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {application.teamMembers.map((member, idx) => {
                                         const memberCertificateData = {
-                                            participantName: member.name,
+                                            participantName: member.name,  // Individual team member name
                                             hackathonTitle: hackathon.title,
                                             company: hackathon.company,
                                             rank: application.finalRank,
-                                            isTeam: false,
-                                            teamName: application.teamName
+                                            rankTitle: application.rankTitle,
+                                            certificateType: application.certificateType,
+                                            isTeam: false,  // Show as individual for each team member
+                                            teamName: application.teamName,  // Still include team name for reference
+                                            // ONLY use backend data - NO localStorage fallback
+                                            templateStyle: application.certificateTemplateId || 'template1',
+                                            logoUrl: application.certificateLogoUrl,
+                                            platformLogoUrl: application.certificatePlatformLogoUrl,
+                                            customMessage: application.certificateCustomMessage,
+                                            signerLeft: null,
+                                            signerRight: null,
+                                            signatureLeftUrl: application.certificateSignatureLeftUrl,
+                                            signatureRightUrl: application.certificateSignatureRightUrl,
+                                            date: new Date().toLocaleDateString('en-US', {
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric'
+                                            }),
+                                            certificateCode: generateCertificateCode()
                                         };
-                                        
+
                                         return (
                                             <div key={idx} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">
                                                 <div>
@@ -431,8 +541,19 @@ export default function HackathonApplicationDashboard() {
                                         hackathonTitle: hackathon.title,
                                         company: hackathon.company,
                                         rank: application.finalRank,
+                                        rankTitle: application.rankTitle,
+                                        certificateType: application.certificateType,
                                         isTeam: application.asTeam,
-                                        teamName: application.teamName
+                                        teamName: application.teamName,
+                                        // ONLY use backend data - NO localStorage fallback
+                                        templateStyle: application.certificateTemplateId || 'template1',
+                                        logoUrl: application.certificateLogoUrl,
+                                        platformLogoUrl: application.certificatePlatformLogoUrl,
+                                        customMessage: application.certificateCustomMessage,
+                                        signerLeft: null,
+                                        signerRight: null,
+                                        signatureLeftUrl: application.certificateSignatureLeftUrl,
+                                        signatureRightUrl: application.certificateSignatureRightUrl
                                     });
                                     setPreviewingMember(null);
                                 }}
@@ -456,6 +577,18 @@ export default function HackathonApplicationDashboard() {
                                 <Share2 className="w-5 h-5" />
                                 Share on LinkedIn
                             </button>
+                        </div>
+                    </div>
+                )}
+
+                {allPhasesCompleted && !hasPublishedResults && (
+                    <div className="mb-6 bg-white rounded-xl shadow-sm p-6 border border-dashed border-purple-300 text-sm text-gray-700">
+                        <div className="flex items-center gap-3">
+                            <Clock className="w-5 h-5 text-purple-600" />
+                            <div>
+                                <p className="font-semibold text-gray-900">Results pending publication</p>
+                                <p className="text-gray-600">You will be able to view and download your certificate as soon as the industry partner publishes the final results.</p>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -620,9 +753,11 @@ export default function HackathonApplicationDashboard() {
                                                             <input
                                                                 type="url"
                                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                                                placeholder="https://..."
+                                                                placeholder="https://github.com/username/repo or https://project-url.com"
                                                                 value={submissionLink}
                                                                 onChange={(e) => setSubmissionLink(e.target.value)}
+                                                                pattern="https?://.*"
+                                                                title="Please enter a valid URL starting with http:// or https://"
                                                             />
                                                         </div>
                                                     )}
@@ -737,7 +872,7 @@ export default function HackathonApplicationDashboard() {
                     </div>
                 </div>
             </div>
-            
+
             {/* Certificate Preview Modal */}
             {previewCertificate && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => {
@@ -805,20 +940,25 @@ export default function HackathonApplicationDashboard() {
                                         hackathonTitle={previewCertificate.hackathonTitle}
                                         company={previewCertificate.company}
                                         rank={previewCertificate.rank}
+                                        rankTitle={previewCertificate.rankTitle}
+                                        certificateType={previewCertificate.certificateType}
                                         isTeam={previewCertificate.isTeam}
                                         teamName={previewCertificate.teamName}
+                                        // ONLY use backend data from previewCertificate - NO fallbacks
+                                        templateStyle={previewCertificate.templateStyle}
+                                        logoUrl={previewCertificate.logoUrl}
+                                        platformLogoUrl={previewCertificate.platformLogoUrl}
+                                        customMessage={previewCertificate.customMessage}
+                                        signerLeft={previewCertificate.signerLeft}
+                                        signerRight={previewCertificate.signerRight}
+                                        signatureLeftUrl={previewCertificate.signatureLeftUrl}
+                                        signatureRightUrl={previewCertificate.signatureRightUrl}
                                         date={new Date().toLocaleDateString('en-US', {
                                             year: 'numeric',
                                             month: 'long',
                                             day: 'numeric'
                                         })}
-                                        certificateCode={(() => {
-                                            const now = new Date();
-                                            const year = now.getFullYear();
-                                            const timestamp = now.getTime();
-                                            const uniqueCode = String(timestamp % 100000).padStart(5, '0');
-                                            return `${year} ${uniqueCode}`;
-                                        })()}
+                                        certificateCode={generateCertificateCode()}
                                     />
                                 </div>
                             </div>
