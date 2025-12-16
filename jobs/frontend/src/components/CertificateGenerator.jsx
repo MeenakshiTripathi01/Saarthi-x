@@ -393,6 +393,7 @@ export const generateCertificatePDF = async (certificateData) => {
         teamName,
         templateStyle,
         logoUrl,
+        platformLogoUrl,
         customMessage,
         signerLeft,
         signerRight,
@@ -400,18 +401,30 @@ export const generateCertificatePDF = async (certificateData) => {
         signatureRightUrl
     } = certificateData;
 
-    const date = new Date().toLocaleDateString('en-US', {
+    const date = certificateData.date || new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
     });
 
-    const certificateCode = generateCertificateCode();
+    const certificateCode = certificateData.certificateCode || generateCertificateCode();
+
+    console.log('=== [PDF GENERATION] Certificate Data ===');
+    console.log('participantName:', participantName);
+    console.log('hackathonTitle:', hackathonTitle);
+    console.log('rank:', rank);
+    console.log('rankTitle:', rankTitle);
+    console.log('certificateType:', certificateType);
+    console.log('templateStyle:', templateStyle);
+    console.log('logoUrl:', logoUrl);
+    console.log('platformLogoUrl:', platformLogoUrl);
 
     const container = document.createElement('div');
     container.style.position = 'fixed';
     container.style.left = '-9999px';
     container.style.top = '0';
+    container.style.width = '1122px';
+    container.style.height = '794px';
     document.body.appendChild(container);
 
     const root = document.createElement('div');
@@ -435,6 +448,7 @@ export const generateCertificatePDF = async (certificateData) => {
                 certificateCode={certificateCode}
                 templateStyle={templateStyle}
                 logoUrl={logoUrl}
+                platformLogoUrl={platformLogoUrl}
                 customMessage={customMessage}
                 signerLeft={signerLeft}
                 signerRight={signerRight}
@@ -442,30 +456,43 @@ export const generateCertificatePDF = async (certificateData) => {
                 signatureRightUrl={signatureRightUrl}
             />
         );
-        setTimeout(resolve, 800);
+        setTimeout(resolve, 1000);
     });
 
     const certificateElement = document.getElementById('certificate-content');
-    await new Promise(resolve => setTimeout(resolve, 400));
+    
+    if (!certificateElement) {
+        console.error('Certificate element not found!');
+        document.body.removeChild(container);
+        throw new Error('Certificate element not found');
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    console.log('Certificate element found, generating canvas...');
 
     const canvas = await html2canvas(certificateElement, {
-        scale: 4,
+        scale: 3,
         useCORS: true,
-        logging: false,
+        logging: true,
         backgroundColor: '#ffffff',
-        windowWidth: 1122,
-        windowHeight: 794,
-        allowTaint: false,
-        removeContainer: false,
+        width: 1122,
+        height: 794,
+        allowTaint: true,
+        foreignObjectRendering: false,
         imageTimeout: 15000,
         onclone: (clonedDoc) => {
             const clonedElement = clonedDoc.getElementById('certificate-content');
             if (clonedElement) {
                 clonedElement.style.transform = 'none';
                 clonedElement.style.position = 'relative';
+                clonedElement.style.width = '1122px';
+                clonedElement.style.height = '794px';
             }
         }
     });
+
+    console.log('Canvas generated:', canvas.width, 'x', canvas.height);
 
     const imgData = canvas.toDataURL('image/png', 1.0);
 
@@ -496,15 +523,28 @@ export const generateCertificatePDF = async (certificateData) => {
 
     pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight, '', 'FAST');
 
+    console.log('PDF generated successfully');
+    
+    // Cleanup
+    reactRoot.unmount();
     document.body.removeChild(container);
+    
     return pdf;
 };
 
 export const downloadCertificate = async (certificateData) => {
     try {
         const pdf = await generateCertificatePDF(certificateData);
+        
+        // Generate filename with participant/team name for uniqueness
         const safeTitle = (certificateData.hackathonTitle || 'Hackathon').replace(/\s+/g, '_');
-        const fileName = `Saarthix_${safeTitle}_Certificate.pdf`;
+        const safeName = (certificateData.participantName || certificateData.teamName || 'Participant')
+            .replace(/\s+/g, '_')
+            .replace(/[^a-zA-Z0-9_-]/g, ''); // Remove special characters
+        
+        const fileName = `Saarthix_${safeTitle}_${safeName}_Certificate.pdf`;
+        
+        console.log(`Downloading certificate as: ${fileName}`);
         pdf.save(fileName);
         return true;
     } catch (error) {

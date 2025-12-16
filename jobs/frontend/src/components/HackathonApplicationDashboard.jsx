@@ -50,7 +50,13 @@ export default function HackathonApplicationDashboard() {
                 signerLeft: null,
                 signerRight: null,
                 signatureLeftUrl: application.certificateSignatureLeftUrl,
-                signatureRightUrl: application.certificateSignatureRightUrl
+                signatureRightUrl: application.certificateSignatureRightUrl,
+                date: new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }),
+                certificateCode: generateCertificateCode()
             };
 
             await downloadCertificate(certificateData);

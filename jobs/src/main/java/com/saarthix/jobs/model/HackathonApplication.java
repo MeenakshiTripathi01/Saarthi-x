@@ -26,6 +26,8 @@ public class HackathonApplication {
 
     // Individual applicant details (when asTeam = false)
     private String individualName;
+    private String individualEmail;
+    private String individualPhone;
     private String individualQualifications;
 
     private LocalDateTime appliedAt;
@@ -124,6 +126,22 @@ public class HackathonApplication {
 
     public void setIndividualName(String individualName) {
         this.individualName = individualName;
+    }
+
+    public String getIndividualEmail() {
+        return individualEmail;
+    }
+
+    public void setIndividualEmail(String individualEmail) {
+        this.individualEmail = individualEmail;
+    }
+
+    public String getIndividualPhone() {
+        return individualPhone;
+    }
+
+    public void setIndividualPhone(String individualPhone) {
+        this.individualPhone = individualPhone;
     }
 
     public String getIndividualQualifications() {

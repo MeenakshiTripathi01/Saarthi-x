@@ -23,12 +23,17 @@ export default function HackathonDetails() {
     
     // Individual Application State (pre-fill name from logged-in user)
     const [individualName, setIndividualName] = useState(user?.name || '');
+    const [individualEmail, setIndividualEmail] = useState(user?.email || '');
+    const [individualPhone, setIndividualPhone] = useState('');
     const [individualQualifications, setIndividualQualifications] = useState('');
 
-    // Update individual name when user loads
+    // Update individual fields when user loads
     useEffect(() => {
         if (user?.name && !individualName) {
             setIndividualName(user.name);
+        }
+        if (user?.email && !individualEmail) {
+            setIndividualEmail(user.email);
         }
     }, [user]);
 
@@ -161,6 +166,16 @@ export default function HackathonDetails() {
                     setApplying(false);
                     return;
                 }
+                if (!individualEmail.trim()) {
+                    toast.error('Please enter your email');
+                    setApplying(false);
+                    return;
+                }
+                if (!individualPhone.trim()) {
+                    toast.error('Please enter your phone number');
+                    setApplying(false);
+                    return;
+                }
                 if (!individualQualifications.trim()) {
                     toast.error('Please enter your qualifications');
                     setApplying(false);
@@ -174,6 +189,8 @@ export default function HackathonDetails() {
                 teamSize: asTeam || hackathon.allowIndividual === false ? teamSize : 1,
                 teamMembers: asTeam || hackathon.allowIndividual === false ? teamMembers : [],
                 individualName: !asTeam && hackathon.allowIndividual !== false ? individualName.trim() : null,
+                individualEmail: !asTeam && hackathon.allowIndividual !== false ? individualEmail.trim() : null,
+                individualPhone: !asTeam && hackathon.allowIndividual !== false ? individualPhone.trim() : null,
                 individualQualifications: !asTeam && hackathon.allowIndividual !== false ? individualQualifications.trim() : null
             };
 
@@ -350,6 +367,32 @@ export default function HackathonDetails() {
                                                             onChange={(e) => setIndividualName(e.target.value)}
                                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                             placeholder="Enter your full name"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Email <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="email"
+                                                            required
+                                                            value={individualEmail}
+                                                            onChange={(e) => setIndividualEmail(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                            placeholder="Enter your email address"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Phone Number <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="tel"
+                                                            required
+                                                            value={individualPhone}
+                                                            onChange={(e) => setIndividualPhone(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                            placeholder="Enter your phone number"
                                                         />
                                                     </div>
                                                     <div>

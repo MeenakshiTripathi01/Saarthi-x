@@ -119,6 +119,8 @@ public class HackathonApplicationController {
                 req.setTeamSize(1);
                 System.out.println("Individual application set");
                 System.out.println("Individual Name: " + req.getIndividualName());
+                System.out.println("Individual Email: " + req.getIndividualEmail());
+                System.out.println("Individual Phone: " + req.getIndividualPhone());
                 System.out.println("Individual Qualifications: " + req.getIndividualQualifications());
             }
 
@@ -134,6 +136,8 @@ public class HackathonApplicationController {
             System.out.println("=== SAVED APPLICATION DATA ===");
             System.out.println("asTeam: " + saved.getAsTeam());
             System.out.println("individualName: " + saved.getIndividualName());
+            System.out.println("individualEmail: " + saved.getIndividualEmail());
+            System.out.println("individualPhone: " + saved.getIndividualPhone());
             System.out.println("individualQualifications: " + saved.getIndividualQualifications());
             System.out.println("teamName: " + saved.getTeamName());
             System.out.println("=============================");

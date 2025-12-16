@@ -279,6 +279,18 @@ export default function IndustryHackathonDashboard() {
                                                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Full Name</p>
                                                     <p className="text-sm font-medium text-gray-900">{selectedApp.individualName}</p>
                                                 </div>
+                                                {selectedApp.individualEmail && (
+                                                    <div>
+                                                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Email</p>
+                                                        <p className="text-sm text-gray-700">{selectedApp.individualEmail}</p>
+                                                    </div>
+                                                )}
+                                                {selectedApp.individualPhone && (
+                                                    <div>
+                                                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Phone Number</p>
+                                                        <p className="text-sm text-gray-700">{selectedApp.individualPhone}</p>
+                                                    </div>
+                                                )}
                                                 <div>
                                                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Qualifications</p>
                                                     <p className="text-sm text-gray-700 whitespace-pre-line">{selectedApp.individualQualifications}</p>
@@ -337,11 +349,24 @@ export default function IndustryHackathonDashboard() {
                                                     ) : (
                                                         <div className="space-y-4">
                                                             {/* Submission Content */}
-                                                            <div className="bg-gray-50 p-3 rounded-lg">
+                                                            <div className="bg-gray-50 p-3 rounded-lg space-y-3">
                                                                 {submission.solutionStatement && (
-                                                                    <div className="mb-3">
+                                                                    <div>
                                                                         <p className="text-xs font-bold text-gray-500 uppercase mb-1">Solution Statement</p>
                                                                         <p className="text-gray-800 text-sm">{submission.solutionStatement}</p>
+                                                                    </div>
+                                                                )}
+                                                                {submission.submissionLink && (
+                                                                    <div>
+                                                                        <p className="text-xs font-bold text-gray-500 uppercase mb-1">Submission Link</p>
+                                                                        <a
+                                                                            href={submission.submissionLink}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium break-all hover:underline"
+                                                                        >
+                                                                            🔗 {submission.submissionLink}
+                                                                        </a>
                                                                     </div>
                                                                 )}
                                                                 {submission.fileName && (

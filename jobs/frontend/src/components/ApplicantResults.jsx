@@ -145,12 +145,12 @@ export default function ApplicantResults() {
         try {
             setDownloading(true);
             const certificateData = {
-                participantName: results.asTeam ? results.teamName : (results.applicantName || 'Participant'),
+                participantName: results.asTeam ? results.teamName : (results.individualName || (results.teamMembers && results.teamMembers.length > 0 ? results.teamMembers[0].name : 'Participant')),
                 hackathonTitle: results.hackathonTitle || results.title || 'Hackathon',
                 company: results.company || results.organizer || 'Organizer',
                 rank: results.finalRank,
-                rankTitle: results.rankTitle, // Backend-computed rank title
-                certificateType: results.certificateType, // Backend-computed certificate type
+                rankTitle: results.rankTitle,
+                certificateType: results.certificateType,
                 isTeam: results.asTeam,
                 teamName: results.teamName,
                 // ONLY use backend data - NO localStorage fallback
@@ -158,10 +158,16 @@ export default function ApplicantResults() {
                 logoUrl: results.certificateLogoUrl,
                 platformLogoUrl: results.certificatePlatformLogoUrl,
                 customMessage: results.certificateCustomMessage,
-                signerLeft: null, // Not stored in backend
-                signerRight: null, // Not stored in backend
+                signerLeft: null,
+                signerRight: null,
                 signatureLeftUrl: results.certificateSignatureLeftUrl,
-                signatureRightUrl: results.certificateSignatureRightUrl
+                signatureRightUrl: results.certificateSignatureRightUrl,
+                date: new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }),
+                certificateCode: results.certificateCode || generateCertificateCode()
             };
 
             console.log('=== [DOWNLOAD] Certificate Data Being Used ===');
@@ -391,33 +397,49 @@ export default function ApplicantResults() {
                                 {downloading ? 'Generating...' : 'Download'}
                             </button>
                         </div>
-                        <div className="bg-white rounded-lg p-3">
-                            <div className="w-full" style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
-                                <CertificateTemplate
-                                    participantName={results.asTeam ? results.teamName : (results.applicantName || 'Participant')}
-                                    hackathonTitle={results.hackathonTitle || results.title || 'Hackathon'}
-                                    company={results.company || results.organizer || 'Organizer'}
-                                    rank={results.finalRank}
-                                    rankTitle={results.rankTitle} // Backend-computed rank title
-                                    certificateType={results.certificateType} // Backend-computed certificate type
-                                    isTeam={results.asTeam}
-                                    teamName={results.teamName}
-                                    // ONLY use backend data - NO localStorage fallback
-                                    templateStyle={results.certificateTemplateId || 'template1'}
-                                    logoUrl={results.certificateLogoUrl}
-                                    platformLogoUrl={results.certificatePlatformLogoUrl}
-                                    customMessage={results.certificateCustomMessage}
-                                    signerLeft={null}
-                                    signerRight={null}
-                                    signatureLeftUrl={results.certificateSignatureLeftUrl}
-                                    signatureRightUrl={results.certificateSignatureRightUrl}
-                                    date={new Date().toLocaleDateString('en-US', {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric'
-                                    })}
-                                    certificateCode={results.certificateCode || generateCertificateCode()}
-                                />
+                        <div className="bg-white rounded-lg p-4 overflow-hidden">
+                            <div style={{ 
+                                width: '100%',
+                                maxWidth: '1122px',
+                                margin: '0 auto',
+                                aspectRatio: '1122/794',
+                                position: 'relative'
+                            }}>
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    transform: 'scale(0.95)',
+                                    transformOrigin: 'center center'
+                                }}>
+                                    <CertificateTemplate
+                                        participantName={results.asTeam ? results.teamName : (results.individualName || (results.teamMembers && results.teamMembers.length > 0 ? results.teamMembers[0].name : 'Participant'))}
+                                        hackathonTitle={results.hackathonTitle || results.title || 'Hackathon'}
+                                        company={results.company || results.organizer || 'Organizer'}
+                                        rank={results.finalRank}
+                                        rankTitle={results.rankTitle}
+                                        certificateType={results.certificateType}
+                                        isTeam={results.asTeam}
+                                        teamName={results.teamName}
+                                        // ONLY use backend data - NO localStorage fallback
+                                        templateStyle={results.certificateTemplateId || 'template1'}
+                                        logoUrl={results.certificateLogoUrl}
+                                        platformLogoUrl={results.certificatePlatformLogoUrl}
+                                        customMessage={results.certificateCustomMessage}
+                                        signerLeft={null}
+                                        signerRight={null}
+                                        signatureLeftUrl={results.certificateSignatureLeftUrl}
+                                        signatureRightUrl={results.certificateSignatureRightUrl}
+                                        date={new Date().toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                        certificateCode={results.certificateCode || generateCertificateCode()}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
