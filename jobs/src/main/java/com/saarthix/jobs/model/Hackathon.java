@@ -42,6 +42,10 @@ public class Hackathon {
     private int maxTeams;
     private String prize;
 
+    // Application rules
+    // When false, only team applications are allowed (no individual)
+    private Boolean allowIndividual;
+
     // Metadata
     private String createdByIndustryId;
     private int views;
@@ -202,6 +206,14 @@ public class Hackathon {
 
     public void setPrize(String prize) {
         this.prize = prize;
+    }
+
+    public Boolean getAllowIndividual() {
+        return allowIndividual;
+    }
+
+    public void setAllowIndividual(Boolean allowIndividual) {
+        this.allowIndividual = allowIndividual;
     }
 
     public String getCreatedByIndustryId() {

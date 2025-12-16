@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getApplicationResults } from '../api/jobApi';
 import { toast } from 'react-toastify';
-import { Trophy, Award, Medal, Download, Star, CheckCircle, Clock, FileText } from 'lucide-react';
+import { Trophy, Award, Medal, Download, Star, CheckCircle, Clock, FileText, Eye } from 'lucide-react';
+import CertificateTemplate, { downloadCertificate, generateCertificateCode } from './CertificateGenerator';
 
 export default function ApplicantResults() {
     const { applicationId } = useParams();
@@ -10,6 +11,7 @@ export default function ApplicantResults() {
     const [loading, setLoading] = useState(true);
     const [results, setResults] = useState(null);
     const [showCelebration, setShowCelebration] = useState(false);
+    const [downloading, setDownloading] = useState(false);
 
     useEffect(() => {
         loadResults();
@@ -20,6 +22,19 @@ export default function ApplicantResults() {
             setLoading(true);
             const data = await getApplicationResults(applicationId);
             setResults(data);
+
+            // LOG FULL API RESPONSE FOR CERTIFICATE DATA
+            console.log('=== [APPLICANT] API Response for Application', applicationId, '===');
+            console.log('Full response:', data);
+            console.log('Certificate Fields from Backend:');
+            console.log('  rank:', data.finalRank);
+            console.log('  rankTitle:', data.rankTitle);
+            console.log('  certificateTemplateId:', data.certificateTemplateId);
+            console.log('  certificateLogoUrl:', data.certificateLogoUrl);
+            console.log('  certificatePlatformLogoUrl:', data.certificatePlatformLogoUrl);
+            console.log('  certificateCustomMessage:', data.certificateCustomMessage);
+            console.log('  certificateSignatureLeftUrl:', data.certificateSignatureLeftUrl);
+            console.log('  certificateSignatureRightUrl:', data.certificateSignatureRightUrl);
 
             // Check if this is a 1st place winner and if they haven't seen the animation
             if (data.finalRank === 1) {
@@ -86,7 +101,7 @@ export default function ApplicantResults() {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center">
                 <h2 className="text-2xl font-bold text-gray-800">Results not found</h2>
-                <button onClick={() => navigate('/applicant-hackathons')} className="mt-4 text-purple-600 hover:underline">
+                <button onClick={() => navigate('/browse-hackathons')} className="mt-4 text-purple-600 hover:underline">
                     Back to Hackathons
                 </button>
             </div>
@@ -119,6 +134,53 @@ export default function ApplicantResults() {
     const maxScore = calculateMaxScore();
     const rankBadge = results.finalRank ? getRankBadge(results.finalRank) : null;
     const RankIcon = rankBadge?.icon;
+
+    const isPublished = Boolean(
+        results.certificateUrl ||
+        results.finalRank ||
+        (results.teamMembers || []).some(m => m.certificateUrl)
+    );
+
+    const handleDownloadCertificate = async () => {
+        try {
+            setDownloading(true);
+            const certificateData = {
+                participantName: results.asTeam ? results.teamName : (results.individualName || (results.teamMembers && results.teamMembers.length > 0 ? results.teamMembers[0].name : 'Participant')),
+                hackathonTitle: results.hackathonTitle || results.title || 'Hackathon',
+                company: results.company || results.organizer || 'Organizer',
+                rank: results.finalRank,
+                rankTitle: results.rankTitle,
+                certificateType: results.certificateType,
+                isTeam: results.asTeam,
+                teamName: results.teamName,
+                // ONLY use backend data - NO localStorage fallback
+                templateStyle: results.certificateTemplateId || 'template1',
+                logoUrl: results.certificateLogoUrl,
+                platformLogoUrl: results.certificatePlatformLogoUrl,
+                customMessage: results.certificateCustomMessage,
+                signerLeft: null,
+                signerRight: null,
+                signatureLeftUrl: results.certificateSignatureLeftUrl,
+                signatureRightUrl: results.certificateSignatureRightUrl,
+                date: new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }),
+                certificateCode: results.certificateCode || generateCertificateCode()
+            };
+
+            console.log('=== [DOWNLOAD] Certificate Data Being Used ===');
+            console.log(certificateData);
+
+            await downloadCertificate(certificateData);
+        } catch (e) {
+            console.error('Download certificate failed', e);
+            toast.error('Could not generate certificate');
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -205,7 +267,7 @@ export default function ApplicantResults() {
 
             <div className="max-w-5xl mx-auto">
                 {/* Header with Rank */}
-                {rankBadge ? (
+                {isPublished && rankBadge ? (
                     <div className={`bg-gradient-to-r ${rankBadge.gradient} rounded-2xl shadow-2xl overflow-hidden mb-8 transform hover:scale-105 transition-transform duration-300`}>
                         <div className="p-8 text-center text-white">
                             <div className="flex justify-center mb-4">
@@ -230,10 +292,18 @@ export default function ApplicantResults() {
                                     <CheckCircle className="w-16 h-16 text-purple-600" />
                                 </div>
                             </div>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Hackathon Completed!</h1>
-                            <p className="text-lg text-gray-600">Thank you for participating</p>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                                {isPublished ? 'Hackathon Completed!' : 'Your Submissions Summary'}
+                            </h1>
+                            <p className="text-lg text-gray-600">
+                                {isPublished
+                                    ? 'Thank you for participating'
+                                    : 'Official results are not published yet. Here is your phase performance.'}
+                            </p>
                             <div className="mt-4">
-                                <span className="text-2xl font-bold text-purple-600">Total Score: {totalScore?.toFixed(2) || 0}/{maxScore}</span>
+                                <span className="text-2xl font-bold text-purple-600">
+                                    {isPublished ? 'Total Score' : 'Your current score'}: {totalScore?.toFixed(2) || 0}/{maxScore}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -302,28 +372,81 @@ export default function ApplicantResults() {
                     </div>
                 </div>
 
-                {/* Certificate Download */}
-                {results.certificateUrl && (
-                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-lg p-6 text-white">
+                {/* Rejected Status Warning */}
+                {results.status === 'REJECTED' && (
+                    <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center mb-8">
+                        <div className="text-red-600 text-xl font-bold mb-2">❌ Application Not Accepted</div>
+                        <p className="text-red-700">Your application was not accepted for this hackathon. Certificates are only issued to active participants.</p>
+                    </div>
+                )}
+
+                {/* Certificate Download/Preview - regenerated with latest template - ONLY for non-rejected */}
+                {isPublished && results.status !== 'REJECTED' && (
+                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-lg p-6 text-white space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-xl font-bold mb-2">Your Certificate is Ready!</h3>
-                                <p className="text-purple-100">Download your {rankBadge ? 'winner' : 'participation'} certificate</p>
+                                <p className="text-purple-100">Download with the latest published template</p>
                             </div>
-                            <a
-                                href={results.certificateUrl}
-                                download
-                                className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center gap-2"
+                            <button
+                                onClick={handleDownloadCertificate}
+                                disabled={downloading}
+                                className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center gap-2 disabled:opacity-60"
                             >
                                 <Download className="w-5 h-5" />
-                                Download Certificate
-                            </a>
+                                {downloading ? 'Generating...' : 'Download'}
+                            </button>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 overflow-hidden">
+                            <div style={{ 
+                                width: '100%',
+                                maxWidth: '1122px',
+                                margin: '0 auto',
+                                aspectRatio: '1122/794',
+                                position: 'relative'
+                            }}>
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    transform: 'scale(0.95)',
+                                    transformOrigin: 'center center'
+                                }}>
+                                    <CertificateTemplate
+                                        participantName={results.asTeam ? results.teamName : (results.individualName || (results.teamMembers && results.teamMembers.length > 0 ? results.teamMembers[0].name : 'Participant'))}
+                                        hackathonTitle={results.hackathonTitle || results.title || 'Hackathon'}
+                                        company={results.company || results.organizer || 'Organizer'}
+                                        rank={results.finalRank}
+                                        rankTitle={results.rankTitle}
+                                        certificateType={results.certificateType}
+                                        isTeam={results.asTeam}
+                                        teamName={results.teamName}
+                                        // ONLY use backend data - NO localStorage fallback
+                                        templateStyle={results.certificateTemplateId || 'template1'}
+                                        logoUrl={results.certificateLogoUrl}
+                                        platformLogoUrl={results.certificatePlatformLogoUrl}
+                                        customMessage={results.certificateCustomMessage}
+                                        signerLeft={null}
+                                        signerRight={null}
+                                        signatureLeftUrl={results.certificateSignatureLeftUrl}
+                                        signatureRightUrl={results.certificateSignatureRightUrl}
+                                        date={new Date().toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                        certificateCode={results.certificateCode || generateCertificateCode()}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* Showcase Content (if winner) */}
-                {results.showcaseContent && (
+                {isPublished && results.showcaseContent && (
                     <div className="bg-white rounded-2xl shadow-sm p-6 mt-8">
                         <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Winning Solution</h2>
                         <div className="prose max-w-none">
@@ -342,7 +465,7 @@ export default function ApplicantResults() {
                 {/* Back Button */}
                 <div className="mt-8 text-center">
                     <button
-                        onClick={() => navigate('/applicant-hackathons')}
+                        onClick={() => navigate('/browse-hackathons')}
                         className="text-purple-600 hover:text-purple-700 font-medium"
                     >
                         ← Back to Hackathons

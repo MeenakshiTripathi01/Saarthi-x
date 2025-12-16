@@ -20,6 +20,22 @@ export default function HackathonDetails() {
     const [teamName, setTeamName] = useState('');
     const [teamSize, setTeamSize] = useState(2);
     const [teamMembers, setTeamMembers] = useState([]);
+    
+    // Individual Application State (pre-fill name from logged-in user)
+    const [individualName, setIndividualName] = useState(user?.name || '');
+    const [individualEmail, setIndividualEmail] = useState(user?.email || '');
+    const [individualPhone, setIndividualPhone] = useState('');
+    const [individualQualifications, setIndividualQualifications] = useState('');
+
+    // Update individual fields when user loads
+    useEffect(() => {
+        if (user?.name && !individualName) {
+            setIndividualName(user.name);
+        }
+        if (user?.email && !individualEmail) {
+            setIndividualEmail(user.email);
+        }
+    }, [user]);
 
     // Initialize team members when team size changes or user loads
     useEffect(() => {
@@ -87,6 +103,9 @@ export default function HackathonDetails() {
             if (hackathonData.minTeamSize) {
                 setTeamSize(hackathonData.minTeamSize);
             }
+            if (hackathonData.allowIndividual === false) {
+                setAsTeam(true);
+            }
 
             // Check if already applied
             if (myApps && myApps.length > 0) {
@@ -134,14 +153,55 @@ export default function HackathonDetails() {
 
         try {
             setApplying(true);
+            if (hackathon.allowIndividual === false && !asTeam) {
+                toast.error('This hackathon only accepts team applications.');
+                setApplying(false);
+                return;
+            }
+
+            // Validation for individual application
+            if (!asTeam && hackathon.allowIndividual !== false) {
+                if (!individualName.trim()) {
+                    toast.error('Please enter your name');
+                    setApplying(false);
+                    return;
+                }
+                if (!individualEmail.trim()) {
+                    toast.error('Please enter your email');
+                    setApplying(false);
+                    return;
+                }
+                if (!individualPhone.trim()) {
+                    toast.error('Please enter your phone number');
+                    setApplying(false);
+                    return;
+                }
+                if (!individualQualifications.trim()) {
+                    toast.error('Please enter your qualifications');
+                    setApplying(false);
+                    return;
+                }
+            }
+
             const applicationData = {
-                asTeam,
-                teamName: asTeam ? teamName : null,
-                teamSize: asTeam ? teamSize : 1,
-                teamMembers: asTeam ? teamMembers : []
+                asTeam: hackathon.allowIndividual === false ? true : asTeam,
+                teamName: asTeam || hackathon.allowIndividual === false ? teamName : null,
+                teamSize: asTeam || hackathon.allowIndividual === false ? teamSize : 1,
+                teamMembers: asTeam || hackathon.allowIndividual === false ? teamMembers : [],
+                individualName: !asTeam && hackathon.allowIndividual !== false ? individualName.trim() : null,
+                individualEmail: !asTeam && hackathon.allowIndividual !== false ? individualEmail.trim() : null,
+                individualPhone: !asTeam && hackathon.allowIndividual !== false ? individualPhone.trim() : null,
+                individualQualifications: !asTeam && hackathon.allowIndividual !== false ? individualQualifications.trim() : null
             };
 
+            console.log('[Apply] Submitting application data:', applicationData);
+
             const response = await applyForHackathon(id, applicationData);
+            
+            console.log('[Apply] Response received:', response);
+            console.log('[Apply] Response individualName:', response.individualName);
+            console.log('[Apply] Response individualQualifications:', response.individualQualifications);
+            
             toast.success('Successfully applied! Redirecting to dashboard...');
 
             // Redirect to application dashboard
@@ -169,7 +229,7 @@ export default function HackathonDetails() {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center">
                 <h2 className="text-2xl font-bold text-gray-800">Hackathon not found</h2>
-                <button onClick={() => navigate('/applicant-hackathons')} className="mt-4 text-purple-600 hover:underline">
+                <button onClick={() => navigate('/browse-hackathons')} className="mt-4 text-purple-600 hover:underline">
                     Back to Hackathons
                 </button>
             </div>
@@ -269,17 +329,90 @@ export default function HackathonDetails() {
                                         <form onSubmit={handleApply} className="space-y-4">
                                             <div>
                                                 {hackathon.teamSize > 1 && (
-                                                    <label className="flex items-center gap-2 cursor-pointer mb-4">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={asTeam}
-                                                            onChange={(e) => setAsTeam(e.target.checked)}
-                                                            className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
-                                                        />
-                                                        <span className="text-gray-700 font-medium">Apply as a Team</span>
-                                                    </label>
+                                                    hackathon.allowIndividual === false ? (
+                                                        <div className="flex items-center gap-2 mb-4 text-gray-600">
+                                                            <CheckCircle className="w-4 h-4 text-purple-600" />
+                                                            <span className="font-medium">Team applications only</span>
+                                                        </div>
+                                                    ) : (
+                                                        <label className="flex items-center gap-2 cursor-pointer mb-4">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={asTeam}
+                                                                onChange={(e) => setAsTeam(e.target.checked)}
+                                                                className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                            />
+                                                            <span className="text-gray-700 font-medium">Apply as a Team</span>
+                                                        </label>
+                                                    )
                                                 )}
                                             </div>
+
+                                            {!asTeam && hackathon.allowIndividual !== false && (
+                                                <div className="space-y-4 animate-fadeIn">
+                                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4">
+                                                        <p className="text-sm text-blue-800 font-medium flex items-center gap-2">
+                                                            <User className="w-4 h-4" />
+                                                            Individual Application
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Your Full Name <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            required
+                                                            value={individualName}
+                                                            onChange={(e) => setIndividualName(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                            placeholder="Enter your full name"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Email <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="email"
+                                                            required
+                                                            value={individualEmail}
+                                                            onChange={(e) => setIndividualEmail(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                            placeholder="Enter your email address"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Phone Number <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="tel"
+                                                            required
+                                                            value={individualPhone}
+                                                            onChange={(e) => setIndividualPhone(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                            placeholder="Enter your phone number"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Qualifications <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <textarea
+                                                            required
+                                                            rows={4}
+                                                            value={individualQualifications}
+                                                            onChange={(e) => setIndividualQualifications(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                                                            placeholder="E.g., Bachelor's in Computer Science, 2 years web development experience, proficient in React, Node.js..."
+                                                        />
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            Share your education, skills, and relevant experience
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {asTeam && (
                                                 <div className="space-y-4 animate-fadeIn">

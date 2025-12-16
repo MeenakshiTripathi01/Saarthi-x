@@ -48,6 +48,10 @@ public class HackathonApplicationController {
         try {
             System.out.println("=== Apply endpoint called ===");
             System.out.println("Hackathon ID: " + hackathonId);
+            System.out.println("Request body asTeam: " + req.getAsTeam());
+            System.out.println("Request body individualName (RAW): " + req.getIndividualName());
+            System.out.println("Request body individualQualifications (RAW): " + req.getIndividualQualifications());
+            System.out.println("Request body teamName: " + req.getTeamName());
             System.out.println("Request body: " + req);
             System.out.println("Auth is null: " + (auth == null));
 
@@ -77,6 +81,24 @@ public class HackathonApplicationController {
             }
             System.out.println("Hackathon found: " + hackOpt.get().getTitle());
 
+            // 2.5️⃣ Check registration cutoff (server-side enforcement)
+            Hackathon hackathon = hackOpt.get();
+            if (hackathon.getEndDate() != null && !hackathon.getEndDate().isBlank()) {
+                try {
+                    LocalDateTime endDate = LocalDateTime.parse(hackathon.getEndDate());
+                    LocalDateTime now = LocalDateTime.now();
+                    if (now.isAfter(endDate)) {
+                        System.err.println("Registration closed. End date: " + endDate + ", Current time: " + now);
+                        return ResponseEntity.status(403)
+                                .body("Registration period has ended. Applications are no longer accepted.");
+                    }
+                    System.out.println("Registration is open. End date: " + endDate);
+                } catch (Exception e) {
+                    System.err.println("Error parsing end date: " + e.getMessage());
+                    // Continue if date parsing fails (don't block application)
+                }
+            }
+
             // 3️⃣ Team validation
             Boolean isTeam = req.getAsTeam() != null ? req.getAsTeam() : false;
             System.out.println("Is team application: " + isTeam);
@@ -96,6 +118,10 @@ public class HackathonApplicationController {
                 req.setTeamName(null);
                 req.setTeamSize(1);
                 System.out.println("Individual application set");
+                System.out.println("Individual Name: " + req.getIndividualName());
+                System.out.println("Individual Email: " + req.getIndividualEmail());
+                System.out.println("Individual Phone: " + req.getIndividualPhone());
+                System.out.println("Individual Qualifications: " + req.getIndividualQualifications());
             }
 
             // 4️⃣ Set required fields
@@ -107,6 +133,14 @@ public class HackathonApplicationController {
             // 5️⃣ Save and return
             HackathonApplication saved = applicationRepository.save(req);
             System.out.println("Application saved with ID: " + saved.getId());
+            System.out.println("=== SAVED APPLICATION DATA ===");
+            System.out.println("asTeam: " + saved.getAsTeam());
+            System.out.println("individualName: " + saved.getIndividualName());
+            System.out.println("individualEmail: " + saved.getIndividualEmail());
+            System.out.println("individualPhone: " + saved.getIndividualPhone());
+            System.out.println("individualQualifications: " + saved.getIndividualQualifications());
+            System.out.println("teamName: " + saved.getTeamName());
+            System.out.println("=============================");
             return ResponseEntity.ok(saved);
 
         } catch (Exception e) {
@@ -318,12 +352,48 @@ public class HackathonApplicationController {
     @PostMapping("/hackathon/{hackathonId}/finalize-results")
     public ResponseEntity<?> finalizeResults(
             @PathVariable String hackathonId,
+            @RequestBody(required = false) Map<String, Object> body,
             Authentication auth) {
 
         User user = resolveUser(auth);
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can finalize results");
         }
+
+        // Read certificate customization from request (backend is source of truth)
+        String certificateTemplateId = null;
+        String logoUrl = null;
+        String platformLogoUrl = null;
+        String customMessage = null;
+        String signatureLeftUrl = null;
+        String signatureRightUrl = null;
+
+        if (body != null) {
+            if (body.get("certificateTemplateId") != null) {
+                certificateTemplateId = String.valueOf(body.get("certificateTemplateId"));
+            }
+            if (body.get("logoUrl") != null) {
+                logoUrl = String.valueOf(body.get("logoUrl"));
+            }
+            if (body.get("platformLogoUrl") != null) {
+                platformLogoUrl = String.valueOf(body.get("platformLogoUrl"));
+            }
+            if (body.get("customMessage") != null) {
+                customMessage = String.valueOf(body.get("customMessage"));
+            }
+            if (body.get("signatureLeftUrl") != null) {
+                signatureLeftUrl = String.valueOf(body.get("signatureLeftUrl"));
+            }
+            if (body.get("signatureRightUrl") != null) {
+                signatureRightUrl = String.valueOf(body.get("signatureRightUrl"));
+            }
+        }
+        System.out.println("[FinalizeResults] hackathonId=" + hackathonId
+                + ", template=" + certificateTemplateId
+                + ", logoUrl=" + logoUrl
+                + ", platformLogoUrl=" + platformLogoUrl
+                + ", signatureLeftUrl=" + signatureLeftUrl
+                + ", signatureRightUrl=" + signatureRightUrl);
 
         // Get all applications for this hackathon
         List<HackathonApplication> applications = applicationRepository.findByHackathonId(hackathonId);
@@ -339,19 +409,45 @@ public class HackathonApplicationController {
             app.setTotalScore(totalScore);
         }
 
-        // Sort by total score (descending)
+        // Sort by total score (descending) for display purposes only
         applications.sort((a, b) -> Double.compare(
                 b.getTotalScore() != null ? b.getTotalScore() : 0.0,
                 a.getTotalScore() != null ? a.getTotalScore() : 0.0));
 
-        // Assign ranks (1, 2, 3)
-        for (int i = 0; i < Math.min(3, applications.size()); i++) {
-            applications.get(i).setFinalRank(i + 1);
-        }
-
-        // Generate certificates for all applications (Participation or Merit)
-        for (HackathonApplication app : applications) {
+        // DO NOT auto-assign ranks - ranks must be explicitly set by industry via PATCH
+        // endpoint
+        // Only apply certificate customization to all applications
+        for (int i = 0; i < applications.size(); i++) {
+            HackathonApplication app = applications.get(i);
+            // Persist the selected template & design for every application
+            if (certificateTemplateId != null && !certificateTemplateId.isBlank()) {
+                app.setCertificateTemplateId(certificateTemplateId);
+            }
+            if (logoUrl != null) {
+                app.setCertificateLogoUrl(logoUrl);
+            }
+            if (platformLogoUrl != null) {
+                app.setCertificatePlatformLogoUrl(platformLogoUrl);
+            }
+            if (customMessage != null) {
+                app.setCertificateCustomMessage(customMessage);
+            }
+            if (signatureLeftUrl != null) {
+                app.setCertificateSignatureLeftUrl(signatureLeftUrl);
+            }
+            if (signatureRightUrl != null) {
+                app.setCertificateSignatureRightUrl(signatureRightUrl);
+            }
             generateCertificateUrls(app);
+
+            // LOG SAVED CERTIFICATE DATA
+            System.out.println("=== [SAVE] Application " + app.getId() + " Certificate Data ===");
+            System.out.println("  templateId: " + app.getCertificateTemplateId());
+            System.out.println("  logoUrl: " + app.getCertificateLogoUrl());
+            System.out.println("  platformLogoUrl: " + app.getCertificatePlatformLogoUrl());
+            System.out.println("  customMessage: " + app.getCertificateCustomMessage());
+            System.out.println("  signatureLeftUrl: " + app.getCertificateSignatureLeftUrl());
+            System.out.println("  signatureRightUrl: " + app.getCertificateSignatureRightUrl());
         }
 
         // Save all applications
@@ -435,6 +531,17 @@ public class HackathonApplicationController {
         if ("APPLICANT".equals(user.getUserType()) && !app.getApplicantId().equals(user.getId())) {
             return ResponseEntity.status(403).body("Access denied");
         }
+
+        // LOG CERTIFICATE DATA BEING RETURNED TO APPLICANT
+        System.out.println("=== [API RESPONSE] Application " + app.getId() + " Certificate Data ===");
+        System.out.println("  rank: " + app.getFinalRank());
+        System.out.println("  rankTitle: " + app.getRankTitle());
+        System.out.println("  templateId: " + app.getCertificateTemplateId());
+        System.out.println("  logoUrl: " + app.getCertificateLogoUrl());
+        System.out.println("  platformLogoUrl: " + app.getCertificatePlatformLogoUrl());
+        System.out.println("  customMessage: " + app.getCertificateCustomMessage());
+        System.out.println("  signatureLeftUrl: " + app.getCertificateSignatureLeftUrl());
+        System.out.println("  signatureRightUrl: " + app.getCertificateSignatureRightUrl());
 
         return ResponseEntity.ok(app);
     }

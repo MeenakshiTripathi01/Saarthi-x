@@ -86,6 +86,10 @@ public class CertificateController {
             }
         }
 
+        // Get certificate type based on rank (Achievement for top 3, Participation for
+        // others)
+        String certificateType = app.getCertificateType();
+
         // Simple HTML Template for Certificate
         return "<!DOCTYPE html>" +
                 "<html>" +
@@ -105,7 +109,7 @@ public class CertificateController {
                 "</head>" +
                 "<body>" +
                 "<div class='certificate-container'>" +
-                "<div class='header'>Certificate of Participation</div>" +
+                "<div class='header'>" + certificateType + "</div>" +
                 "<div class='sub-header'>This is to certify that</div>" +
                 "<div class='recipient'>" + recipientName + "</div>" +
                 "<div class='body-text'>has successfully participated in the<br><strong>" + hackathonName

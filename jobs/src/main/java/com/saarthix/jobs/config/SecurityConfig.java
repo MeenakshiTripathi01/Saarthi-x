@@ -86,36 +86,58 @@ public class SecurityConfig {
     @Bean
     public AuthenticationSuccessHandler successHandler() {
         return (request, response, authentication) -> {
-            OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
+            try {
+                System.out.println("🔐 [OAuth Success Handler] Triggered");
+                System.out.println("🔐 [OAuth Success Handler] Authentication principal type: " + authentication.getPrincipal().getClass().getName());
+                
+                OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
+                System.out.println("🔐 [OAuth Success Handler] OAuth2User attributes: " + oauthUser.getAttributes().keySet());
 
-            String email = oauthUser.getAttribute("email");
-            String name = oauthUser.getAttribute("name");
-            String picture = oauthUser.getAttribute("picture");
+                String email = oauthUser.getAttribute("email");
+                String name = oauthUser.getAttribute("name");
+                String picture = oauthUser.getAttribute("picture");
 
-            User existingUser = userRepository.findByEmail(email).orElse(null);
+                System.out.println("🔐 [OAuth Success Handler] Email: " + email);
+                System.out.println("🔐 [OAuth Success Handler] Name: " + name);
 
-            if (existingUser == null) {
-                // NEW USER - redirect to role selection
-                // Get intent from session/cookie if available (from Dashboard click)
-                String intent = request.getParameter("intent");
-                String intentParam = (intent != null && !intent.isEmpty()) ? "&intent=" + intent : "";
+                if (email == null || email.isEmpty()) {
+                    System.err.println("❌ [OAuth Success Handler] Email is null or empty!");
+                    response.sendError(400, "Email not provided by OAuth provider");
+                    return;
+                }
 
-                // Encode URL parameters properly
-                String redirectUrl = String.format(
-                        "http://localhost:5173/choose-role?email=%s&name=%s&picture=%s%s",
-                        java.net.URLEncoder.encode(email, "UTF-8"),
-                        java.net.URLEncoder.encode(name != null ? name : "", "UTF-8"),
-                        java.net.URLEncoder.encode(picture != null ? picture : "", "UTF-8"),
-                        intentParam);
-                response.sendRedirect(redirectUrl);
-            } else {
-                // Existing user -> attach userType into session
-                request.getSession().setAttribute("USER_TYPE", existingUser.getUserType());
-                request.getSession().setAttribute("USER_ID", existingUser.getId());
+                User existingUser = userRepository.findByEmail(email).orElse(null);
+                System.out.println("🔐 [OAuth Success Handler] User found in DB: " + (existingUser != null));
 
-                response.sendRedirect("http://localhost:5173/choose-role");
+                if (existingUser == null) {
+                    // NEW USER - redirect to role selection
+                    System.out.println("🔐 [OAuth Success Handler] New user - redirecting to choose-role");
+                    String intent = request.getParameter("intent");
+                    String intentParam = (intent != null && !intent.isEmpty()) ? "&intent=" + intent : "";
+
+                    String redirectUrl = String.format(
+                            "http://localhost:5173/choose-role?email=%s&name=%s&picture=%s%s",
+                            java.net.URLEncoder.encode(email, "UTF-8"),
+                            java.net.URLEncoder.encode(name != null ? name : "", "UTF-8"),
+                            java.net.URLEncoder.encode(picture != null ? picture : "", "UTF-8"),
+                            intentParam);
+                    System.out.println("🔐 [OAuth Success Handler] Redirect URL: " + redirectUrl);
+                    response.sendRedirect(redirectUrl);
+                } else {
+                    // EXISTING USER - has role saved in database
+                    System.out.println("🔐 [OAuth Success Handler] Existing user - redirecting to home");
+                    System.out.println("🔐 [OAuth Success Handler] User ID: " + existingUser.getId());
+                    System.out.println("🔐 [OAuth Success Handler] User Type: " + existingUser.getUserType());
+                    response.sendRedirect("http://localhost:5173/");
+                }
+            } catch (Exception e) {
+                System.err.println("❌ [OAuth Success Handler] EXCEPTION: " + e.getMessage());
+                e.printStackTrace();
+                try {
+                    response.sendError(500, "OAuth handler error: " + e.getMessage());
+                } catch (Exception ignored) {
+                }
             }
-
         };
     }
 

@@ -76,7 +76,25 @@ export default function PostHackathon() {
         teamSize: '',
         maxTeams: '',
         prize: '',
+        allowIndividual: true,
     }));
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const getPhaseMinDate = (index) => {
+        // earliest allowed is today
+        let base = todayStr;
+        // must be after registration end date if provided
+        if (formData.endDate && formData.endDate > base) {
+            base = formData.endDate;
+        }
+        // must be after previous phase
+        if (index > 0 && phases[index - 1].deadline) {
+            const prev = phases[index - 1].deadline;
+            base = prev > base ? prev : base;
+        }
+        return base;
+    };
 
     // Load hackathon data if editing
     useEffect(() => {
@@ -104,6 +122,8 @@ export default function PostHackathon() {
                         teamSize: hackathon.teamSize || '',
                         maxTeams: hackathon.maxTeams || '',
                         prize: hackathon.prize || '',
+                        // Default to false when not present so we don't accidentally re-enable individuals
+                        allowIndividual: hackathon.allowIndividual ?? false,
                     });
 
                     // Set skills
@@ -274,6 +294,14 @@ export default function PostHackathon() {
 
         if (saving) return;
 
+        // Validate problem statement before allowing navigation away from problem tab
+        if (activeTab === 'problem') {
+            if (!formData.problemStatement || formData.problemStatement.trim().length < 50) {
+                toast.error('Problem Statement must be at least 50 characters before proceeding to the next section');
+                return;
+            }
+        }
+
         // Auto-save and move to next section
         const currentTabIndex = HACKATHON_TABS.findIndex(tab => tab.id === activeTab);
         if (currentTabIndex < HACKATHON_TABS.length - 1) {
@@ -317,9 +345,15 @@ export default function PostHackathon() {
             return;
         }
 
-        // Validate Registration End Date vs First Phase Deadline
+        // Validate Registration End Date vs First Phase Deadline and today
         if (phases.length > 0) {
             const registrationEnd = new Date(formData.endDate);
+            const today = new Date(todayStr);
+            if (registrationEnd < today) {
+                toast.error('Last Date of Registration cannot be in the past', { autoClose: 3000 });
+                setSaving(false);
+                return;
+            }
             const firstPhaseDeadline = new Date(phases[0].deadline);
 
             if (registrationEnd >= firstPhaseDeadline) {
@@ -327,6 +361,23 @@ export default function PostHackathon() {
                     position: "top-right",
                     autoClose: 5000,
                 });
+                return;
+            }
+        }
+
+        // Validate reporting date (Hybrid/Offline) >= end date
+        if ((formData.mode === 'Hybrid' || formData.mode === 'Offline') && formData.reportingDate) {
+            const repDate = new Date(formData.reportingDate);
+            const regEnd = new Date(formData.endDate);
+            const today = new Date(todayStr);
+            if (repDate < today) {
+                toast.error('Reporting date cannot be in the past', { autoClose: 3000 });
+                setSaving(false);
+                return;
+            }
+            if (repDate < regEnd) {
+                toast.error('Reporting date must be on or after the last registration date', { autoClose: 3000 });
+                setSaving(false);
                 return;
             }
         }
@@ -371,6 +422,7 @@ export default function PostHackathon() {
                 reportingDate: formData.reportingDate || null,
                 submissionGuidelines: formData.submissionGuidelines,
                 maxTeams: null,
+                allowIndividual: formData.allowIndividual,
             };
 
             let response;
@@ -493,7 +545,16 @@ export default function PostHackathon() {
                                 <button
                                     key={tab.id}
                                     type="button"
-                                    onClick={() => setActiveTab(tab.id)}
+                                    onClick={() => {
+                                        // Validate problem statement before allowing navigation away from problem tab
+                                        if (activeTab === 'problem' && tab.id !== 'problem') {
+                                            if (!formData.problemStatement || formData.problemStatement.trim().length < 50) {
+                                                toast.error('Problem Statement must be at least 50 characters before proceeding to another section');
+                                                return;
+                                            }
+                                        }
+                                        setActiveTab(tab.id);
+                                    }}
                                     className={`flex-1 min-w-[140px] px-4 py-4 text-xs font-medium transition-all duration-200 relative border-b-2 ${isActive
                                         ? 'text-blue-700 border-blue-600 bg-blue-50'
                                         : 'text-gray-600 border-transparent hover:text-gray-900 hover:bg-gray-50'
@@ -601,17 +662,9 @@ export default function PostHackathon() {
                                     name="problemStatement"
                                     value={formData.problemStatement}
                                     onChange={handleInputChange}
-                                    onBlur={() => {
-                                        const wordCount = formData.problemStatement.trim().split(/\s+/).filter(w => w).length;
-                                        if (formData.problemStatement.trim() && wordCount < 50) {
-                                            toast.warning(`Problem statement is too short (${wordCount} words). It must be at least 50 words.`, {
-                                                position: "top-right",
-                                                autoClose: 5000,
-                                            });
-                                        }
-                                    }}
-                                    placeholder="Describe the problem participants will solve..."
+                                    placeholder="Describe the problem participants will solve... (minimum 50 characters required)"
                                     rows="6"
+                                    minLength={50}
                                     required
                                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                 />
@@ -708,24 +761,28 @@ export default function PostHackathon() {
                                                 <input
                                                     type="date"
                                                     value={phase.deadline}
-                                                    onChange={(e) => {
-                                                        const newDeadline = e.target.value;
-                                                        // Check for Phase 1 vs Registration End Date
-                                                        if (index === 0 && formData.endDate && newDeadline <= formData.endDate) {
-                                                            toast.warning(`First Phase Deadline must be after Last Date of Registration (${formData.endDate})`, { autoClose: 3000 });
-                                                            return;
-                                                        }
-                                                        // Check for subsequent phases vs previous phase
-                                                        if (index > 0 && phases[index - 1].deadline && newDeadline <= phases[index - 1].deadline) {
-                                                            toast.warning(`Phase ${index + 1} deadline must be after Phase ${index} deadline`, { autoClose: 3000 });
-                                                            return;
-                                                        }
-                                                        handlePhaseChange(phase.id, 'deadline', newDeadline);
-                                                    }}
-                                                    min={index === 0 ? formData.endDate : (index > 0 ? phases[index - 1].deadline : undefined)}
-                                                    required
-                                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                                />
+                                                onChange={(e) => {
+                                                    const newDeadline = e.target.value;
+                                                    if (newDeadline < todayStr) {
+                                                        toast.warning('Phase deadline cannot be in the past.', { autoClose: 3000 });
+                                                        return;
+                                                    }
+                                                    // Check for Phase 1 vs Registration End Date
+                                                    if (index === 0 && formData.endDate && newDeadline <= formData.endDate) {
+                                                        toast.warning(`First Phase Deadline must be after Last Date of Registration (${formData.endDate})`, { autoClose: 3000 });
+                                                        return;
+                                                    }
+                                                    // Check for subsequent phases vs previous phase
+                                                    if (index > 0 && phases[index - 1].deadline && newDeadline <= phases[index - 1].deadline) {
+                                                        toast.warning(`Phase ${index + 1} deadline must be after Phase ${index} deadline`, { autoClose: 3000 });
+                                                        return;
+                                                    }
+                                                    handlePhaseChange(phase.id, 'deadline', newDeadline);
+                                                }}
+                                                min={getPhaseMinDate(index)}
+                                                required
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                            />
                                             </div>
                                         </div>
 
@@ -821,12 +878,17 @@ export default function PostHackathon() {
                                         value={formData.endDate}
                                         onChange={(e) => {
                                             const newDate = e.target.value;
+                                            if (newDate < todayStr) {
+                                                toast.warning('Registration end date cannot be in the past.', { autoClose: 3000 });
+                                                return;
+                                            }
                                             if (phases.length > 0 && phases[0].deadline && newDate >= phases[0].deadline) {
                                                 toast.warning(`Last Date of Registration must be before the first phase deadline (${phases[0].deadline})`, { autoClose: 3000 });
                                                 return;
                                             }
                                             handleInputChange(e);
                                         }}
+                                        min={todayStr}
                                         max={phases.length > 0 ? phases[0].deadline : undefined}
                                         required
                                         className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
@@ -883,9 +945,22 @@ export default function PostHackathon() {
                                             type="datetime-local"
                                             name="reportingDate"
                                             value={formData.reportingDate}
-                                            onChange={handleInputChange}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val && val < todayStr) {
+                                                    toast.warning('Reporting date cannot be in the past.', { autoClose: 3000 });
+                                                    return;
+                                                }
+                                                if (formData.endDate && val && val.split('T')[0] < formData.endDate) {
+                                                    toast.warning('Reporting date must be on or after registration end date.', { autoClose: 3000 });
+                                                    return;
+                                                }
+                                                handleInputChange(e);
+                                            }}
+                                            min={formData.endDate || todayStr}
                                             required={formData.mode === 'Hybrid' || formData.mode === 'Offline'}
-                                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                            disabled={(formData.mode === 'Hybrid' || formData.mode === 'Offline') && !formData.endDate}
+                                            className={`w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 ${((formData.mode === 'Hybrid' || formData.mode === 'Offline') && !formData.endDate) ? 'opacity-60 pointer-events-none blur-[1px]' : ''}`}
                                         />
                                         <p className="mt-1 text-xs text-gray-500">
                                             When should participants arrive at the venue?
@@ -988,6 +1063,19 @@ export default function PostHackathon() {
                                     rows="4"
                                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.allowIndividual}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, allowIndividual: e.target.checked }))}
+                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                    />
+                                    Allow Individual Applications
+                                </label>
+                                <p className="text-xs text-gray-500 mt-1">If unchecked, only team applications will be allowed.</p>
                             </div>
                         </div>
                     )}

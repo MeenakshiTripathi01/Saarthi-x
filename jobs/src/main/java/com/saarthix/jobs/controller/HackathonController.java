@@ -208,6 +208,7 @@ public class HackathonController {
         existingHackathon.setReportingDate(updatedHackathon.getReportingDate());
         existingHackathon.setSubmissionGuidelines(updatedHackathon.getSubmissionGuidelines());
         existingHackathon.setMaxTeams(updatedHackathon.getMaxTeams());
+        existingHackathon.setAllowIndividual(updatedHackathon.getAllowIndividual());
 
         return ResponseEntity.ok(hackathonRepository.save(existingHackathon));
     }
