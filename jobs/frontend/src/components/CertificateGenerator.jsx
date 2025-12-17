@@ -71,18 +71,25 @@ const CertificateTemplate = ({
     signatureRightUrl
 }) => {
     const getAchievementText = () => {
+        // Ensure date is valid - fallback to formatted current date if undefined
+        const validDate = date || new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
         // Always use backend rank-based generation, ignore customMessage
         if (rank === 1) {
-            return `This certificate is proudly presented to recognize outstanding achievement and exceptional performance in securing <strong>First Place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${date}</strong>. This accomplishment demonstrates remarkable innovation, dedication, and technical excellence.`;
+            return `This certificate is proudly presented to recognize outstanding achievement and exceptional performance in securing <strong>First Place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${validDate}</strong>. This accomplishment demonstrates remarkable innovation, dedication, and technical excellence.`;
         }
         if (rank === 2) {
-            return `This certificate is awarded in recognition of exceptional achievement and distinguished performance in securing <strong>Second Place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${date}</strong>. This achievement showcases impressive skills and innovative thinking.`;
+            return `This certificate is awarded in recognition of exceptional achievement and distinguished performance in securing <strong>Second Place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${validDate}</strong>. This achievement showcases impressive skills and innovative thinking.`;
         }
         if (rank === 3) {
-            return `This certificate is presented in recognition of notable achievement and commendable performance in securing <strong>Third Place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${date}</strong>. This accomplishment reflects strong technical skills and creative problem-solving.`;
+            return `This certificate is presented in recognition of notable achievement and commendable performance in securing <strong>Third Place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${validDate}</strong>. This accomplishment reflects strong technical skills and creative problem-solving.`;
         }
         // For any non-top-3 (including undefined), show participation message
-        return `This certificate is awarded in recognition of active participation and successful completion of all phases in the <strong>${hackathonTitle}</strong> held on <strong>${date}</strong>. This participation demonstrates commitment to learning, innovation, and collaborative problem-solving.`;
+        return `This certificate is awarded in recognition of active participation and successful completion of all phases in the <strong>${hackathonTitle}</strong> held on <strong>${validDate}</strong>. This participation demonstrates commitment to learning, innovation, and collaborative problem-solving.`;
     };
 
     const renderHeaderLogos = (accentColor = '#0f3d91') => (
@@ -273,9 +280,9 @@ const CertificateTemplate = ({
                         {isTeam ? teamName : participantName}
                     </div>
 
-                    <div style={{ marginTop: '16px', fontSize: '14px', color: '#0f172a', maxWidth: '720px', lineHeight: 1.5 }}>
-                        {customMessage || getAchievementText()}
-                    </div>
+                    <div style={{ marginTop: '16px', fontSize: '14px', color: '#0f172a', maxWidth: '720px', lineHeight: 1.5 }}
+                        dangerouslySetInnerHTML={{ __html: customMessage || getAchievementText() }} />
+                
 
                     {/* Signatures */}
                     <div style={{ marginTop: '40px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '40px', maxWidth: '520px' }}>
@@ -421,13 +428,18 @@ export const generateCertificatePDF = async (certificateData) => {
 
     const container = document.createElement('div');
     container.style.position = 'fixed';
-    container.style.left = '-9999px';
+    container.style.left = '0';
     container.style.top = '0';
     container.style.width = '1122px';
     container.style.height = '794px';
+    container.style.zIndex = '-9999'; // Hide behind everything but keep in viewport
+    container.style.visibility = 'hidden'; // Hide from user but keep in DOM for rendering
+    container.style.pointerEvents = 'none';
     document.body.appendChild(container);
 
     const root = document.createElement('div');
+    root.style.width = '1122px';
+    root.style.height = '794px';
     container.appendChild(root);
 
     const { createRoot } = await import('react-dom/client');
@@ -456,7 +468,7 @@ export const generateCertificatePDF = async (certificateData) => {
                 signatureRightUrl={signatureRightUrl}
             />
         );
-        setTimeout(resolve, 1000);
+        setTimeout(resolve, 1500); // Increased wait time for rendering
     });
 
     const certificateElement = document.getElementById('certificate-content');
@@ -467,32 +479,102 @@ export const generateCertificatePDF = async (certificateData) => {
         throw new Error('Certificate element not found');
     }
 
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait for all fonts to load
+    console.log('Waiting for fonts to load...');
+    await document.fonts.ready;
+    
+    // Wait for all images to load
+    console.log('Waiting for images to load...');
+    const images = certificateElement.getElementsByTagName('img');
+    const imagePromises = Array.from(images).map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = () => {
+                console.warn('Image failed to load:', img.src);
+                resolve(); // Continue even if image fails
+            };
+            setTimeout(resolve, 3000); // Timeout after 3 seconds
+        });
+    });
+    await Promise.all(imagePromises);
+    
+    // Additional wait to ensure everything is rendered
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    console.log('Certificate element found, generating canvas...');
+    console.log('Certificate element found, all resources loaded, generating canvas...');
 
     const canvas = await html2canvas(certificateElement, {
-        scale: 3,
+        scale: 2, // Reduced from 4 to prevent memory issues while maintaining quality
         useCORS: true,
-        logging: true,
+        logging: true, // Enable logging to debug issues
         backgroundColor: '#ffffff',
         width: 1122,
         height: 794,
         allowTaint: true,
-        foreignObjectRendering: false,
+        foreignObjectRendering: false, // Disable to fix rendering issues
         imageTimeout: 15000,
+        letterRendering: true, // Better text rendering
+        windowWidth: 1122,
+        windowHeight: 794,
         onclone: (clonedDoc) => {
             const clonedElement = clonedDoc.getElementById('certificate-content');
             if (clonedElement) {
+                // Force visibility and positioning
+                clonedElement.style.display = 'block';
+                clonedElement.style.visibility = 'visible';
+                clonedElement.style.opacity = '1';
                 clonedElement.style.transform = 'none';
                 clonedElement.style.position = 'relative';
                 clonedElement.style.width = '1122px';
                 clonedElement.style.height = '794px';
+                clonedElement.style.margin = '0';
+                clonedElement.style.padding = '30px';
+                clonedElement.style.boxSizing = 'border-box';
+                
+                // Ensure fonts are loaded
+                clonedElement.style.fontFamily = "'Poppins', 'Arial', sans-serif";
+                
+                // Force all child elements to be visible
+                const allElements = clonedElement.getElementsByTagName('*');
+                for (let el of allElements) {
+                    el.style.visibility = 'visible';
+                    el.style.opacity = '1';
+                }
+                
+                // Force layout recalculation
+                void clonedElement.offsetHeight;
+                
+                console.log('Cloned element dimensions:', clonedElement.offsetWidth, 'x', clonedElement.offsetHeight);
+            } else {
+                console.error('Cloned certificate element not found!');
             }
         }
     });
 
     console.log('Canvas generated:', canvas.width, 'x', canvas.height);
+
+    // Check if canvas is blank
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+    let isBlank = true;
+    for (let i = 0; i < pixels.length; i += 4) {
+        // Check if any pixel is not white (255, 255, 255)
+        if (pixels[i] !== 255 || pixels[i + 1] !== 255 || pixels[i + 2] !== 255) {
+            isBlank = false;
+            break;
+        }
+    }
+    
+    if (isBlank) {
+        console.error('WARNING: Canvas appears to be blank!');
+        console.error('Certificate element:', certificateElement);
+        console.error('Certificate element dimensions:', certificateElement.offsetWidth, 'x', certificateElement.offsetHeight);
+        console.error('Certificate element innerHTML length:', certificateElement.innerHTML.length);
+    } else {
+        console.log('Canvas has content - generating PDF...');
+    }
 
     const imgData = canvas.toDataURL('image/png', 1.0);
 
