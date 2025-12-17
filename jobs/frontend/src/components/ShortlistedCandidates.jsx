@@ -101,11 +101,6 @@ export default function ShortlistedCandidates() {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-red-800">{error}</p>
-            {error.includes('PAID') && (
-              <p className="text-sm text-red-600 mt-2">
-                This feature requires a PAID subscription. Please upgrade your plan.
-              </p>
-            )}
           </div>
         )}
 
@@ -159,7 +154,7 @@ export default function ShortlistedCandidates() {
       {showDetailModal && selectedStudent && (
         <StudentDetailModal
           student={selectedStudent}
-          subscriptionType="PAID" // Shortlisted students are only visible to PAID users
+          subscriptionType="FREE" // All users can access shortlisted students now
           onClose={() => {
             setShowDetailModal(false);
             setSelectedStudent(null);

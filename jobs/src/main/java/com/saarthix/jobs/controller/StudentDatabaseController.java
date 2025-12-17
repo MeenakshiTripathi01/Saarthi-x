@@ -139,7 +139,7 @@ public class StudentDatabaseController {
     
     /**
      * POST - Shortlist a student
-     * PAID INDUSTRY users only
+     * INDUSTRY users only
      */
     @PostMapping("/{studentId}/shortlist")
     public ResponseEntity<?> shortlistStudent(
@@ -161,20 +161,12 @@ public class StudentDatabaseController {
                 return ResponseEntity.status(403).body("Only INDUSTRY users can shortlist students");
             }
             
-            // Check subscription type
-            String subscriptionType = user.getSubscriptionType();
-            boolean isPaidUser = "PAID".equals(subscriptionType);
-            
-            if (!isPaidUser) {
-                return ResponseEntity.status(403).body("Only PAID users can shortlist candidates. Please upgrade your subscription.");
-            }
-            
-            // Shortlist student
+            // Shortlist student - available for all users
             String result = studentDatabaseService.shortlistStudent(
                     studentId, 
                     user.getEmail(), 
                     user.getId(),
-                    isPaidUser
+                    true  // Allow all users to shortlist
             );
             
             return ResponseEntity.ok(Map.of("message", result));
@@ -222,7 +214,7 @@ public class StudentDatabaseController {
     
     /**
      * GET all shortlisted students
-     * PAID INDUSTRY users only
+     * INDUSTRY users only
      */
     @GetMapping("/shortlisted")
     public ResponseEntity<?> getShortlistedStudents(Authentication auth) {
@@ -242,18 +234,10 @@ public class StudentDatabaseController {
                 return ResponseEntity.status(403).body("Only INDUSTRY users can view shortlisted students");
             }
             
-            // Check subscription type
-            String subscriptionType = user.getSubscriptionType();
-            boolean isPaidUser = "PAID".equals(subscriptionType);
-            
-            if (!isPaidUser) {
-                return ResponseEntity.status(403).body("Only PAID users can access shortlisted candidates. Please upgrade your subscription.");
-            }
-            
-            // Get shortlisted students
+            // Get shortlisted students - available for all users
             List<StudentDatabaseDto> students = studentDatabaseService.getShortlistedStudents(
                     user.getEmail(), 
-                    isPaidUser
+                    true  // Allow all users to view shortlisted students
             );
             
             return ResponseEntity.ok(Map.of("students", students, "totalCount", students.size()));
@@ -266,7 +250,7 @@ public class StudentDatabaseController {
     
     /**
      * GET - Download resume
-     * PAID INDUSTRY users only
+     * INDUSTRY users only
      */
     @GetMapping("/{studentId}/resume/download")
     public ResponseEntity<?> downloadResume(
@@ -288,20 +272,12 @@ public class StudentDatabaseController {
                 return ResponseEntity.status(403).body("Only INDUSTRY users can download resumes");
             }
             
-            // Check subscription type
-            String subscriptionType = user.getSubscriptionType();
-            boolean isPaidUser = "PAID".equals(subscriptionType);
-            
-            if (!isPaidUser) {
-                return ResponseEntity.status(403).body("Only PAID users can download resumes. Please upgrade your subscription.");
-            }
-            
-            // Download resume
+            // Download resume - available for all users
             Map<String, String> resumeData = studentDatabaseService.downloadResume(
                     studentId, 
                     user.getEmail(), 
                     user.getId(),
-                    isPaidUser
+                    true  // Allow all users to download resumes
             );
             
             if (resumeData == null) {
@@ -427,19 +403,12 @@ public class StudentDatabaseController {
     private Map<String, Object> getFeaturesBySubscription(String subscriptionType) {
         Map<String, Object> features = new HashMap<>();
         
-        if ("PAID".equals(subscriptionType)) {
-            features.put("viewFullResume", true);
-            features.put("downloadResume", true);
-            features.put("viewContactDetails", true);
-            features.put("shortlistCandidates", true);
-            features.put("unlimitedAccess", true);
-        } else {
-            features.put("viewFullResume", false);
-            features.put("downloadResume", false);
-            features.put("viewContactDetails", false);
-            features.put("shortlistCandidates", false);
-            features.put("unlimitedAccess", false);
-        }
+        // All features available to all users now
+        features.put("viewFullResume", true);
+        features.put("downloadResume", true);
+        features.put("viewContactDetails", true);
+        features.put("shortlistCandidates", true);
+        features.put("unlimitedAccess", true);
         
         return features;
     }

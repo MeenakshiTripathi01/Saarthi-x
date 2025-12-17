@@ -116,10 +116,6 @@ public class StudentDatabaseService {
             String industryId,
             boolean isPaidUser) {
         
-        if (!isPaidUser) {
-            return "Only PAID users can shortlist candidates";
-        }
-        
         Optional<UserProfile> profileOpt = userProfileRepository.findById(studentId);
         if (!profileOpt.isPresent()) {
             return "Student not found";
@@ -196,10 +192,6 @@ public class StudentDatabaseService {
             String industryEmail, 
             String industryId,
             boolean isPaidUser) {
-        
-        if (!isPaidUser) {
-            return null;
-        }
         
         Optional<UserProfile> profileOpt = userProfileRepository.findById(studentId);
         if (!profileOpt.isPresent()) {
@@ -350,14 +342,9 @@ public class StudentDatabaseService {
         dto.setLastUpdated(profile.getLastUpdated());
         dto.setIsShortlisted(isShortlisted);
         
-        // Contact details - ONLY for PAID users
-        if (isPaidUser) {
-            dto.setEmail(profile.getEmail() != null ? profile.getEmail() : profile.getApplicantEmail());
-            dto.setPhoneNumber(profile.getPhoneNumber());
-        } else {
-            dto.setEmail(null);
-            dto.setPhoneNumber(null);
-        }
+        // Contact details - available for all users
+        dto.setEmail(profile.getEmail() != null ? profile.getEmail() : profile.getApplicantEmail());
+        dto.setPhoneNumber(profile.getPhoneNumber());
         
         // Education entries
         if (profile.getEducationEntries() != null && !profile.getEducationEntries().isEmpty()) {
@@ -423,12 +410,9 @@ public class StudentDatabaseService {
         dto.setResumeFileName(profile.getResumeFileName());
         dto.setResumeAvailable(profile.getResumeBase64() != null && !profile.getResumeBase64().isEmpty());
         
-        // Resume access - ONLY full resume for PAID users
-        if (isPaidUser && profile.getResumeBase64() != null) {
+        // Resume access - available for all users
+        if (profile.getResumeBase64() != null) {
             dto.setResumeBase64(profile.getResumeBase64());
-        } else if (!isPaidUser && profile.getResumeBase64() != null) {
-            // For FREE users, set a placeholder indicating resume is blurred
-            dto.setResumeBase64("BLURRED");
         } else {
             dto.setResumeBase64(null);
         }

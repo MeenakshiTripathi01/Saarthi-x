@@ -5,8 +5,7 @@ export default function StudentDetailModal({ student: initialStudent, subscripti
   const [student, setStudent] = useState(initialStudent);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
-  const isPaidUser = subscriptionType === 'PAID';
+  const [showFullResume, setShowFullResume] = useState(false);
 
   // Refresh student data when modal opens
   useEffect(() => {
@@ -26,11 +25,6 @@ export default function StudentDetailModal({ student: initialStudent, subscripti
   }, [initialStudent.studentId]);
 
   const handleDownloadResume = async () => {
-    if (!isPaidUser) {
-      setShowUpgradePrompt(true);
-      return;
-    }
-
     try {
       const response = await downloadResume(student.studentId);
       
@@ -60,11 +54,6 @@ export default function StudentDetailModal({ student: initialStudent, subscripti
   };
 
   const handleShortlist = async () => {
-    if (!isPaidUser) {
-      setShowUpgradePrompt(true);
-      return;
-    }
-
     try {
       if (student.isShortlisted) {
         await removeShortlist(student.studentId);
@@ -80,11 +69,6 @@ export default function StudentDetailModal({ student: initialStudent, subscripti
     }
   };
 
-  const handleContactClick = () => {
-    if (!isPaidUser) {
-      setShowUpgradePrompt(true);
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -131,36 +115,22 @@ export default function StudentDetailModal({ student: initialStudent, subscripti
                 
                 {/* Contact Info */}
                 <div className="space-y-1 mb-4">
-                  {isPaidUser ? (
-                    <>
-                      {student.email && (
-                        <p className="text-gray-600 flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                          {student.email}
-                        </p>
-                      )}
-                      {student.phoneNumber && (
-                        <p className="text-gray-600 flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
-                          {student.phoneNumber}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <button
-                      onClick={handleContactClick}
-                      className="text-orange-600 hover:text-orange-700 font-medium flex items-center gap-2"
-                    >
+                  {/* {student.email && (
+                    <p className="text-gray-600 flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      Unlock contact details (PAID only)
-                    </button>
+                      {student.email}
+                    </p>
                   )}
+                  {student.phoneNumber && (
+                    <p className="text-gray-600 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      {student.phoneNumber}
+                    </p>
+                  )} */}
                 </div>
 
                 {/* Action Buttons */}
@@ -391,35 +361,63 @@ export default function StudentDetailModal({ student: initialStudent, subscripti
                   Resume
                 </h4>
                 
-                {isPaidUser && student.resumeBase64 && student.resumeBase64 !== 'BLURRED' ? (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 mb-4">Resume: {student.resumeFileName}</p>
-                    <button
-                      onClick={handleDownloadResume}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-gray-700 mb-4 font-medium">
+                    📄 {student.resumeFileName || 'Resume Available'}
+                  </p>
+                  
+                  {/* Blurred Resume Preview */}
+                  <div className="relative mb-4 rounded-lg overflow-hidden border-2 border-gray-200">
+                    <div 
+                      className="bg-white p-8 min-h-[400px] flex items-center justify-center"
+                      style={{ filter: 'blur(8px)' }}
                     >
-                      Download Resume
-                    </button>
-                  </div>
-                ) : (
-                  <div className="relative bg-gray-100 rounded-lg p-8 backdrop-blur-sm">
-                    <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                        <p className="text-lg font-semibold text-gray-700 mb-2">Resume Locked</p>
-                        <p className="text-sm text-gray-600 mb-4">Upgrade to PAID plan to view and download full resume</p>
+                      <div className="text-center space-y-4">
+                        <div className="text-gray-400 text-6xl">📄</div>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-gray-300 rounded w-3/4 mx-auto"></div>
+                          <div className="h-4 bg-gray-300 rounded w-full"></div>
+                          <div className="h-4 bg-gray-300 rounded w-5/6 mx-auto"></div>
+                          <div className="h-4 bg-gray-300 rounded w-full"></div>
+                          <div className="h-4 bg-gray-300 rounded w-4/5 mx-auto"></div>
+                          <div className="mt-6 h-4 bg-gray-300 rounded w-2/3 mx-auto"></div>
+                          <div className="h-4 bg-gray-300 rounded w-full"></div>
+                          <div className="h-4 bg-gray-300 rounded w-3/4 mx-auto"></div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Overlay with action buttons */}
+                    <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <p className="text-white font-bold text-lg bg-black bg-opacity-50 px-4 py-2 rounded-lg">
+                          Resume Preview
+                        </p>
                         <button
-                          onClick={() => setShowUpgradePrompt(true)}
-                          className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
+                          onClick={() => setShowFullResume(true)}
+                          className="px-8 py-3 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors font-bold shadow-lg flex items-center gap-2"
                         >
-                          Upgrade Now
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Open Full Preview
                         </button>
                       </div>
                     </div>
                   </div>
-                )}
+
+                  {/* Download Button */}
+                  <button
+                    onClick={handleDownloadResume}
+                    className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Resume
+                  </button>
+                </div>
               </section>
             )}
 
@@ -428,7 +426,7 @@ export default function StudentDetailModal({ student: initialStudent, subscripti
               <section className="mb-8">
                 <h4 className="text-lg font-bold text-gray-900 mb-4">Links</h4>
                 <div className="flex flex-wrap gap-3">
-                  {student.linkedInUrl && (
+                  {/* {student.linkedInUrl && (
                     <a
                       href={student.linkedInUrl}
                       target="_blank"
@@ -440,7 +438,7 @@ export default function StudentDetailModal({ student: initialStudent, subscripti
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
                     </a>
-                  )}
+                  )} */}
                   {student.githubUrl && (
                     <a
                       href={student.githubUrl}
@@ -473,31 +471,100 @@ export default function StudentDetailModal({ student: initialStudent, subscripti
           </div>
         )}
 
-        {/* Upgrade Prompt Modal */}
-        {showUpgradePrompt && (
-          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Upgrade to PAID Plan</h3>
-              <p className="text-gray-700 mb-6">
-                Unlock full access to student profiles, resumes, contact details, and shortlisting features.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowUpgradePrompt(false)}
-                  className="flex-1 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  Maybe Later
-                </button>
-                <button
-                  onClick={() => {
-                    // In production, this would redirect to payment gateway
-                    alert('Payment gateway integration would go here');
-                    setShowUpgradePrompt(false);
-                  }}
-                  className="flex-1 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-                >
-                  Upgrade Now
-                </button>
+        {/* Full Resume Preview Modal */}
+        {showFullResume && (
+          <div className="fixed inset-0 z-[60] bg-black bg-opacity-75 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Full Resume Preview
+                </h3>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleDownloadResume}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download
+                  </button>
+                  <button
+                    onClick={() => setShowFullResume(false)}
+                    className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  >
+                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Resume Content */}
+              <div className="p-6">
+                {student.resumeBase64 && student.resumeFileName ? (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    {/* PDF Viewer */}
+                    {(student.resumeFileName.toLowerCase().endsWith('.pdf') || 
+                      student.resumeFileType === 'application/pdf') ? (
+                      <div className="w-full">
+                        <iframe
+                          src={`data:application/pdf;base64,${student.resumeBase64}`}
+                          className="w-full h-[600px] border-2 border-gray-300 rounded-lg"
+                          title="Resume Preview"
+                        />
+                        <p className="text-sm text-gray-600 mt-4 text-center">
+                          📄 {student.resumeFileName}
+                        </p>
+                      </div>
+                    ) : (student.resumeFileName.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/)) ? (
+                      /* Image Viewer */
+                      <div className="text-center">
+                        <img
+                          src={`data:image/jpeg;base64,${student.resumeBase64}`}
+                          alt="Resume"
+                          className="max-w-full h-auto border-2 border-gray-300 rounded-lg mx-auto"
+                        />
+                        <p className="text-sm text-gray-600 mt-4">
+                          📄 {student.resumeFileName}
+                        </p>
+                      </div>
+                    ) : (
+                      /* Generic Document */
+                      <div className="text-center py-12">
+                        <svg className="w-24 h-24 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p className="text-lg font-semibold text-gray-700 mb-2">
+                          {student.resumeFileName}
+                        </p>
+                        <p className="text-gray-600 mb-6">
+                          Preview not available for this file type
+                        </p>
+                        <button
+                          onClick={handleDownloadResume}
+                          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 mx-auto"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          Download to View
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <svg className="w-24 h-24 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p className="text-lg font-semibold text-gray-700">Resume not available</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

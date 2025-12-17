@@ -170,11 +170,6 @@ export default function StudentDatabaseEnhanced() {
   const handleShortlist = async (studentId, e) => {
     e.stopPropagation();
     
-    if (subscriptionType !== 'PAID') {
-      alert('Upgrade to PAID plan to shortlist candidates');
-      return;
-    }
-    
     try {
       await shortlistStudent(studentId);
       fetchStudents();
@@ -213,13 +208,6 @@ export default function StudentDatabaseEnhanced() {
       <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
         <div className="sticky top-0 bg-white z-10 border-b border-gray-200 p-4">
           <h2 className="text-xl font-bold text-gray-900 mb-2">Filter Candidates</h2>
-          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
-            subscriptionType === 'PAID' 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-gray-100 text-gray-800'
-          }`}>
-            {subscriptionType} Plan
-          </div>
         </div>
 
         <div className="p-4 space-y-2">
@@ -763,10 +751,6 @@ function StudentCard({ student, subscriptionType, onViewProfile, onShortlist, on
             </>
           )}
         </div>
-        
-        {subscriptionType === 'FREE' && student.resumeAvailable && (
-          <span className="text-xs text-orange-600 font-medium">🔒 Upgrade to view</span>
-        )}
       </div>
     </div>
   );
