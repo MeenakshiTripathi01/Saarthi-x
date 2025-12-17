@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Document("hackathon_applications")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class HackathonApplication {
 
     @Id

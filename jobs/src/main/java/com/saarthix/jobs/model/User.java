@@ -15,9 +15,19 @@ public class User {
     // NEW: identifies whether user is APPLICANT or INDUSTRY
     private String userType;   // "APPLICANT" or "INDUSTRY"
 
-
+    // Subscription type for INDUSTRY users (FREE or PAID)
+    private String subscriptionType;   // "FREE" or "PAID", defaults to "FREE"
 
     public User() {}
+    
+    // Constructor that initializes subscription as FREE
+    public User(String name, String email, String pictureUrl, String userType) {
+        this.name = name;
+        this.email = email;
+        this.pictureUrl = pictureUrl;
+        this.userType = userType;
+        this.subscriptionType = "INDUSTRY".equals(userType) ? "FREE" : null;
+    }
 
     public User(String name, String email, String pictureUrl) {
         this.name = name;
@@ -43,4 +53,7 @@ public class User {
 
     public String getUserType() { return userType; }
     public void setUserType(String userType) { this.userType = userType; }
+
+    public String getSubscriptionType() { return subscriptionType; }
+    public void setSubscriptionType(String subscriptionType) { this.subscriptionType = subscriptionType; }
 }

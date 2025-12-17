@@ -87,8 +87,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Two/Three Card Layout */}
-        <div className={`grid gap-6 ${isAuthenticated && isIndustry ? 'md:grid-cols-3' :
+        {/* Two/Three/Four Card Layout */}
+        <div className={`grid gap-6 ${isAuthenticated && isIndustry ? 'md:grid-cols-2 lg:grid-cols-4' :
           isAuthenticated && !isIndustry ? 'md:grid-cols-1 max-w-2xl mx-auto' :
             'md:grid-cols-2'
           }`}>
@@ -157,12 +157,39 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Browse Students Database Card - Only for Industry users */}
+          {isAuthenticated && isIndustry && (
+            <div
+              onClick={() => navigate("/browse-students")}
+              className="group cursor-pointer animate-fadeIn"
+              style={{ animationDelay: '0.2s' }}
+            >
+              <div className="h-full bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xl transition-all duration-300 p-12 flex flex-col items-center justify-center text-center hover-lift"
+              >
+                <div className="w-20 h-20 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-10 h-10 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  Browse Students
+                </h2>
+                <p className="text-gray-600 mb-10 text-base leading-relaxed max-w-sm">
+                  Access student database with profiles, resumes, and skills. Find the perfect candidates for your organization.
+                </p>
+                <button className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
+                  Browse Database
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Manage Hackathons Card - Only for Industry users */}
           {isAuthenticated && isIndustry && (
             <div
               onClick={() => navigate("/manage-hackathons")}
               className="group cursor-pointer animate-fadeIn"
-              style={{ animationDelay: '0.2s' }}
+              style={{ animationDelay: '0.25s' }}
             >
               <div className="h-full bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xl transition-all duration-300 p-12 flex flex-col items-center justify-center text-center hover-lift"
               >
