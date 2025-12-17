@@ -2,9 +2,11 @@ package com.saarthix.jobs.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDateTime;
 
 @Document(collection = "all_applied_jobs")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Application {
     @Id
     private String id;

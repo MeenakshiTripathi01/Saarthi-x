@@ -23,6 +23,8 @@ import IndustryHackathonDashboard from './components/IndustryHackathonDashboard'
 import ApplicantResults from './components/ApplicantResults';
 import IndustryHackathonResults from './components/IndustryHackathonResults';
 import IndustryResultPublisher from './components/IndustryResultPublisher';
+import StudentDatabase from './components/StudentDatabaseEnhanced';
+import ShortlistedCandidates from './components/ShortlistedCandidates';
 
 function App() {
   return (
@@ -51,6 +53,8 @@ function App() {
             <Route path="/hackathon-application/:applicationId/results" element={<ApplicantResults />} />
             <Route path="/industry/hackathon/:hackathonId/results" element={<IndustryHackathonResults />} />
             <Route path="/industry/hackathon/:hackathonId/publish" element={<IndustryResultPublisher />} />
+            <Route path="/browse-students" element={<StudentDatabase />} />
+            <Route path="/shortlisted-candidates" element={<ShortlistedCandidates />} />
           </Routes>
           <ToastContainer
             position="top-right"

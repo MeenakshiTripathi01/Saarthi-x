@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Document("hackathon_applications")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class HackathonApplication {
 
     @Id
@@ -239,6 +241,7 @@ public class HackathonApplication {
         private String phone;
         private String role; // "Team Lead" or "Member"
         private String certificateUrl;
+        private String certificateName; // Customized name for certificate (if different from actual name)
 
         public TeamMember() {
         }
@@ -288,6 +291,14 @@ public class HackathonApplication {
 
         public void setCertificateUrl(String certificateUrl) {
             this.certificateUrl = certificateUrl;
+        }
+
+        public String getCertificateName() {
+            return certificateName;
+        }
+
+        public void setCertificateName(String certificateName) {
+            this.certificateName = certificateName;
         }
     }
 

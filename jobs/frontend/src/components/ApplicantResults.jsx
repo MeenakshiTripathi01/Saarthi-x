@@ -4,10 +4,12 @@ import { getApplicationResults } from '../api/jobApi';
 import { toast } from 'react-toastify';
 import { Trophy, Award, Medal, Download, Star, CheckCircle, Clock, FileText, Eye } from 'lucide-react';
 import CertificateTemplate, { downloadCertificate, generateCertificateCode } from './CertificateGenerator';
+import { useAuth } from '../context/AuthContext';
 
 export default function ApplicantResults() {
     const { applicationId } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth(); // Get current logged-in user
     const [loading, setLoading] = useState(true);
     const [results, setResults] = useState(null);
     const [showCelebration, setShowCelebration] = useState(false);
@@ -144,8 +146,36 @@ export default function ApplicantResults() {
     const handleDownloadCertificate = async () => {
         try {
             setDownloading(true);
+            
+            // Determine the correct participant name to use
+            let participantNameForCertificate;
+            
+            if (results.asTeam) {
+                // For team applications, find the current user's team member entry
+                const currentUserEmail = user?.email;
+                const currentTeamMember = results.teamMembers?.find(
+                    member => member.email === currentUserEmail
+                );
+                
+                if (currentTeamMember) {
+                    // Use certificateName if set by industry, otherwise use member's actual name
+                    participantNameForCertificate = currentTeamMember.certificateName || currentTeamMember.name;
+                    console.log('=== [TEAM MEMBER] Using individual name for certificate ===');
+                    console.log('Team member:', currentTeamMember.name);
+                    console.log('Certificate name:', participantNameForCertificate);
+                } else {
+                    // Fallback: If team member not found, use team name
+                    participantNameForCertificate = results.teamName;
+                    console.warn('Current user not found in team members, using team name');
+                }
+            } else {
+                // For individual applications
+                participantNameForCertificate = results.individualName || 
+                    (results.teamMembers && results.teamMembers.length > 0 ? results.teamMembers[0].name : 'Participant');
+            }
+            
             const certificateData = {
-                participantName: results.asTeam ? results.teamName : (results.individualName || (results.teamMembers && results.teamMembers.length > 0 ? results.teamMembers[0].name : 'Participant')),
+                participantName: participantNameForCertificate,
                 hackathonTitle: results.hackathonTitle || results.title || 'Hackathon',
                 company: results.company || results.organizer || 'Organizer',
                 rank: results.finalRank,
