@@ -27,7 +27,10 @@ export default function StudentDatabaseEnhanced() {
     college: '',
     skills: '',
     keyword: '',
-    jobRole: ''
+    jobRole: '',
+    resumeAvailability: '', // 'all', 'with_resume', 'without_resume'
+    sortBy: '', // 'recent_update', 'profile_completeness', 'relevance'
+    lastUpdatedWithin: '' // '10_days', '4_weeks', '1_year', 'any_time'
   });
 
   // Keyword suggestions and search
@@ -41,6 +44,7 @@ export default function StudentDatabaseEnhanced() {
     education: true,
     location: false,
     demographics: false,
+    activity: false,
     other: false
   });
 
@@ -172,7 +176,10 @@ export default function StudentDatabaseEnhanced() {
         location: filters.location.state || filters.location.city,
         college: filters.college,
         skills: filters.skills,
-        jobRole: filters.jobRole
+        jobRole: filters.jobRole,
+        resumeAvailability: filters.resumeAvailability,
+        sortBy: filters.sortBy,
+        lastUpdatedWithin: filters.lastUpdatedWithin
       };
       
       // Remove empty filters
@@ -182,11 +189,60 @@ export default function StudentDatabaseEnhanced() {
       
       const response = await getAllStudents(apiFilters);
       
-      // Apply gender filter on frontend (if not supported by backend)
+      // Apply filters on frontend if not supported by backend
       let filteredStudents = response.students || [];
+      
+      // Gender filter
       if (filters.gender) {
         filteredStudents = filteredStudents.filter(s => 
           s.gender && s.gender.toLowerCase() === filters.gender.toLowerCase()
+        );
+      }
+      
+      // Resume availability filter (frontend fallback)
+      if (filters.resumeAvailability === 'with_resume') {
+        filteredStudents = filteredStudents.filter(s => s.resumeAvailable === true);
+      } else if (filters.resumeAvailability === 'without_resume') {
+        filteredStudents = filteredStudents.filter(s => !s.resumeAvailable);
+      }
+      
+      // Last Updated Within filter (frontend fallback)
+      if (filters.lastUpdatedWithin) {
+        const now = new Date();
+        let cutoffDate;
+        
+        switch (filters.lastUpdatedWithin) {
+          case '10_days':
+            cutoffDate = new Date(now.getTime() - (10 * 24 * 60 * 60 * 1000));
+            break;
+          case '4_weeks':
+            cutoffDate = new Date(now.getTime() - (28 * 24 * 60 * 60 * 1000));
+            break;
+          case '1_year':
+            cutoffDate = new Date(now.getTime() - (365 * 24 * 60 * 60 * 1000));
+            break;
+          default:
+            cutoffDate = null;
+        }
+        
+        if (cutoffDate) {
+          filteredStudents = filteredStudents.filter(s => {
+            const lastUpdate = new Date(s.lastUpdated || s.updatedAt || s.createdAt || 0);
+            return lastUpdate >= cutoffDate;
+          });
+        }
+      }
+      
+      // Sort by recent update (frontend fallback if backend doesn't support)
+      if (filters.sortBy === 'recent_update' && filteredStudents.length > 0) {
+        filteredStudents.sort((a, b) => {
+          const dateA = new Date(a.lastUpdated || a.updatedAt || a.createdAt || 0);
+          const dateB = new Date(b.lastUpdated || b.updatedAt || b.createdAt || 0);
+          return dateB - dateA; // Most recent first
+        });
+      } else if (filters.sortBy === 'profile_completeness') {
+        filteredStudents.sort((a, b) => 
+          (b.profileCompletenessScore || 0) - (a.profileCompletenessScore || 0)
         );
       }
       
@@ -229,18 +285,41 @@ export default function StudentDatabaseEnhanced() {
     fetchStudents();
   };
 
-  const handleClearFilters = () => {
-    setFilters({
+  const handleClearFilters = async () => {
+    // Clear all filter states
+    const clearedFilters = {
       education: { degree: '', stream: '', year: '' },
       location: { state: '', city: '' },
       gender: '',
       college: '',
       skills: '',
       keyword: '',
-      jobRole: ''
-    });
+      jobRole: '',
+      resumeAvailability: '',
+      sortBy: '',
+      lastUpdatedWithin: ''
+    };
+    
+    setFilters(clearedFilters);
     setKeywordInput('');
-    setTimeout(() => fetchStudents(), 100);
+    
+    // Fetch students directly with empty filters
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await getAllStudents({});
+      
+      let filteredStudents = response.students || [];
+      
+      setStudents(filteredStudents);
+      setSubscriptionType(response.subscriptionType || 'FREE');
+    } catch (err) {
+      setError(err.message || 'Failed to load students');
+      console.error('Error fetching students:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKeywordSelect = (keyword) => {
@@ -624,6 +703,94 @@ export default function StudentDatabaseEnhanced() {
             )}
           </div>
 
+          {/* ACTIVITY & RESUME ACCORDION */}
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleAccordion('activity')}
+              className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-semibold text-gray-900">Activity & Resume</span>
+              </div>
+              <svg 
+                className={`w-5 h-5 text-gray-500 transition-transform ${accordionOpen.activity ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {accordionOpen.activity && (
+              <div className="p-4 space-y-3 bg-white">
+                {/* Resume Availability */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Resume Availability
+                  </label>
+                  <select
+                    value={filters.resumeAvailability}
+                    onChange={(e) => handleFilterChange('root', 'resumeAvailability', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  >
+                    <option value="">All Candidates</option>
+                    <option value="with_resume">With Resume Only</option>
+                    <option value="without_resume">Without Resume</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Filter candidates based on resume availability
+                  </p>
+                </div>
+
+                {/* Sort by Activity */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Sort By
+                  </label>
+                  <select
+                    value={filters.sortBy}
+                    onChange={(e) => handleFilterChange('root', 'sortBy', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  >
+                    <option value="">Relevance (Default)</option>
+                    <option value="recent_update">Recently Updated Profile</option>
+                    <option value="profile_completeness">Profile Completeness</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Find active job seekers by recent activity
+                  </p>
+                </div>
+
+                {/* Last Updated Within */}
+                <div className="pt-2 border-t border-gray-200">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Last Profile Update
+                  </label>
+                  <select
+                    value={filters.lastUpdatedWithin}
+                    onChange={(e) => handleFilterChange('root', 'lastUpdatedWithin', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  >
+                    <option value="">Any Time</option>
+                    <option value="10_days">Last 10 Days</option>
+                    <option value="4_weeks">Last 4 Weeks</option>
+                    <option value="1_year">Last 1 Year</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Show only profiles updated within selected timeframe
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* OTHER FILTERS ACCORDION */}
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <button
@@ -738,7 +905,22 @@ export default function StudentDatabaseEnhanced() {
                   {filters.gender}
                 </span>
               )}
-              {!filters.keyword && !filters.jobRole && !filters.education.degree && !filters.location.state && !filters.gender && (
+              {filters.resumeAvailability && (
+                <span className="px-2 py-1 bg-teal-200 text-teal-800 text-xs rounded-full">
+                  📄 {filters.resumeAvailability === 'with_resume' ? 'With Resume' : 'Without Resume'}
+                </span>
+              )}
+              {filters.sortBy && (
+                <span className="px-2 py-1 bg-teal-200 text-teal-800 text-xs rounded-full">
+                  📊 {filters.sortBy === 'recent_update' ? 'Recently Updated' : filters.sortBy === 'profile_completeness' ? 'Profile Completeness' : 'Relevance'}
+                </span>
+              )}
+              {filters.lastUpdatedWithin && (
+                <span className="px-2 py-1 bg-teal-200 text-teal-800 text-xs rounded-full">
+                  ⏰ {filters.lastUpdatedWithin === '10_days' ? 'Last 10 Days' : filters.lastUpdatedWithin === '4_weeks' ? 'Last 4 Weeks' : 'Last 1 Year'}
+                </span>
+              )}
+              {!filters.keyword && !filters.jobRole && !filters.education.degree && !filters.location.state && !filters.gender && !filters.resumeAvailability && !filters.sortBy && !filters.lastUpdatedWithin && (
                 <span className="text-xs text-gray-500">No filters applied</span>
               )}
             </div>
@@ -763,11 +945,11 @@ export default function StudentDatabaseEnhanced() {
               <p className="text-gray-700">
                 Found <span className="font-bold text-gray-900">{students.length}</span> student{students.length !== 1 ? 's' : ''}
               </p>
-              <div className="flex gap-2">
+              {/* <div className="flex gap-2">
                 <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium">
                   Sort by: Relevance
                 </button>
-              </div>
+              </div> */}
             </div>
           )}
 
@@ -848,11 +1030,48 @@ export default function StudentDatabaseEnhanced() {
 
 // Student Card Component (reused from previous implementation)
 function StudentCard({ student, subscriptionType, onViewProfile, onShortlist, onRemoveShortlist }) {
+  // Helper function to check if profile was recently updated
+  const isRecentlyUpdated = (lastUpdated) => {
+    if (!lastUpdated) return false;
+    const daysDiff = Math.floor((new Date() - new Date(lastUpdated)) / (1000 * 60 * 60 * 24));
+    return daysDiff <= 7; // Within last 7 days
+  };
+
+  // Helper function to format last updated date
+  const formatLastUpdated = (lastUpdated) => {
+    if (!lastUpdated) return null;
+    const date = new Date(lastUpdated);
+    const daysDiff = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff === 0) return 'Updated today';
+    if (daysDiff === 1) return 'Updated yesterday';
+    if (daysDiff <= 7) return `Updated ${daysDiff} days ago`;
+    if (daysDiff <= 30) return `Updated ${Math.floor(daysDiff / 7)} weeks ago`;
+    return `Updated ${Math.floor(daysDiff / 30)} months ago`;
+  };
+
+  const recentlyUpdated = isRecentlyUpdated(student.lastUpdated || student.updatedAt);
+  const lastUpdatedText = formatLastUpdated(student.lastUpdated || student.updatedAt);
+
   return (
     <div 
       onClick={() => onViewProfile(student)}
-      className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 p-6 cursor-pointer border border-gray-200 hover:border-blue-300"
+      className={`bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 p-6 cursor-pointer border ${
+        recentlyUpdated ? 'border-teal-300 ring-2 ring-teal-100' : 'border-gray-200 hover:border-blue-300'
+      }`}
     >
+      {/* Recently Updated Badge */}
+      {recentlyUpdated && (
+        <div className="mb-3">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-300">
+            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Active Job Seeker
+          </span>
+        </div>
+      )}
+
       {/* Header with photo and shortlist button */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -966,25 +1185,39 @@ function StudentCard({ student, subscriptionType, onViewProfile, onShortlist, on
         )}
       </div>
 
-      {/* Resume Status */}
-      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-        <div className="flex items-center gap-2">
-          {student.resumeAvailable ? (
-            <>
-              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span className="text-sm text-green-600 font-medium">Resume Available</span>
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span className="text-sm text-gray-400">No Resume</span>
-            </>
-          )}
+      {/* Resume Status and Last Updated */}
+      <div className="pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            {student.resumeAvailable ? (
+              <>
+                <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="text-sm text-green-600 font-medium">Resume Available</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="text-sm text-gray-400">No Resume</span>
+              </>
+            )}
+          </div>
         </div>
+        
+        {/* Last Updated Timestamp */}
+        {lastUpdatedText && (
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-2">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className={recentlyUpdated ? 'text-teal-600 font-semibold' : ''}>
+              {lastUpdatedText}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
