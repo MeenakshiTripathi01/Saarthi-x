@@ -16,6 +16,7 @@ public class StudentDatabaseService {
     private final ApplicationRepository applicationRepository;
     private final IndustryShortlistRepository industryShortlistRepository;
     private final ActivityLogRepository activityLogRepository;
+    private final NotificationService notificationService;
     
     public StudentDatabaseService(
             UserProfileRepository userProfileRepository,
@@ -23,13 +24,15 @@ public class StudentDatabaseService {
             HackathonApplicationRepository hackathonApplicationRepository,
             ApplicationRepository applicationRepository,
             IndustryShortlistRepository industryShortlistRepository,
-            ActivityLogRepository activityLogRepository) {
+            ActivityLogRepository activityLogRepository,
+            NotificationService notificationService) {
         this.userProfileRepository = userProfileRepository;
         this.userRepository = userRepository;
         this.hackathonApplicationRepository = hackathonApplicationRepository;
         this.applicationRepository = applicationRepository;
         this.industryShortlistRepository = industryShortlistRepository;
         this.activityLogRepository = activityLogRepository;
+        this.notificationService = notificationService;
     }
     
     /**
@@ -139,6 +142,19 @@ public class StudentDatabaseService {
         
         // Log the activity
         logActivity(industryEmail, industryId, profile.getApplicantEmail(), studentId, "CANDIDATE_SHORTLISTED");
+        
+        // Create notification for the applicant
+        // Get industry user details for better notification
+        Optional<User> industryUserOpt = userRepository.findById(industryId);
+        String companyName = industryUserOpt.map(User::getName).orElse(null);
+        
+        notificationService.createProfileShortlistNotification(
+                profile.getApplicantId(),
+                profile.getApplicantEmail(),
+                profile.getFullName(),
+                industryEmail,
+                companyName
+        );
         
         return "Student shortlisted successfully";
     }
@@ -308,6 +324,26 @@ public class StudentDatabaseService {
                             (profile.getEducationEntries() != null && profile.getEducationEntries().stream()
                                     .anyMatch(edu -> edu.getInstitution() != null && edu.getInstitution().toLowerCase().contains(keyword)));
                         if (!matchesKeyword) return false;
+                    }
+                    
+                    // Filter by job role / experience
+                    if (filters.containsKey("jobRole") && !filters.get("jobRole").isEmpty()) {
+                        String jobRole = filters.get("jobRole").toLowerCase();
+                        boolean matchesJobRole = false;
+                        
+                        // Check in current position
+                        if (profile.getCurrentPosition() != null && profile.getCurrentPosition().toLowerCase().contains(jobRole)) {
+                            matchesJobRole = true;
+                        }
+                        
+                        // Check in professional experiences
+                        if (!matchesJobRole && profile.getProfessionalExperiences() != null) {
+                            matchesJobRole = profile.getProfessionalExperiences().stream()
+                                    .anyMatch(exp -> (exp.getJobTitle() != null && exp.getJobTitle().toLowerCase().contains(jobRole)) ||
+                                                     (exp.getDescription() != null && exp.getDescription().toLowerCase().contains(jobRole)));
+                        }
+                        
+                        if (!matchesJobRole) return false;
                     }
                     
                     return true;

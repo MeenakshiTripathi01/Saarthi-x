@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getAllStudents, shortlistStudent, removeShortlist } from '../api/studentDatabaseApi';
 import { useAuth } from '../context/AuthContext';
 import StudentDetailModal from './StudentDetailModal';
@@ -26,11 +26,18 @@ export default function StudentDatabaseEnhanced() {
     gender: '',
     college: '',
     skills: '',
-    keyword: ''
+    keyword: '',
+    jobRole: ''
   });
+
+  // Keyword suggestions and search
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [keywordInput, setKeywordInput] = useState('');
+  const keywordDropdownRef = useRef(null);
 
   // Accordion states for filter panels
   const [accordionOpen, setAccordionOpen] = useState({
+    role: false,
     education: true,
     location: false,
     demographics: false,
@@ -64,7 +71,66 @@ export default function StudentDatabaseEnhanced() {
       'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad'],
       'Kerala': ['Kochi', 'Thiruvananthapuram', 'Kozhikode']
     },
-    genders: ['Male', 'Female', 'Other', 'Prefer not to say']
+    genders: ['Male', 'Female', 'Other', 'Prefer not to say'],
+    // Popular keyword suggestions - diverse categories
+    popularKeywords: [
+      // Skills & Technologies
+      { label: 'React', category: 'Skill' },
+      { label: 'Node.js', category: 'Skill' },
+      { label: 'Python', category: 'Skill' },
+      { label: 'Java', category: 'Skill' },
+      { label: 'JavaScript', category: 'Skill' },
+      { label: 'Angular', category: 'Skill' },
+      { label: 'Vue.js', category: 'Skill' },
+      { label: 'Spring Boot', category: 'Skill' },
+      { label: 'MongoDB', category: 'Skill' },
+      { label: 'PostgreSQL', category: 'Skill' },
+      { label: 'AWS', category: 'Skill' },
+      { label: 'Azure', category: 'Skill' },
+      { label: 'Docker', category: 'Skill' },
+      { label: 'Kubernetes', category: 'Skill' },
+      { label: 'Machine Learning', category: 'Skill' },
+      { label: 'Data Science', category: 'Skill' },
+      { label: 'Android', category: 'Skill' },
+      { label: 'iOS', category: 'Skill' },
+      { label: 'Flutter', category: 'Skill' },
+      { label: 'React Native', category: 'Skill' },
+      // Popular Colleges/Universities (add more as needed)
+      { label: 'IIT', category: 'College' },
+      { label: 'NIT', category: 'College' },
+      { label: 'BITS', category: 'College' },
+      { label: 'VIT', category: 'College' },
+      { label: 'MIT', category: 'College' },
+      { label: 'Stanford', category: 'College' },
+      { label: 'Harvard', category: 'College' },
+      // Cities/Locations
+      { label: 'Bangalore', category: 'Location' },
+      { label: 'Mumbai', category: 'Location' },
+      { label: 'Delhi', category: 'Location' },
+      { label: 'Hyderabad', category: 'Location' },
+      { label: 'Pune', category: 'Location' },
+      { label: 'Chennai', category: 'Location' },
+      // Common search terms
+      { label: 'Fresher', category: 'Experience' },
+      { label: 'Intern', category: 'Experience' },
+      { label: 'Senior', category: 'Experience' },
+      { label: 'Lead', category: 'Experience' }
+    ],
+    jobRoles: [
+      'Software Developer',
+      'Full Stack Developer',
+      'Frontend Developer',
+      'Backend Developer',
+      'Data Scientist',
+      'Machine Learning Engineer',
+      'DevOps Engineer',
+      'Mobile Developer',
+      'UI/UX Designer',
+      'Product Manager',
+      'Business Analyst',
+      'QA Engineer',
+      'System Administrator'
+    ]
   };
 
   useEffect(() => {
@@ -72,6 +138,25 @@ export default function StudentDatabaseEnhanced() {
       fetchStudents();
     }
   }, [isIndustry]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (keywordDropdownRef.current && !keywordDropdownRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    // Add event listener
+    if (showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSuggestions]);
 
   const fetchStudents = async () => {
     try {
@@ -86,7 +171,8 @@ export default function StudentDatabaseEnhanced() {
         graduationYear: filters.education.year,
         location: filters.location.state || filters.location.city,
         college: filters.college,
-        skills: filters.skills
+        skills: filters.skills,
+        jobRole: filters.jobRole
       };
       
       // Remove empty filters
@@ -150,10 +236,31 @@ export default function StudentDatabaseEnhanced() {
       gender: '',
       college: '',
       skills: '',
-      keyword: ''
+      keyword: '',
+      jobRole: ''
     });
+    setKeywordInput('');
     setTimeout(() => fetchStudents(), 100);
   };
+
+  const handleKeywordSelect = (keyword) => {
+    handleFilterChange('root', 'keyword', keyword);
+    setKeywordInput(keyword);
+    setShowSuggestions(false);
+  };
+
+  const handleKeywordInputChange = (value) => {
+    setKeywordInput(value);
+    handleFilterChange('root', 'keyword', value);
+    setShowSuggestions(value.length > 0);
+  };
+
+  // Filter suggestions based on input
+  const filteredSuggestions = keywordInput.length > 0 
+    ? filterOptions.popularKeywords.filter(item => 
+        item.label.toLowerCase().includes(keywordInput.toLowerCase())
+      )
+    : filterOptions.popularKeywords;
 
   const toggleAccordion = (section) => {
     setAccordionOpen(prev => ({
@@ -211,16 +318,133 @@ export default function StudentDatabaseEnhanced() {
         </div>
 
         <div className="p-4 space-y-2">
-          {/* Quick Search */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Quick Search</label>
-            <input
-              type="text"
-              placeholder="Name, skill, or college..."
-              value={filters.keyword}
-              onChange={(e) => handleFilterChange('root', 'keyword', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          {/* Universal Keyword Search with Suggestions */}
+          <div className="mb-4" ref={keywordDropdownRef}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              🔍 Search Anything
+            </label>
+            <div className="text-xs text-gray-500 mb-2">
+              Search by name, skill, college, or any keyword
+            </div>
+            <div className="relative">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Name, college, skill, technology..."
+                  value={keywordInput}
+                  onChange={(e) => handleKeywordInputChange(e.target.value)}
+                  onFocus={() => setShowSuggestions(true)}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {keywordInput && (
+                  <button
+                    onClick={() => {
+                      setKeywordInput('');
+                      handleFilterChange('root', 'keyword', '');
+                      setShowSuggestions(false);
+                    }}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Suggestions Dropdown */}
+              {showSuggestions && (
+                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="p-2">
+                    <div className="text-xs font-semibold text-gray-500 px-2 py-1 mb-1">
+                      Suggested Keywords (click to use)
+                    </div>
+                    {filteredSuggestions.length > 0 ? (
+                      filteredSuggestions.map((item, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleKeywordSelect(item.label)}
+                          className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded-md flex items-center justify-between group"
+                        >
+                          <span className="font-medium text-gray-700">{item.label}</span>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full group-hover:bg-blue-100">
+                            {item.category}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-gray-500 text-sm">No suggestions found</div>
+                    )}
+                  </div>
+                  <div className="border-t border-gray-200 p-2 bg-gray-50">
+                    <button
+                      onClick={() => setShowSuggestions(false)}
+                      className="w-full text-center text-sm text-gray-600 hover:text-gray-800 py-1"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Popular Keywords Chips - Diverse categories */}
+            <div className="mt-3">
+              <div className="text-xs font-medium text-gray-600 mb-2">Popular Searches:</div>
+              <div className="flex flex-wrap gap-2">
+                {['React', 'Python', 'IIT', 'Bangalore', 'AWS', 'Machine Learning', 'Fresher'].map((keyword) => (
+                  <button
+                    key={keyword}
+                    onClick={() => handleKeywordSelect(keyword)}
+                    className="px-3 py-1 bg-blue-50 text-blue-700 text-xs rounded-full hover:bg-blue-100 transition-colors border border-blue-200"
+                  >
+                    {keyword}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* JOB ROLE FILTER ACCORDION */}
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleAccordion('role')}
+              className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span className="font-semibold text-gray-900">Job Role</span>
+              </div>
+              <svg 
+                className={`w-5 h-5 text-gray-500 transition-transform ${accordionOpen.role ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {accordionOpen.role && (
+              <div className="p-4 space-y-3 bg-white">
+                {/* Role Selection */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Select Role</label>
+                  <select
+                    value={filters.jobRole}
+                    onChange={(e) => handleFilterChange('root', 'jobRole', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">All Roles</option>
+                    {filterOptions.jobRoles.map(role => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* EDUCATION FILTER ACCORDION */}
@@ -474,6 +698,16 @@ export default function StudentDatabaseEnhanced() {
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <p className="text-xs font-semibold text-blue-900 mb-2">Active Filters:</p>
             <div className="flex flex-wrap gap-1">
+              {filters.keyword && (
+                <span className="px-2 py-1 bg-indigo-200 text-indigo-800 text-xs rounded-full">
+                  🔍 {filters.keyword}
+                </span>
+              )}
+              {filters.jobRole && (
+                <span className="px-2 py-1 bg-orange-200 text-orange-800 text-xs rounded-full">
+                  💼 {filters.jobRole}
+                </span>
+              )}
               {filters.education.degree && (
                 <span className="px-2 py-1 bg-blue-200 text-blue-800 text-xs rounded-full">
                   {filters.education.degree}
@@ -504,7 +738,7 @@ export default function StudentDatabaseEnhanced() {
                   {filters.gender}
                 </span>
               )}
-              {!filters.education.degree && !filters.location.state && !filters.gender && (
+              {!filters.keyword && !filters.jobRole && !filters.education.degree && !filters.location.state && !filters.gender && (
                 <span className="text-xs text-gray-500">No filters applied</span>
               )}
             </div>
