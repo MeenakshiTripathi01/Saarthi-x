@@ -462,6 +462,7 @@ export default function HackathonApplicationDashboard() {
                                     <Award className="w-5 h-5 text-purple-600" />
                                     Team Member Certificates
                                 </h4>
+                                
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {application.teamMembers.map((member, idx) => {
                                         const memberCertificateData = {
@@ -500,6 +501,7 @@ export default function HackathonApplicationDashboard() {
                                                     <button
                                                         onClick={() => {
                                                             setPreviewingMember(member);
+                                                            console.log(memberCertificateData);
                                                             setPreviewCertificate(memberCertificateData);
                                                         }}
                                                         className="text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors"

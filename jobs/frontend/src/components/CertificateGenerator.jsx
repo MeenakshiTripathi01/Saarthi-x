@@ -616,6 +616,7 @@ export const generateCertificatePDF = async (certificateData) => {
 
 export const downloadCertificate = async (certificateData) => {
     try {
+        debugger;
         const pdf = await generateCertificatePDF(certificateData);
         
         // Generate filename with participant/team name for uniqueness
