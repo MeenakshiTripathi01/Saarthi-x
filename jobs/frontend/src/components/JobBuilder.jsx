@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { BACKEND_URL } from '../config';
 
 // Common suggestions data
 const COMMON_SKILLS = [
@@ -86,7 +87,7 @@ export default function JobBuilder() {
     try {
       setLoading(true);
       const response = await axios.get(
-        `http://localhost:8080/api/jobs/${editingJobId}`,
+        `${BACKEND_URL}/api/jobs/${editingJobId}`,
         { withCredentials: true }
       );
       
@@ -254,14 +255,14 @@ export default function JobBuilder() {
       if (jobIdToUpdate) {
         // Update existing job
         response = await axios.put(
-          `http://localhost:8080/api/jobs/${jobIdToUpdate}`,
+          `${BACKEND_URL}/api/jobs/${jobIdToUpdate}`,
           jobData,
           { withCredentials: true }
         );
       } else {
         // Create new draft job
         response = await axios.post(
-          'http://localhost:8080/api/jobs',
+          `${BACKEND_URL}/api/jobs`,
           jobData,
           { withCredentials: true }
         );
@@ -362,14 +363,14 @@ export default function JobBuilder() {
       if (jobIdToUpdate) {
         // Update existing job (convert draft to active or update active job)
         response = await axios.put(
-          `http://localhost:8080/api/jobs/${jobIdToUpdate}`,
+          `${BACKEND_URL}/api/jobs/${jobIdToUpdate}`,
           jobData,
           { withCredentials: true }
         );
       } else {
         // Create new active job
         response = await axios.post(
-          'http://localhost:8080/api/jobs',
+          `${BACKEND_URL}/api/jobs`,
           jobData,
           { withCredentials: true }
         );

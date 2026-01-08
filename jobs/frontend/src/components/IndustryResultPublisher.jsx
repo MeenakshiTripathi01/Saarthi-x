@@ -106,14 +106,14 @@ export default function IndustryResultPublisher() {
             const participantName = first.asTeam ? first.teamName : (first.teamMembers?.[0]?.name || 'Participant');
             return {
                 participantName,
-                rank: first.finalRank,
+                rank: 0, // Show rank 0 in template preview so it doesn't default to rank 1
                 isTeam: first.asTeam,
                 teamName: first.teamName,
             };
         }
         return {
             participantName: 'Sample Participant',
-            rank: null,
+            rank: 0,
             isTeam: false,
             teamName: ''
         };

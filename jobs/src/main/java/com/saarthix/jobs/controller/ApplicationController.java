@@ -22,7 +22,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/applications")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:2003", allowCredentials = "true")
 public class ApplicationController {
 
     private final ApplicationRepository applicationRepository;

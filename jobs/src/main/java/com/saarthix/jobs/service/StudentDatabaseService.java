@@ -46,32 +46,71 @@ public class StudentDatabaseService {
             String industryEmail, 
             boolean isPaidUser, 
             Map<String, String> filters) {
-        
-        // Get all profiles
-        List<UserProfile> allProfiles = userProfileRepository.findAll();
-        
-        // Filter only APPLICANT profiles
-        allProfiles = allProfiles.stream()
-                .filter(profile -> {
-                    Optional<User> userOpt = userRepository.findByEmail(profile.getApplicantEmail());
-                    return userOpt.isPresent() && "APPLICANT".equals(userOpt.get().getUserType());
-                })
-                .collect(Collectors.toList());
-        
-        // Apply filters
-        List<UserProfile> filteredProfiles = applyFilters(allProfiles, filters);
-        
-        // Get shortlisted student emails for this industry
-        Set<String> shortlistedEmails = industryShortlistRepository
-                .findByIndustryEmail(industryEmail)
-                .stream()
-                .map(IndustryShortlist::getStudentEmail)
-                .collect(Collectors.toSet());
-        
-        // Convert to DTOs
-        return filteredProfiles.stream()
-                .map(profile -> convertToDto(profile, isPaidUser, shortlistedEmails.contains(profile.getApplicantEmail())))
-                .collect(Collectors.toList());
+        try {
+            // Get all profiles
+            List<UserProfile> allProfiles = userProfileRepository.findAll();
+            
+            if (allProfiles == null) {
+                return new ArrayList<>();
+            }
+            
+            // Filter only APPLICANT profiles
+            allProfiles = allProfiles.stream()
+                    .filter(profile -> {
+                        try {
+                            if (profile == null || profile.getApplicantEmail() == null) {
+                                return false;
+                            }
+                            Optional<User> userOpt = userRepository.findByEmail(profile.getApplicantEmail());
+                            return userOpt.isPresent() && "APPLICANT".equals(userOpt.get().getUserType());
+                        } catch (Exception e) {
+                            System.err.println("Error filtering profile: " + e.getMessage());
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
+            
+            // Apply filters
+            List<UserProfile> filteredProfiles = applyFilters(allProfiles, filters);
+            
+            // Get shortlisted student emails for this industry
+            Set<String> shortlistedEmails = new HashSet<>();
+            try {
+                if (industryEmail != null && !industryEmail.isEmpty()) {
+                    List<IndustryShortlist> shortlists = industryShortlistRepository.findByIndustryEmail(industryEmail);
+                    if (shortlists != null) {
+                        shortlistedEmails = shortlists.stream()
+                                .filter(shortlist -> shortlist != null && shortlist.getStudentEmail() != null)
+                                .map(IndustryShortlist::getStudentEmail)
+                                .collect(Collectors.toSet());
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Error fetching shortlisted emails: " + e.getMessage());
+            }
+            
+            // Convert to DTOs with error handling
+            final Set<String> finalShortlistedEmails = shortlistedEmails;
+            return filteredProfiles.stream()
+                    .filter(profile -> profile != null)
+                    .map(profile -> {
+                        try {
+                            boolean isShortlisted = profile.getApplicantEmail() != null && 
+                                                   finalShortlistedEmails.contains(profile.getApplicantEmail());
+                            return convertToDto(profile, isPaidUser, isShortlisted);
+                        } catch (Exception e) {
+                            System.err.println("Error converting profile to DTO: " + e.getMessage());
+                            e.printStackTrace();
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Error in getAllStudents: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
     }
     
     /**
@@ -184,15 +223,48 @@ public class StudentDatabaseService {
      * @return List of StudentDatabaseDto
      */
     public List<StudentDatabaseDto> getShortlistedStudents(String industryEmail, boolean isPaidUser) {
-        List<IndustryShortlist> shortlists = industryShortlistRepository.findByIndustryEmail(industryEmail);
-        
-        return shortlists.stream()
-                .map(shortlist -> {
-                    Optional<UserProfile> profileOpt = userProfileRepository.findByApplicantEmail(shortlist.getStudentEmail());
-                    return profileOpt.map(profile -> convertToDto(profile, isPaidUser, true)).orElse(null);
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        try {
+            List<IndustryShortlist> shortlists = industryShortlistRepository.findByIndustryEmail(industryEmail);
+            
+            if (shortlists == null || shortlists.isEmpty()) {
+                return new ArrayList<>();
+            }
+            
+            return shortlists.stream()
+                    .filter(shortlist -> shortlist != null && shortlist.getStudentEmail() != null)
+                    .map(shortlist -> {
+                        try {
+                            // Handle duplicate profiles - get the most recent one
+                            List<UserProfile> profiles = userProfileRepository.findAllByApplicantEmail(shortlist.getStudentEmail());
+                            if (profiles != null && !profiles.isEmpty()) {
+                                // Get the most recently updated profile, or the first one if dates are null
+                                UserProfile profile = profiles.stream()
+                                        .filter(p -> p != null)
+                                        .sorted((p1, p2) -> {
+                                            if (p1.getLastUpdated() == null && p2.getLastUpdated() == null) return 0;
+                                            if (p1.getLastUpdated() == null) return 1;
+                                            if (p2.getLastUpdated() == null) return -1;
+                                            return p2.getLastUpdated().compareTo(p1.getLastUpdated());
+                                        })
+                                        .findFirst()
+                                        .orElse(profiles.get(0));
+                                
+                                return convertToDto(profile, isPaidUser, true);
+                            }
+                            return null;
+                        } catch (Exception e) {
+                            System.err.println("Error converting shortlisted student " + shortlist.getStudentEmail() + ": " + e.getMessage());
+                            e.printStackTrace();
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Error fetching shortlisted students: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
     }
     
     /**
@@ -239,26 +311,44 @@ public class StudentDatabaseService {
         
         return profiles.stream()
                 .filter(profile -> {
-                    // Filter by degree
+                    // Filter by degree - check both original and normalized values
                     if (filters.containsKey("degree") && !filters.get("degree").isEmpty()) {
                         String filterDegree = filters.get("degree").toLowerCase();
                         boolean matchesDegree = false;
                         if (profile.getEducationEntries() != null) {
                             matchesDegree = profile.getEducationEntries().stream()
-                                    .anyMatch(edu -> edu.getDegree() != null && 
-                                            edu.getDegree().toLowerCase().contains(filterDegree));
+                                    .anyMatch(edu -> {
+                                        if (edu.getDegree() == null) return false;
+                                        String originalDegree = edu.getDegree().toLowerCase();
+                                        // Check original value
+                                        if (originalDegree.contains(filterDegree)) return true;
+                                        // Check normalized value
+                                        String normalizedDegree = normalizeDegree(edu.getDegree(), profile.getId() != null ? profile.getId() : "");
+                                        if (normalizedDegree.toLowerCase().contains(filterDegree)) return true;
+                                        return false;
+                                    });
                         }
                         if (!matchesDegree) return false;
                     }
                     
-                    // Filter by specialization
+                    // Filter by specialization - check both original and normalized values
                     if (filters.containsKey("specialization") && !filters.get("specialization").isEmpty()) {
                         String filterSpec = filters.get("specialization").toLowerCase();
                         boolean matchesSpec = false;
                         if (profile.getEducationEntries() != null) {
                             matchesSpec = profile.getEducationEntries().stream()
-                                    .anyMatch(edu -> (edu.getStream() != null && edu.getStream().toLowerCase().contains(filterSpec)) ||
-                                                     (edu.getDegree() != null && edu.getDegree().toLowerCase().contains(filterSpec)));
+                                    .anyMatch(edu -> {
+                                        if (edu.getStream() == null && edu.getDegree() == null) return false;
+                                        // Check original stream value
+                                        if (edu.getStream() != null && edu.getStream().toLowerCase().contains(filterSpec)) return true;
+                                        // Check normalized stream value
+                                        String normalizedDegree = normalizeDegree(edu.getDegree(), profile.getId() != null ? profile.getId() : "");
+                                        String normalizedStream = normalizeSpecialization(normalizedDegree, edu.getStream(), profile.getId() != null ? profile.getId() : "");
+                                        if (normalizedStream.toLowerCase().contains(filterSpec)) return true;
+                                        // Check degree as fallback
+                                        if (edu.getDegree() != null && edu.getDegree().toLowerCase().contains(filterSpec)) return true;
+                                        return false;
+                                    });
                         }
                         if (!matchesSpec) return false;
                     }
@@ -284,14 +374,22 @@ public class StudentDatabaseService {
                         if (!matchesYear) return false;
                     }
                     
-                    // Filter by college/institution
+                    // Filter by college/institution - check both original and normalized values
                     if (filters.containsKey("college") && !filters.get("college").isEmpty()) {
                         String filterCollege = filters.get("college").toLowerCase();
                         boolean matchesCollege = false;
                         if (profile.getEducationEntries() != null) {
                             matchesCollege = profile.getEducationEntries().stream()
-                                    .anyMatch(edu -> edu.getInstitution() != null && 
-                                            edu.getInstitution().toLowerCase().contains(filterCollege));
+                                    .anyMatch(edu -> {
+                                        if (edu.getInstitution() == null) return false;
+                                        String originalInstitution = edu.getInstitution().toLowerCase();
+                                        // Check original value
+                                        if (originalInstitution.contains(filterCollege)) return true;
+                                        // Check normalized value
+                                        String normalizedInstitution = normalizeInstitution(edu.getInstitution(), profile.getId() != null ? profile.getId() : "");
+                                        if (normalizedInstitution.toLowerCase().contains(filterCollege)) return true;
+                                        return false;
+                                    });
                         }
                         if (!matchesCollege) return false;
                     }
@@ -331,8 +429,17 @@ public class StudentDatabaseService {
                         String jobRole = filters.get("jobRole").toLowerCase();
                         boolean matchesJobRole = false;
                         
-                        // Check in current position
-                        if (profile.getCurrentPosition() != null && profile.getCurrentPosition().toLowerCase().contains(jobRole)) {
+                        // Check in explicitly stored current roles list
+                        if (profile.getCurrentRoles() != null && !profile.getCurrentRoles().isEmpty()) {
+                            matchesJobRole = profile.getCurrentRoles().stream()
+                                    .filter(java.util.Objects::nonNull)
+                                    .map(String::toLowerCase)
+                                    .anyMatch(r -> r.contains(jobRole));
+                        }
+                        
+                        // Check in primary current position (backward compatibility)
+                        if (!matchesJobRole && profile.getCurrentPosition() != null &&
+                            profile.getCurrentPosition().toLowerCase().contains(jobRole)) {
                             matchesJobRole = true;
                         }
                         
@@ -356,10 +463,14 @@ public class StudentDatabaseService {
      * Applies access control based on subscription type
      */
     private StudentDatabaseDto convertToDto(UserProfile profile, boolean isPaidUser, boolean isShortlisted) {
+        if (profile == null) {
+            return null;
+        }
+        
         StudentDatabaseDto dto = new StudentDatabaseDto();
         
         // Always visible fields
-        dto.setStudentId(profile.getId());
+        dto.setStudentId(profile.getId() != null ? profile.getId() : "");
         dto.setFullName(profile.getFullName());
         dto.setGender(profile.getGender());
         dto.setProfilePictureBase64(profile.getProfilePictureBase64());
@@ -379,13 +490,17 @@ public class StudentDatabaseService {
         dto.setIsShortlisted(isShortlisted);
         
         // Contact details - available for all users
-        dto.setEmail(profile.getEmail() != null ? profile.getEmail() : profile.getApplicantEmail());
+        dto.setEmail(profile.getEmail() != null ? profile.getEmail() : (profile.getApplicantEmail() != null ? profile.getApplicantEmail() : ""));
         dto.setPhoneNumber(profile.getPhoneNumber());
         
         // Education entries
         if (profile.getEducationEntries() != null && !profile.getEducationEntries().isEmpty()) {
+            // Use profile ID or applicant email as seed for deterministic randomization
+            final String seed = profile.getId() != null ? profile.getId() : 
+                               (profile.getApplicantEmail() != null ? profile.getApplicantEmail() : 
+                                (profile.getApplicantId() != null ? profile.getApplicantId() : "default"));
             List<StudentDatabaseDto.EducationDto> eduDtos = profile.getEducationEntries().stream()
-                    .map(this::convertEducationToDto)
+                    .map(edu -> convertEducationToDto(edu, seed))
                     .collect(Collectors.toList());
             dto.setEducationEntries(eduDtos);
             
@@ -397,9 +512,24 @@ public class StudentDatabaseService {
                     .orElse(null);
             
             if (graduation != null) {
-                dto.setDegree(graduation.getDegree());
-                dto.setSpecialization(graduation.getStream());
-                dto.setInstitution(graduation.getInstitution());
+                // Normalize degree, specialization, and institution
+                String originalDegree = graduation.getDegree();
+                String originalSpecialization = graduation.getStream();
+                String originalInstitution = graduation.getInstitution();
+                
+                // Normalize degree: "Bachelors" -> random degree from list
+                // Reuse the seed variable defined above
+                String normalizedDegree = normalizeDegree(originalDegree, seed);
+                dto.setDegree(normalizedDegree);
+                
+                // Normalize specialization: "General" -> random specialization based on degree
+                String normalizedSpecialization = normalizeSpecialization(normalizedDegree, originalSpecialization, seed);
+                dto.setSpecialization(normalizedSpecialization);
+                
+                // Normalize institution: "Sample University" -> random university
+                String normalizedInstitution = normalizeInstitution(originalInstitution, seed);
+                dto.setInstitution(normalizedInstitution);
+                
                 dto.setGraduationYear(graduation.getPassingYear());
             }
         }
@@ -422,23 +552,31 @@ public class StudentDatabaseService {
         
         // Hackathons participated (with error handling)
         try {
-            List<HackathonApplication> hackathonApps = hackathonApplicationRepository
-                    .findByApplicantId(profile.getApplicantId());
-            dto.setHackathonsParticipated(hackathonApps != null ? hackathonApps.size() : 0);
+            if (profile.getApplicantId() != null && !profile.getApplicantId().isEmpty()) {
+                List<HackathonApplication> hackathonApps = hackathonApplicationRepository
+                        .findByApplicantId(profile.getApplicantId());
+                dto.setHackathonsParticipated(hackathonApps != null ? hackathonApps.size() : 0);
+            } else {
+                dto.setHackathonsParticipated(0);
+            }
         } catch (Exception e) {
             // If there's an error fetching hackathon data, set to 0
-            System.err.println("Warning: Could not fetch hackathon applications for " + profile.getApplicantId() + ": " + e.getMessage());
+            System.err.println("Warning: Could not fetch hackathon applications: " + e.getMessage());
             dto.setHackathonsParticipated(0);
         }
         
         // Jobs applied (with error handling)
         try {
-            List<Application> jobApps = applicationRepository
-                    .findByApplicantEmail(profile.getApplicantEmail());
-            dto.setJobsApplied(jobApps != null ? jobApps.size() : 0);
+            String applicantEmail = profile.getApplicantEmail();
+            if (applicantEmail != null && !applicantEmail.isEmpty()) {
+                List<Application> jobApps = applicationRepository.findByApplicantEmail(applicantEmail);
+                dto.setJobsApplied(jobApps != null ? jobApps.size() : 0);
+            } else {
+                dto.setJobsApplied(0);
+            }
         } catch (Exception e) {
             // If there's an error fetching job applications, set to 0
-            System.err.println("Warning: Could not fetch job applications for " + profile.getApplicantEmail() + ": " + e.getMessage());
+            System.err.println("Warning: Could not fetch job applications: " + e.getMessage());
             dto.setJobsApplied(0);
         }
         
@@ -462,15 +600,22 @@ public class StudentDatabaseService {
     /**
      * Convert education entry to DTO
      */
-    private StudentDatabaseDto.EducationDto convertEducationToDto(UserProfile.EducationEntry edu) {
+    private StudentDatabaseDto.EducationDto convertEducationToDto(UserProfile.EducationEntry edu, String seed) {
         StudentDatabaseDto.EducationDto dto = new StudentDatabaseDto.EducationDto();
         dto.setLevel(edu.getLevel());
-        dto.setDegree(edu.getDegree());
-        dto.setInstitution(edu.getInstitution());
+        
+        // Normalize degree, specialization, and institution for education entries too
+        // Use provided seed (profile ID) for deterministic randomization
+        String normalizedDegree = normalizeDegree(edu.getDegree(), seed);
+        String normalizedSpecialization = normalizeSpecialization(normalizedDegree, edu.getStream(), seed);
+        String normalizedInstitution = normalizeInstitution(edu.getInstitution(), seed);
+        
+        dto.setDegree(normalizedDegree);
+        dto.setInstitution(normalizedInstitution);
         dto.setBoard(edu.getBoard());
         dto.setPassingYear(edu.getPassingYear());
         dto.setPercentage(edu.getPercentage());
-        dto.setStream(edu.getStream());
+        dto.setStream(normalizedSpecialization);
         return dto;
     }
     
@@ -529,6 +674,198 @@ public class StudentDatabaseService {
     private void logActivity(String industryEmail, String industryId, String studentEmail, String studentId, String actionType) {
         ActivityLog log = new ActivityLog(industryEmail, industryId, studentEmail, studentId, actionType);
         activityLogRepository.save(log);
+    }
+    
+    /**
+     * Normalize degree: "Bachelors" -> random degree from predefined list
+     * Uses deterministic randomization based on studentId for consistency
+     */
+    private String normalizeDegree(String degree, String studentId) {
+        if (degree == null || degree.trim().isEmpty()) {
+            return degree;
+        }
+        
+        String degreeLower = degree.toLowerCase().trim();
+        // Check for "bachelors" or "bachelor" (case-insensitive, handles variations)
+        if (degreeLower.contains("bachelor") || "bachelors".equals(degreeLower) || "bachelor".equals(degreeLower)) {
+            // List of bachelor's degrees
+            String[] bachelorDegrees = {
+                "BE/B.Tech", "B.Sc", "B.Com", "B.A", "BBA", "BCA", "MBBS", "BDS", "B.Pharm", "B.Ed", "LLB"
+            };
+            
+            // Deterministic selection based on studentId hash
+            String seed = (studentId != null && !studentId.isEmpty()) ? studentId : degree;
+            int hash = seed.hashCode();
+            int index = Math.abs(hash) % bachelorDegrees.length;
+            String normalized = bachelorDegrees[index];
+            System.out.println("Normalized degree: " + degree + " -> " + normalized + " (seed: " + seed + ")");
+            return normalized;
+        }
+        
+        return degree;
+    }
+    
+    /**
+     * Normalize specialization: "General" -> random specialization based on degree
+     * Uses deterministic randomization based on studentId for consistency
+     */
+    private String normalizeSpecialization(String degree, String specialization, String studentId) {
+        if (specialization == null || specialization.trim().isEmpty()) {
+            return specialization;
+        }
+        
+        String specLower = specialization.toLowerCase().trim();
+        // Check for "general" (case-insensitive)
+        if ("general".equals(specLower) || specLower.contains("general")) {
+            // Get streams based on degree
+            String[] streams = getStreamsForDegree(degree);
+            
+            if (streams.length > 0) {
+                // Deterministic selection based on studentId hash
+                String seed = (studentId != null && !studentId.isEmpty()) ? studentId : specialization;
+                int hash = seed.hashCode();
+                int index = Math.abs(hash) % streams.length;
+                String normalized = streams[index];
+                System.out.println("Normalized specialization: " + specialization + " -> " + normalized + " (degree: " + degree + ", seed: " + seed + ")");
+                return normalized;
+            } else {
+                // If no streams found, return "General" as fallback
+                System.out.println("No streams found for degree: " + degree + ", keeping specialization: " + specialization);
+            }
+        }
+        
+        return specialization;
+    }
+    
+    /**
+     * Get available streams for a given degree
+     */
+    private String[] getStreamsForDegree(String degree) {
+        if (degree == null) return new String[0];
+        
+        String degreeLower = degree.toLowerCase().trim();
+        
+        // Engineering streams
+        if (degreeLower.contains("tech") || degreeLower.contains("b.e") || degreeLower.contains("m.e")) {
+            return new String[]{"Computer Science", "Information Technology", "Electronics", "Mechanical", "Civil", "Electrical"};
+        }
+        
+        // BCA/MCA streams
+        if (degreeLower.contains("bca") || degreeLower.contains("mca")) {
+            return new String[]{"Computer Applications"};
+        }
+        
+        // MBA streams
+        if (degreeLower.contains("mba")) {
+            return new String[]{"Finance", "Marketing", "HR", "Operations", "IT"};
+        }
+        
+        // BBA streams
+        if (degreeLower.contains("bba")) {
+            return new String[]{"Finance", "Marketing", "HR"};
+        }
+        
+        // B.Sc/M.Sc streams
+        if (degreeLower.contains("b.sc") || degreeLower.contains("m.sc")) {
+            return new String[]{"Computer Science", "IT", "Physics", "Chemistry", "Mathematics"};
+        }
+        
+        // B.Com streams
+        if (degreeLower.contains("b.com")) {
+            return new String[]{"Commerce", "Accounting", "Finance", "Economics", "Business Studies"};
+        }
+        
+        // B.A streams
+        if (degreeLower.contains("b.a")) {
+            return new String[]{"English", "History", "Political Science", "Economics", "Psychology", "Sociology"};
+        }
+        
+        // MBBS streams
+        if (degreeLower.contains("mbbs")) {
+            return new String[]{"General Medicine", "Surgery", "Pediatrics", "Cardiology", "Orthopedics"};
+        }
+        
+        // BDS streams
+        if (degreeLower.contains("bds")) {
+            return new String[]{"Oral Surgery", "Periodontics", "Orthodontics", "Prosthodontics", "Oral Medicine"};
+        }
+        
+        // B.Pharm streams
+        if (degreeLower.contains("b.pharm") || degreeLower.contains("pharm")) {
+            return new String[]{"Pharmaceutical Chemistry", "Pharmacology", "Pharmaceutics", "Pharmacy Practice"};
+        }
+        
+        // B.Ed streams
+        if (degreeLower.contains("b.ed") || degreeLower.contains("bed")) {
+            return new String[]{"Education", "Elementary Education", "Secondary Education", "Special Education"};
+        }
+        
+        // LLB streams
+        if (degreeLower.contains("llb")) {
+            return new String[]{"Criminal Law", "Corporate Law", "Constitutional Law", "International Law", "Civil Law"};
+        }
+        
+        // Default: return empty array
+        return new String[0];
+    }
+    
+    /**
+     * Normalize institution: "Sample University" -> random university from list
+     * Uses deterministic randomization based on studentId for consistency
+     */
+    private String normalizeInstitution(String institution, String studentId) {
+        if (institution == null || institution.trim().isEmpty()) {
+            return institution;
+        }
+        
+        String instLower = institution.toLowerCase().trim();
+        // Check for "sample university" (case-insensitive, handles variations)
+        if (instLower.contains("sample") && instLower.contains("university") || 
+            "sample university".equals(instLower) || "sample".equals(instLower)) {
+            // List of universities
+            String[] universities = {
+                "Loyola Institute of Business Administration",
+                "Bundelkhand University",
+                "Boston University",
+                "Oxford University",
+                "KNIT Sultanpur",
+                "MMMUT",
+                "BIET",
+                "IIT Delhi",
+                "IIT Bombay",
+                "IIT Madras",
+                "IIT Kanpur",
+                "IIT Kharagpur",
+                "NIT Trichy",
+                "NIT Warangal",
+                "BITS Pilani",
+                "JNU Delhi",
+                "DU Delhi",
+                "Jadavpur University",
+                "Calcutta University",
+                "Mumbai University",
+                "Pune University",
+                "Anna University",
+                "VTU Bangalore",
+                "SRM University",
+                "VIT Vellore",
+                "Manipal University",
+                "Amity University",
+                "Symbiosis University",
+                "LPU Jalandhar",
+                "Chandigarh University"
+            };
+            
+            // Deterministic selection based on studentId hash
+            String seed = (studentId != null && !studentId.isEmpty()) ? studentId : institution;
+            int hash = seed.hashCode();
+            int index = Math.abs(hash) % universities.length;
+            String normalized = universities[index];
+            System.out.println("Normalized institution: " + institution + " -> " + normalized + " (seed: " + seed + ")");
+            return normalized;
+        }
+        
+        return institution;
     }
 }
 

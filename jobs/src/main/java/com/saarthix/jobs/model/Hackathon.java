@@ -2,9 +2,11 @@ package com.saarthix.jobs.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
 @Document(collection = "hackathons")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Hackathon {
 
     @Id
@@ -14,6 +16,7 @@ public class Hackathon {
     private String title;
     private String description;
     private String company;
+    private String industry; // Industry type (e.g., Technology, Healthcare, Finance)
 
     // Problem & Skills
     private String problemStatement;
@@ -41,6 +44,9 @@ public class Hackathon {
     private int teamSize;
     private int maxTeams;
     private String prize;
+    private String firstPrize; // 1st place prize
+    private String secondPrize; // 2nd place prize
+    private String thirdPrize; // 3rd place prize
 
     // Application rules
     // When false, only team applications are allowed (no individual)
@@ -49,6 +55,7 @@ public class Hackathon {
     // Metadata
     private String createdByIndustryId;
     private int views;
+    private Boolean resultsPublished = false; // Whether results have been announced and certificates published
 
     // Constructors
     public Hackathon() {
@@ -86,6 +93,14 @@ public class Hackathon {
 
     public void setCompany(String company) {
         this.company = company;
+    }
+
+    public String getIndustry() {
+        return industry;
+    }
+
+    public void setIndustry(String industry) {
+        this.industry = industry;
     }
 
     public String getProblemStatement() {
@@ -208,6 +223,30 @@ public class Hackathon {
         this.prize = prize;
     }
 
+    public String getFirstPrize() {
+        return firstPrize;
+    }
+
+    public void setFirstPrize(String firstPrize) {
+        this.firstPrize = firstPrize;
+    }
+
+    public String getSecondPrize() {
+        return secondPrize;
+    }
+
+    public void setSecondPrize(String secondPrize) {
+        this.secondPrize = secondPrize;
+    }
+
+    public String getThirdPrize() {
+        return thirdPrize;
+    }
+
+    public void setThirdPrize(String thirdPrize) {
+        this.thirdPrize = thirdPrize;
+    }
+
     public Boolean getAllowIndividual() {
         return allowIndividual;
     }
@@ -230,5 +269,13 @@ public class Hackathon {
 
     public void setViews(int views) {
         this.views = views;
+    }
+
+    public Boolean getResultsPublished() {
+        return resultsPublished != null ? resultsPublished : false;
+    }
+
+    public void setResultsPublished(Boolean resultsPublished) {
+        this.resultsPublished = resultsPublished != null ? resultsPublished : false;
     }
 }

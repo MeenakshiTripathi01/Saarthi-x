@@ -35,20 +35,35 @@ const baseWrap = (content, background = '#f5f5f5') => (
     </div>
 );
 
-const renderSignatures = (signerLeft, signerRight, company, signatureLeftUrl, signatureRightUrl, color = '#1f2937') => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', padding: '0 30px' }}>
-        <div style={{ textAlign: 'center', width: '220px' }}>
-            {signatureLeftUrl && <img src={signatureLeftUrl} alt="Signature left" style={{ maxHeight: '60px', objectFit: 'contain', margin: '0 auto 6px' }} />}
-            <div style={{ borderTop: `2px solid ${color}`, paddingTop: '8px', fontSize: '13px', fontWeight: '700', color }}>{signerLeft?.name}</div>
-            <div style={{ fontSize: '11px', color: '#6b7280' }}>{signerLeft?.title}</div>
+const renderSignatures = (signerLeft, signerRight, company, signatureLeftUrl, signatureRightUrl, color = '#1f2937') => {
+    // Only render signatures section if at least one signature URL is provided
+    if (!signatureLeftUrl && !signatureRightUrl) {
+        return null;
+    }
+    
+    return (
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', padding: '0 30px' }}>
+            <div style={{ textAlign: 'center', width: '220px' }}>
+                {signatureLeftUrl && <img src={signatureLeftUrl} alt="Signature left" style={{ maxHeight: '60px', objectFit: 'contain', margin: '0 auto 6px' }} />}
+                {signatureLeftUrl && (
+                    <>
+                        <div style={{ borderTop: `2px solid ${color}`, paddingTop: '8px', fontSize: '13px', fontWeight: '700', color }}>{signerLeft?.name}</div>
+                        <div style={{ fontSize: '11px', color: '#6b7280' }}>{signerLeft?.title}</div>
+                    </>
+                )}
+            </div>
+            <div style={{ textAlign: 'center', width: '220px' }}>
+                {signatureRightUrl && <img src={signatureRightUrl} alt="Signature right" style={{ maxHeight: '60px', objectFit: 'contain', margin: '0 auto 6px' }} />}
+                {signatureRightUrl && (
+                    <>
+                        <div style={{ borderTop: `2px solid ${color}`, paddingTop: '8px', fontSize: '13px', fontWeight: '700', color }}>{signerRight?.name}</div>
+                        <div style={{ fontSize: '11px', color: '#6b7280' }}>{signerRight?.title || company}</div>
+                    </>
+                )}
+            </div>
         </div>
-        <div style={{ textAlign: 'center', width: '220px' }}>
-            {signatureRightUrl && <img src={signatureRightUrl} alt="Signature right" style={{ maxHeight: '60px', objectFit: 'contain', margin: '0 auto 6px' }} />}
-            <div style={{ borderTop: `2px solid ${color}`, paddingTop: '8px', fontSize: '13px', fontWeight: '700', color }}>{signerRight?.name}</div>
-            <div style={{ fontSize: '11px', color: '#6b7280' }}>{signerRight?.title || company}</div>
-        </div>
-    </div>
-);
+    );
+};
 
 const CertificateTemplate = ({
     participantName,
@@ -58,6 +73,7 @@ const CertificateTemplate = ({
     rankTitle, // Single source of truth from backend
     certificateType, // Certificate of Achievement or Certificate of Participation
     isTeam,
+    certificateFor, // 'TEAM' | 'INDIVIDUAL' - new context-aware flag
     teamName,
     date,
     certificateCode,
@@ -70,6 +86,10 @@ const CertificateTemplate = ({
     signatureLeftUrl,
     signatureRightUrl
 }) => {
+    debugger;
+    // Resolve context primarily from certificateFor, with isTeam as a backward-compatible fallback
+    const resolvedCertificateFor = certificateFor || (isTeam ? 'TEAM' : 'INDIVIDUAL');
+    const displayName = resolvedCertificateFor === 'TEAM' ? teamName : participantName;
     const getAchievementText = () => {
         // Ensure date is valid - fallback to formatted current date if undefined
         const validDate = date || new Date().toLocaleDateString('en-US', {
@@ -77,7 +97,9 @@ const CertificateTemplate = ({
             month: 'long',
             day: 'numeric'
         });
-        
+        if(rank === 0) {
+            return `This certificate is proudly presented to recognize outstanding achievement and exceptional performance in securing <strong>X place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${validDate}</strong>. This accomplishment demonstrates remarkable innovation, dedication, and technical excellence.`;
+        }
         // Always use backend rank-based generation, ignore customMessage
         if (rank === 1) {
             return `This certificate is proudly presented to recognize outstanding achievement and exceptional performance in securing <strong>First Place</strong> in the <strong>${hackathonTitle}</strong> held on <strong>${validDate}</strong>. This accomplishment demonstrates remarkable innovation, dedication, and technical excellence.`;
@@ -141,8 +163,8 @@ const CertificateTemplate = ({
     // Template 1: Classic Achievement (matches latest uploaded design)
     const template1 = () => {
         // Use rankTitle from backend as single source of truth
-        const displayRankTitle = rankTitle || 'Participation Certificate';
-        const displayCertificateType = certificateType || 'Certificate of Participation';
+        const displayRankTitle = rankTitle || 'Participation Certificate/Rank';
+        const displayCertificateType = certificateType || 'Certificate of Participation/Achievement';
 
         return baseWrap(
             <div style={{ background: '#f8fbff', width: '100%', height: '100%', borderRadius: '16px', boxShadow: '0 8px 30px rgba(0,0,0,0.08)', position: 'relative', overflow: 'hidden' }}>
@@ -193,7 +215,7 @@ const CertificateTemplate = ({
                     </div>
 
                     <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '46px', color: '#0f172a', marginBottom: '18px' }}>
-                        {isTeam ? teamName : participantName}
+                        {displayName}
                     </div>
 
                     <div style={{ width: '220px', height: '1px', background: '#9ca3af', marginBottom: '22px' }} />
@@ -201,26 +223,36 @@ const CertificateTemplate = ({
                     <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: 1.6, textAlign: 'center', maxWidth: '620px', marginBottom: '36px' }}
                         dangerouslySetInnerHTML={{ __html: getAchievementText() }} />
 
-                    {/* Signatures and seal */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '20px' }}>
-                        <div style={{ width: '220px', textAlign: 'center' }}>
-                            {signatureLeftUrl && <img src={signatureLeftUrl} alt="Signature left" style={{ maxHeight: '50px', objectFit: 'contain', margin: '0 auto 6px' }} />}
-                            <div style={{ fontSize: '11px', color: '#4b5563', fontWeight: 700 }}>{signerLeft?.name || 'Representative'}</div>
-                            <div style={{ fontSize: '10px', color: '#6b7280' }}>{signerLeft?.title || 'REPRESENTATIVE'}</div>
-                        </div>
+                    {/* Signatures and seal - Only show if signatures are uploaded */}
+                    {(signatureLeftUrl || signatureRightUrl) && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '20px' }}>
+                            <div style={{ width: '220px', textAlign: 'center' }}>
+                                {signatureLeftUrl && <img src={signatureLeftUrl} alt="Signature left" style={{ maxHeight: '50px', objectFit: 'contain', margin: '0 auto 6px' }} />}
+                                {signatureLeftUrl && (
+                                    <>
+                                        <div style={{ fontSize: '11px', color: '#4b5563', fontWeight: 700 }}>{signerLeft?.name || 'Representative'}</div>
+                                        <div style={{ fontSize: '10px', color: '#6b7280' }}>{signerLeft?.title || 'REPRESENTATIVE'}</div>
+                                    </>
+                                )}
+                            </div>
 
-                        <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '2px solid #cdd7e2', display: 'grid', placeItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                            <div style={{ width: '88px', height: '88px', borderRadius: '50%', border: '2px dashed #cdd7e2', display: 'grid', placeItems: 'center' }}>
-                                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#d6dee9' }} />
+                            <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '2px solid #cdd7e2', display: 'grid', placeItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                                <div style={{ width: '88px', height: '88px', borderRadius: '50%', border: '2px dashed #cdd7e2', display: 'grid', placeItems: 'center' }}>
+                                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#d6dee9' }} />
+                                </div>
+                            </div>
+
+                            <div style={{ width: '220px', textAlign: 'center' }}>
+                                {signatureRightUrl && <img src={signatureRightUrl} alt="Signature right" style={{ maxHeight: '50px', objectFit: 'contain', margin: '0 auto 6px' }} />}
+                                {signatureRightUrl && (
+                                    <>
+                                        <div style={{ fontSize: '11px', color: '#4b5563', fontWeight: 700 }}>{signerRight?.name || 'Representative'}</div>
+                                        <div style={{ fontSize: '10px', color: '#6b7280' }}>{signerRight?.title || 'REPRESENTATIVE'}</div>
+                                    </>
+                                )}
                             </div>
                         </div>
-
-                        <div style={{ width: '220px', textAlign: 'center' }}>
-                            {signatureRightUrl && <img src={signatureRightUrl} alt="Signature right" style={{ maxHeight: '50px', objectFit: 'contain', margin: '0 auto 6px' }} />}
-                            <div style={{ fontSize: '11px', color: '#4b5563', fontWeight: 700 }}>{signerRight?.name || 'Representative'}</div>
-                            <div style={{ fontSize: '10px', color: '#6b7280' }}>{signerRight?.title || 'REPRESENTATIVE'}</div>
-                        </div>
-                    </div>
+                    )}
 
                     {/* Footer with date & unique certificate code */}
                     <div style={{ marginTop: '24px', width: '100%', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#6b7280', letterSpacing: '0.06em' }}>
@@ -234,8 +266,8 @@ const CertificateTemplate = ({
 
     // Template 2: Playful Participation (matches provided teal design)
     const template2 = () => {
-        const displayRankTitle = rankTitle || 'Participation Certificate';
-        const displayCertificateType = certificateType || 'Certificate of Participation';
+        const displayRankTitle = rankTitle || 'Participation Certificate/Rank';
+        const displayCertificateType = certificateType || 'Certificate of Participation/Achievement';
         return baseWrap(
             <div style={{
                 background: '#f7fffd',
@@ -277,28 +309,38 @@ const CertificateTemplate = ({
                     </div>
 
                     <div style={{ marginTop: '12px', fontSize: '46px', fontWeight: 900, color: '#08b2a8', letterSpacing: '-0.5px' }}>
-                        {isTeam ? teamName : participantName}
+                        {displayName}
                     </div>
 
                     <div style={{ marginTop: '16px', fontSize: '14px', color: '#0f172a', maxWidth: '720px', lineHeight: 1.5 }}
                         dangerouslySetInnerHTML={{ __html: customMessage || getAchievementText() }} />
                 
 
-                    {/* Signatures */}
-                    <div style={{ marginTop: '40px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '40px', maxWidth: '520px' }}>
-                        <div style={{ textAlign: 'center' }}>
-                            {signatureLeftUrl && <img src={signatureLeftUrl} alt="Signature left" style={{ maxHeight: '44px', objectFit: 'contain', margin: '0 auto 6px' }} />}
-                            <div style={{ width: '110px', height: '1px', background: '#0f172a', margin: '0 auto 10px' }} />
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a' }}>{signerLeft?.name || 'SUPERVISOR'}</div>
-                            <div style={{ fontSize: '10px', color: '#475569', textTransform: 'uppercase' }}>{signerLeft?.title || 'SUPERVISOR'}</div>
+                    {/* Signatures - Only show if signatures are uploaded */}
+                    {(signatureLeftUrl || signatureRightUrl) && (
+                        <div style={{ marginTop: '40px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '40px', maxWidth: '520px' }}>
+                            <div style={{ textAlign: 'center' }}>
+                                {signatureLeftUrl && <img src={signatureLeftUrl} alt="Signature left" style={{ maxHeight: '44px', objectFit: 'contain', margin: '0 auto 6px' }} />}
+                                {signatureLeftUrl && (
+                                    <>
+                                        <div style={{ width: '110px', height: '1px', background: '#0f172a', margin: '0 auto 10px' }} />
+                                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a' }}>{signerLeft?.name || 'SUPERVISOR'}</div>
+                                        <div style={{ fontSize: '10px', color: '#475569', textTransform: 'uppercase' }}>{signerLeft?.title || 'SUPERVISOR'}</div>
+                                    </>
+                                )}
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                {signatureRightUrl && <img src={signatureRightUrl} alt="Signature right" style={{ maxHeight: '44px', objectFit: 'contain', margin: '0 auto 6px' }} />}
+                                {signatureRightUrl && (
+                                    <>
+                                        <div style={{ width: '110px', height: '1px', background: '#0f172a', margin: '0 auto 10px' }} />
+                                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a' }}>{signerRight?.name || 'VP FOR OPERATION'}</div>
+                                        <div style={{ fontSize: '10px', color: '#475569', textTransform: 'uppercase' }}>{signerRight?.title || 'VP FOR OPERATION'}</div>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
-                            {signatureRightUrl && <img src={signatureRightUrl} alt="Signature right" style={{ maxHeight: '44px', objectFit: 'contain', margin: '0 auto 6px' }} />}
-                            <div style={{ width: '110px', height: '1px', background: '#0f172a', margin: '0 auto 10px' }} />
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a' }}>{signerRight?.name || 'VP FOR OPERATION'}</div>
-                            <div style={{ fontSize: '10px', color: '#475569', textTransform: 'uppercase' }}>{signerRight?.title || 'VP FOR OPERATION'}</div>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         );
@@ -306,8 +348,8 @@ const CertificateTemplate = ({
 
     // Template 3: Playful Participation (third design)
     const template3 = () => {
-        const displayRankTitle = rankTitle || 'Participation Certificate';
-        const displayCertificateType = certificateType || 'Certificate of Participation';
+        const displayRankTitle = rankTitle || 'Participation Certificate/Rank';
+        const displayCertificateType = certificateType || 'Certificate of Participation/Achievement';
         return baseWrap(
             <div style={{ background: '#f6fffe', width: '100%', height: '100%', borderRadius: '20px', border: '1px solid #d1fae5', position: 'relative', padding: '60px 70px' }}>
                 {/* Header with both platform and organizer logos */}
@@ -317,7 +359,7 @@ const CertificateTemplate = ({
                 <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '1px', color: '#666', marginTop: '4px' }}>{displayRankTitle}</div>
 
                 <div style={{ marginTop: '24px', fontSize: '16px', color: '#111' }}>This Certificate Presented to :</div>
-                <div style={{ marginTop: '10px', fontSize: '46px', fontWeight: 800, color: '#0ea5e9' }}>{isTeam ? teamName : participantName}</div>
+                <div style={{ marginTop: '10px', fontSize: '46px', fontWeight: 800, color: '#0ea5e9' }}>{displayName}</div>
                 <div style={{ marginTop: '16px', fontSize: '15px', color: '#0f172a', lineHeight: 1.6, maxWidth: '760px' }} dangerouslySetInnerHTML={{ __html: getAchievementText() }} />
 
                 <div style={{ position: 'absolute', top: '120px', right: '60px', display: 'grid', gap: '12px', color: '#0ea5e9', fontWeight: 700, fontSize: '14px' }}>
@@ -339,8 +381,8 @@ const CertificateTemplate = ({
 
     // Template 4: Bold Modern (fourth design)
     const template4 = () => {
-        const displayRankTitle = rankTitle || 'Participation Certificate';
-        const displayCertificateType = certificateType || 'Certificate of Participation';
+        const displayRankTitle = rankTitle || 'Participation Certificate/Rank';
+        const displayCertificateType = certificateType || 'Certificate of Participation/Achievement';
         return baseWrap(
             <div style={{ background: '#ffffff', width: '100%', height: '100%', borderRadius: '20px', border: '1px solid #e5e7eb', position: 'relative', padding: '60px 70px' }}>
                 {/* Header with both platform and organizer logos */}
@@ -357,7 +399,7 @@ const CertificateTemplate = ({
                 <div style={{ marginTop: '8px', fontSize: '16px', fontWeight: 700, color: '#ef4444', letterSpacing: '2px' }}>{displayRankTitle}</div>
 
                 <div style={{ marginTop: '18px', fontSize: '14px', color: '#111' }}>This certificate is appreciated to :</div>
-                <div style={{ marginTop: '12px', fontSize: '42px', fontWeight: 900, color: '#0f172a' }}>{isTeam ? teamName : participantName}</div>
+                <div style={{ marginTop: '12px', fontSize: '42px', fontWeight: 900, color: '#0f172a' }}>{displayName}</div>
 
                 <div style={{ marginTop: '20px', fontSize: '14px', color: '#374151', lineHeight: 1.7, maxWidth: '760px' }} dangerouslySetInnerHTML={{ __html: getAchievementText() }} />
 
@@ -616,7 +658,7 @@ export const generateCertificatePDF = async (certificateData) => {
 
 export const downloadCertificate = async (certificateData) => {
     try {
-        debugger;
+        
         const pdf = await generateCertificatePDF(certificateData);
         
         // Generate filename with participant/team name for uniqueness

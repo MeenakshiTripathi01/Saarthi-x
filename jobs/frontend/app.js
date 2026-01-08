@@ -1,4 +1,4 @@
-const backendUrl = "http://localhost:8080";
+const backendUrl = "http://localhost:2000";
 
 // Elements
 const loginBtn = document.getElementById("login-btn");

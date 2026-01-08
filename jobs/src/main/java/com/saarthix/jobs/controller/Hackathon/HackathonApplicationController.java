@@ -2,6 +2,7 @@ package com.saarthix.jobs.controller.Hackathon;
 
 import com.saarthix.jobs.model.Hackathon;
 import com.saarthix.jobs.model.HackathonApplication;
+import com.saarthix.jobs.model.HackathonPhase;
 import com.saarthix.jobs.model.User;
 import com.saarthix.jobs.repository.HackathonApplicationRepository;
 import com.saarthix.jobs.repository.HackathonRepository;
@@ -13,13 +14,15 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/hackathon-applications")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:2003", allowCredentials = "true")
 public class HackathonApplicationController {
 
     private final HackathonApplicationRepository applicationRepository;
@@ -80,9 +83,56 @@ public class HackathonApplicationController {
                 return ResponseEntity.status(404).body("Hackathon not found");
             }
             System.out.println("Hackathon found: " + hackOpt.get().getTitle());
-
-            // 2.5️⃣ Check registration cutoff (server-side enforcement)
             Hackathon hackathon = hackOpt.get();
+
+            // 2.3️⃣ Check if results are published - STRICT: No new applications allowed
+            if (Boolean.TRUE.equals(hackathon.getResultsPublished())) {
+                System.err.println("Results published. Applications closed. Hackathon: " + hackathonId);
+                return ResponseEntity.status(403)
+                        .body("Applications are closed. Results for this hackathon have been declared.");
+            }
+
+            // 2.4️⃣ Check if Phase 1 deadline has passed - STRICT: No new applications allowed
+            if (hackathon.getPhases() != null && !hackathon.getPhases().isEmpty()) {
+                HackathonPhase phase1 = hackathon.getPhases().get(0);
+                if (phase1.getDeadline() != null && !phase1.getDeadline().isBlank()) {
+                    try {
+                        LocalDateTime phase1Deadline = parseDeadline(phase1.getDeadline());
+                        if (phase1Deadline != null) {
+                            LocalDateTime now = LocalDateTime.now();
+                            if (now.isAfter(phase1Deadline)) {
+                                System.err.println("Phase 1 deadline passed. Deadline: " + phase1Deadline + ", Current time: " + now);
+                                return ResponseEntity.status(403)
+                                        .body("Applications are closed. Phase 1 submission deadline (" + phase1Deadline + ") has passed.");
+                            }
+                            System.out.println("Phase 1 deadline check passed. Deadline: " + phase1Deadline);
+                        } else {
+                            // If deadline format is invalid, log warning but allow application
+                            System.err.println("Warning: Could not parse Phase 1 deadline: " + phase1.getDeadline() + ". Allowing application to proceed.");
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error parsing Phase 1 deadline: " + e.getMessage() + ". Deadline value: " + phase1.getDeadline());
+                        // If date parsing fails, log warning but allow application to proceed
+                        // This prevents blocking legitimate applications due to date format issues
+                        System.err.println("Warning: Allowing application despite deadline parsing error.");
+                    }
+                }
+            }
+
+            // 2.5️⃣ Check if user already has a rejected application for this hackathon
+            List<HackathonApplication> existingApps = applicationRepository.findByHackathonIdAndApplicantId(hackathonId, user.getId());
+            if (existingApps != null && !existingApps.isEmpty()) {
+                HackathonApplication existingApp = existingApps.get(0);
+                if ("REJECTED".equals(existingApp.getStatus())) {
+                    String message = "You cannot re-apply to this hackathon. Your previous application was rejected.";
+                    if (existingApp.getRejectionMessage() != null && !existingApp.getRejectionMessage().trim().isEmpty()) {
+                        message += "\n\nRejection Reason: " + existingApp.getRejectionMessage();
+                    }
+                    return ResponseEntity.status(403).body(message);
+                }
+            }
+
+            // 2.6️⃣ Check registration cutoff (server-side enforcement)
             if (hackathon.getEndDate() != null && !hackathon.getEndDate().isBlank()) {
                 try {
                     LocalDateTime endDate = LocalDateTime.parse(hackathon.getEndDate());
@@ -230,9 +280,83 @@ public class HackathonApplicationController {
             return ResponseEntity.status(403).body("Application is rejected.");
         }
 
+        // STRICT: Check if phase deadline has passed - prevent submission after deadline
+        Optional<Hackathon> hackOpt = hackathonRepository.findById(app.getHackathonId());
+        if (hackOpt.isPresent()) {
+            Hackathon hackathon = hackOpt.get();
+            if (hackathon.getPhases() != null && !hackathon.getPhases().isEmpty()) {
+                // Find the phase being submitted - try by ID first
+                HackathonPhase targetPhase = hackathon.getPhases().stream()
+                        .filter(p -> p.getId() != null && p.getId().equals(phaseId))
+                        .findFirst()
+                        .orElse(null);
+                
+                // If not found by ID, try to find by matching phaseId with phase index or name
+                if (targetPhase == null && hackathon.getPhases().size() > 0) {
+                    // Try to extract phase number from phaseId (e.g., "phase1", "phase-1", "1")
+                    try {
+                        String phaseIdLower = phaseId.toLowerCase();
+                        if (phaseIdLower.contains("1") || phaseIdLower.equals("phase1") || phaseIdLower.equals("phase-1")) {
+                            targetPhase = hackathon.getPhases().get(0);
+                        } else if (phaseIdLower.contains("2") || phaseIdLower.equals("phase2") || phaseIdLower.equals("phase-2")) {
+                            if (hackathon.getPhases().size() > 1) {
+                                targetPhase = hackathon.getPhases().get(1);
+                            }
+                        } else if (phaseIdLower.contains("3") || phaseIdLower.equals("phase3") || phaseIdLower.equals("phase-3")) {
+                            if (hackathon.getPhases().size() > 2) {
+                                targetPhase = hackathon.getPhases().get(2);
+                            }
+                        }
+                    } catch (Exception e) {
+                        // If parsing fails, check all phases - find first phase that might match
+                        System.err.println("Error parsing phase ID: " + e.getMessage());
+                    }
+                }
+                
+                // If still not found, check all phases to see if any deadline has passed (strict check)
+                if (targetPhase == null) {
+                    // For safety, check Phase 1 deadline if we can't identify the phase
+                    targetPhase = hackathon.getPhases().get(0);
+                }
+                
+                if (targetPhase != null && targetPhase.getDeadline() != null && !targetPhase.getDeadline().isBlank()) {
+                    try {
+                        LocalDateTime phaseDeadline = parseDeadline(targetPhase.getDeadline());
+                        if (phaseDeadline != null) {
+                            LocalDateTime now = LocalDateTime.now();
+                            if (now.isAfter(phaseDeadline)) {
+                                return ResponseEntity.status(403)
+                                        .body("Submission deadline has passed. The deadline for " + targetPhase.getName() + " was " + phaseDeadline + ".");
+                            }
+                        } else {
+                            // If deadline format is invalid, log warning but allow submission
+                            System.err.println("Warning: Could not parse phase deadline: " + targetPhase.getDeadline() + ". Allowing submission to proceed.");
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error parsing phase deadline: " + e.getMessage() + ". Deadline value: " + targetPhase.getDeadline());
+                        // If date parsing fails, log warning but allow submission to proceed
+                        // This prevents blocking legitimate submissions due to date format issues
+                        System.err.println("Warning: Allowing submission despite deadline parsing error.");
+                    }
+                }
+            }
+        }
+
+        // Check if this is a re-upload (previous status was REUPLOAD_REQUESTED)
+        HackathonApplication.PhaseSubmission existingSubmission = app.getPhaseSubmissions().get(phaseId);
+        int reuploadCount = 0;
+        boolean isReuploaded = false;
+        if (existingSubmission != null && "REUPLOAD_REQUESTED".equals(existingSubmission.getStatus())) {
+            // This is a re-upload, preserve the reupload count and mark as re-uploaded
+            reuploadCount = existingSubmission.getReuploadCount() != null ? existingSubmission.getReuploadCount() : 0;
+            isReuploaded = true; // Mark that this solution is a re-upload
+        }
+
         // Update submission
         submission.setSubmittedAt(LocalDateTime.now());
         submission.setStatus("PENDING"); // Reset status on new submission
+        submission.setReuploadCount(reuploadCount); // Preserve re-upload count
+        submission.setIsReuploaded(isReuploaded); // Mark as re-uploaded if applicable
         app.getPhaseSubmissions().put(phaseId, submission);
         app.setCurrentPhaseId(phaseId); // Update current phase tracking
 
@@ -273,6 +397,11 @@ public class HackathonApplicationController {
             return ResponseEntity.status(404).body("No submission found for this phase.");
         }
 
+        // Prevent accepting a submission that has been requested for re-upload
+        if ("REUPLOAD_REQUESTED".equals(existingSubmission.getStatus()) && "ACCEPTED".equals(review.getStatus())) {
+            return ResponseEntity.status(400).body("Cannot accept a submission that has been requested for re-upload. Please wait for the applicant to submit a new solution.");
+        }
+
         // Update review details
         existingSubmission.setStatus(review.getStatus());
         existingSubmission.setScore(review.getScore());
@@ -281,6 +410,107 @@ public class HackathonApplicationController {
         // Update overall status if rejected
         if ("REJECTED".equals(review.getStatus())) {
             app.setStatus("REJECTED");
+        }
+
+        applicationRepository.save(app);
+        return ResponseEntity.ok(app);
+    }
+
+    // --------------------------------------------
+    // REQUEST RE-UPLOAD FOR PHASE (Industry)
+    // PUT /api/hackathon-applications/{applicationId}/phases/{phaseId}/request-reupload
+    // --------------------------------------------
+    @PutMapping("/{applicationId}/phases/{phaseId}/request-reupload")
+    public ResponseEntity<?> requestReupload(
+            @PathVariable String applicationId,
+            @PathVariable String phaseId,
+            @RequestBody Map<String, String> request,
+            Authentication auth) {
+
+        User user = resolveUser(auth);
+        if (user == null || !"INDUSTRY".equals(user.getUserType())) {
+            return ResponseEntity.status(403).body("Only industry users can request re-upload.");
+        }
+
+        Optional<HackathonApplication> appOpt = applicationRepository.findById(applicationId);
+        if (appOpt.isEmpty()) {
+            return ResponseEntity.status(404).body("Application not found.");
+        }
+        HackathonApplication app = appOpt.get();
+
+        // Verify industry owns the hackathon
+        Optional<Hackathon> hackOpt = hackathonRepository.findById(app.getHackathonId());
+        if (hackOpt.isEmpty() || !hackOpt.get().getCreatedByIndustryId().equals(user.getId())) {
+            return ResponseEntity.status(403).body("You can only request re-upload for your hackathons.");
+        }
+
+        HackathonApplication.PhaseSubmission existingSubmission = app.getPhaseSubmissions().get(phaseId);
+        if (existingSubmission == null) {
+            return ResponseEntity.status(404).body("No submission found for this phase.");
+        }
+
+        // STRICT VALIDATION: Check if re-upload has already been requested 2 times (maximum limit)
+        int currentReuploadCount = existingSubmission.getReuploadCount() != null ? existingSubmission.getReuploadCount() : 0;
+        
+        // CRITICAL: Enforce strict limit - reject if count is 2 or more (no exceptions)
+        if (currentReuploadCount >= 2) {
+            return ResponseEntity.status(400).body("Maximum re-upload limit reached (2 times). You cannot request another re-upload for this submission.");
+        }
+        
+        // Additional safety check: reject if count is exactly 2 (redundant but extra safety)
+        if (currentReuploadCount == 2) {
+            return ResponseEntity.status(400).body("This submission has already reached the maximum re-upload limit of 2 times.");
+        }
+        
+        // Final check: if somehow count is greater than 2, reject
+        if (currentReuploadCount > 2) {
+            return ResponseEntity.status(400).body("Invalid state: re-upload count exceeds maximum limit.");
+        }
+
+        // Increment re-upload count and set status to REUPLOAD_REQUESTED
+        existingSubmission.setReuploadCount(currentReuploadCount + 1);
+        existingSubmission.setStatus("REUPLOAD_REQUESTED");
+        String message = request.get("message");
+        if (message != null && !message.trim().isEmpty()) {
+            existingSubmission.setRemarks(message);
+        }
+
+        applicationRepository.save(app);
+        return ResponseEntity.ok(app);
+    }
+
+    // --------------------------------------------
+    // REJECT APPLICATION (Industry)
+    // PUT /api/hackathon-applications/{applicationId}/reject
+    // --------------------------------------------
+    @PutMapping("/{applicationId}/reject")
+    public ResponseEntity<?> rejectApplication(
+            @PathVariable String applicationId,
+            @RequestBody Map<String, String> request,
+            Authentication auth) {
+
+        User user = resolveUser(auth);
+        if (user == null || !"INDUSTRY".equals(user.getUserType())) {
+            return ResponseEntity.status(403).body("Only industry users can reject applications.");
+        }
+
+        Optional<HackathonApplication> appOpt = applicationRepository.findById(applicationId);
+        if (appOpt.isEmpty()) {
+            return ResponseEntity.status(404).body("Application not found.");
+        }
+        HackathonApplication app = appOpt.get();
+
+        // Verify industry owns the hackathon
+        Optional<Hackathon> hackOpt = hackathonRepository.findById(app.getHackathonId());
+        if (hackOpt.isEmpty() || !hackOpt.get().getCreatedByIndustryId().equals(user.getId())) {
+            return ResponseEntity.status(403).body("You can only reject applications for your hackathons.");
+        }
+
+        // Set application status to REJECTED and store rejection message
+        app.setStatus("REJECTED");
+        String rejectionMessage = request.get("rejectionMessage");
+        if (rejectionMessage != null && !rejectionMessage.trim().isEmpty()) {
+            app.setRejectionMessage(rejectionMessage);
         }
 
         applicationRepository.save(app);
@@ -457,7 +687,7 @@ public class HackathonApplicationController {
     }
 
     private void generateCertificateUrls(HackathonApplication app) {
-        String baseUrl = "http://localhost:8080/api/certificates/view";
+        String baseUrl = "http://localhost:2000/api/certificates/view";
 
         if (Boolean.TRUE.equals(app.getAsTeam())) {
             // Generate for each team member
@@ -611,6 +841,15 @@ public class HackathonApplicationController {
             Integer rank = (Integer) updates.get("finalRank");
             app.setFinalRank(rank);
             System.out.println("Setting finalRank to: " + rank);
+            
+            // Mark hackathon as having published results when a rank is assigned
+            Optional<Hackathon> hackathonOpt = hackathonRepository.findById(app.getHackathonId());
+            if (hackathonOpt.isPresent()) {
+                Hackathon hackathon = hackathonOpt.get();
+                hackathon.setResultsPublished(true);
+                hackathonRepository.save(hackathon);
+                System.out.println("Marked hackathon " + app.getHackathonId() + " as results published");
+            }
         }
 
         // Update totalScore if provided
@@ -653,6 +892,53 @@ public class HackathonApplicationController {
 
         applicationRepository.delete(app);
         return ResponseEntity.ok("Application deleted successfully");
+    }
+
+    // --------------------------------------------
+    // Helper — parse deadline with multiple format support
+    // --------------------------------------------
+    private LocalDateTime parseDeadline(String deadlineStr) {
+        if (deadlineStr == null || deadlineStr.isBlank()) {
+            return null;
+        }
+
+        // List of common date-time formats to try
+        DateTimeFormatter[] formatters = {
+            DateTimeFormatter.ISO_LOCAL_DATE_TIME,           // 2024-01-15T10:30:00
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS"), // 2024-01-15T10:30:00.000
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),      // 2024-01-15 10:30:00
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"),        // 2024-01-15T10:30
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),          // 2024-01-15 10:30
+            DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"),       // 2024/01/15 10:30:00
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"),       // 15/01/2024 10:30:00
+            DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss"),       // 01/15/2024 10:30:00
+            DateTimeFormatter.ISO_DATE_TIME,                         // ISO with timezone
+            DateTimeFormatter.ISO_INSTANT                             // ISO instant format
+        };
+
+        // Try each format
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                return LocalDateTime.parse(deadlineStr.trim(), formatter);
+            } catch (DateTimeParseException e) {
+                // Try next format
+                continue;
+            }
+        }
+
+        // If all formats fail, try parsing as ISO date-time with optional parts
+        try {
+            // Handle cases where time might be missing (default to end of day)
+            if (deadlineStr.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                return LocalDateTime.parse(deadlineStr + "T23:59:59", DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+
+        // If all parsing attempts fail, return null
+        System.err.println("Could not parse deadline with any known format: " + deadlineStr);
+        return null;
     }
 
     // --------------------------------------------

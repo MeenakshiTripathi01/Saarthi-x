@@ -1,5 +1,6 @@
 package com.saarthix.jobs.controller;
 
+import com.saarthix.jobs.config.DataSeeder;
 import com.saarthix.jobs.repository.UserProfileRepository;
 import com.saarthix.jobs.repository.UserRepository;
 import com.saarthix.jobs.repository.ApplicationRepository;
@@ -12,23 +13,26 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/test")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:2003", allowCredentials = "true")
 public class TestController {
     
     private final UserProfileRepository userProfileRepository;
     private final UserRepository userRepository;
     private final ApplicationRepository applicationRepository;
     private final HackathonApplicationRepository hackathonApplicationRepository;
+    private final DataSeeder dataSeeder;
     
     public TestController(
             UserProfileRepository userProfileRepository,
             UserRepository userRepository,
             ApplicationRepository applicationRepository,
-            HackathonApplicationRepository hackathonApplicationRepository) {
+            HackathonApplicationRepository hackathonApplicationRepository,
+            DataSeeder dataSeeder) {
         this.userProfileRepository = userProfileRepository;
         this.userRepository = userRepository;
         this.applicationRepository = applicationRepository;
         this.hackathonApplicationRepository = hackathonApplicationRepository;
+        this.dataSeeder = dataSeeder;
     }
     
     /**
@@ -179,5 +183,39 @@ public class TestController {
         result.put("message", "Backend is running");
         result.put("timestamp", System.currentTimeMillis());
         return ResponseEntity.ok(result);
+    }
+    
+    /**
+     * Seed dummy users endpoint
+     * GET or POST /api/test/seed-users?count=100
+     */
+    @GetMapping("/seed-users")
+    @PostMapping("/seed-users")
+    public ResponseEntity<?> seedUsers(@RequestParam(defaultValue = "100") int count) {
+        try {
+            long beforeCount = userRepository.count();
+            
+            int seededCount = dataSeeder.seedUsers(count);
+            
+            long afterCount = userRepository.count();
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("status", "Success ✅");
+            result.put("message", "Seeding completed");
+            result.put("requestedCount", count);
+            result.put("seededCount", seededCount);
+            result.put("usersBefore", beforeCount);
+            result.put("usersAfter", afterCount);
+            result.put("totalUsers", afterCount);
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "Error ❌");
+            error.put("message", "Failed to seed users");
+            error.put("error", e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(error);
+        }
     }
 }

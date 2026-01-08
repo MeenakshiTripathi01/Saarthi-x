@@ -1,0 +1,49 @@
+# Docker Compose configuration for local builds
+# This uses Dockerfile.local which expects a pre-built JAR file
+# This approach only needs the runtime image (eclipse-temurin:17-jre), not the build image
+# Run: .\build-and-run.ps1 or manually: .\gradlew.bat bootJar && docker-compose -f docker-compose.local.yml up --build
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: saarthix-backend
+    ports:
+      - "2000:2000"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: always
+    # Add DNS configuration to help with network issues
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - saarthix-network
+
+  mongo:
+    image: mongo:7
+    container_name: saarthix-mongo
+    ports:
+      - "2002:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - saarthix-network
+
+volumes:
+  mongo-data:
+
+networks:
+  saarthix-network:
+    driver: bridge
+

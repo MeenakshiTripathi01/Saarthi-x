@@ -28,6 +28,33 @@ export default function HackathonApplicationDashboard() {
     const [previewCertificate, setPreviewCertificate] = useState(null);
     const [previewingMember, setPreviewingMember] = useState(null);
 
+    // Validate domain format
+    const isValidDomain = (url) => {
+        if (!url || url.trim() === '') return true; // Allow empty for now
+        
+        try {
+            // Check if it starts with http:// or https://
+            if (!/^https?:\/\//i.test(url)) {
+                return false;
+            }
+            
+            // Parse the URL
+            const urlObj = new URL(url);
+            const hostname = urlObj.hostname;
+            
+            // Check if hostname is valid (contains at least one dot and valid characters)
+            // Valid domain pattern: subdomain.domain.tld or domain.tld
+            const domainPattern = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+            
+            // Remove port if present
+            const hostnameWithoutPort = hostname.split(':')[0];
+            
+            return domainPattern.test(hostnameWithoutPort);
+        } catch (error) {
+            return false;
+        }
+    };
+
     // Certificate data comes from backend ONLY - no localStorage fallback
 
     const handleDownloadCertificate = async () => {
@@ -187,6 +214,27 @@ export default function HackathonApplicationDashboard() {
 
     const handleSubmit = async (phaseId, format) => {
         try {
+            // STRICT: Check if phase deadline has passed
+            if (hackathon && hackathon.phases) {
+                const targetPhase = hackathon.phases.find(p => p.id === phaseId) || 
+                                   (phaseId && hackathon.phases[0]); // Fallback to first phase if ID doesn't match
+                
+                if (targetPhase && targetPhase.deadline) {
+                    try {
+                        const deadline = new Date(targetPhase.deadline);
+                        const now = new Date();
+                        if (now > deadline) {
+                            toast.error(`Submission deadline has passed. The deadline for ${targetPhase.name || 'this phase'} was ${deadline.toLocaleString()}.`);
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing phase deadline:', e);
+                        toast.error('Unable to verify phase deadline. Please contact support.');
+                        return;
+                    }
+                }
+            }
+
             // Validation
             if (!solutionText.trim()) {
                 toast.error('Please provide a solution description/statement');
@@ -295,6 +343,10 @@ export default function HackathonApplicationDashboard() {
                     activePhaseIndex = i; // Completed all, stay on last
                 }
                 continue;
+            } else if (submission.status === 'REUPLOAD_REQUESTED') {
+                // Allow re-upload for this phase
+                activePhaseIndex = i;
+                break;
             } else {
                 // PENDING or REJECTED (though rejected should be caught by app status)
                 activePhaseIndex = i;
@@ -341,6 +393,20 @@ export default function HackathonApplicationDashboard() {
                         )}
                     </div>
                 </div>
+
+                {/* Rejection Message Section */}
+                {application.status === 'REJECTED' && application.rejectionMessage && (
+                    <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-6">
+                        <div className="flex items-start gap-3">
+                            <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <h3 className="text-lg font-bold text-red-900 mb-2">Application Rejected</h3>
+                                <p className="text-sm text-red-700 whitespace-pre-line leading-relaxed">{application.rejectionMessage}</p>
+                                <p className="text-xs text-red-600 mt-3 font-medium">You cannot re-apply to this hackathon.</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Individual Applicant Details Section - Show for individual applications */}
                 {!application.asTeam && application.individualName && (
@@ -629,6 +695,20 @@ export default function HackathonApplicationDashboard() {
                                         </div>
                                     </div>
                                 );
+                            } else if (status === 'REUPLOAD_REQUESTED') {
+                                const submission = application.phaseSubmissions?.[phase.id];
+                                return (
+                                    <div key={phase.id} className="bg-orange-50 border border-orange-200 p-4 rounded-xl flex items-start gap-3 text-orange-700 animate-fadeIn">
+                                        <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1">
+                                            <p className="font-bold mb-1">Re-upload Requested for Phase {idx + 1}: {phase.name}</p>
+                                            {submission?.remarks && (
+                                                <p className="text-sm mb-2">{submission.remarks}</p>
+                                            )}
+                                            <p className="text-xs text-orange-600 font-medium">Please review the feedback and submit an improved solution.</p>
+                                        </div>
+                                    </div>
+                                );
                             }
                             return null;
                         })}
@@ -648,6 +728,21 @@ export default function HackathonApplicationDashboard() {
                                 const isCompleted = submission?.status === 'ACCEPTED';
                                 const isRejected = submission?.status === 'REJECTED';
                                 const isPending = submission?.status === 'PENDING';
+                                const isReuploadRequested = submission?.status === 'REUPLOAD_REQUESTED';
+                                const reuploadCount = submission?.reuploadCount || 0;
+                                
+                                // Check if phase deadline has passed
+                                const isDeadlinePassed = () => {
+                                    if (!phase.deadline) return false;
+                                    try {
+                                        const deadline = new Date(phase.deadline);
+                                        const now = new Date();
+                                        return now > deadline;
+                                    } catch (e) {
+                                        return false;
+                                    }
+                                };
+                                const deadlinePassed = isDeadlinePassed();
 
                                 return (
                                     <div key={phase.id} className={`bg-white rounded-xl border ${isActive ? 'border-purple-500 shadow-md ring-1 ring-purple-100' : 'border-gray-200'
@@ -676,6 +771,7 @@ export default function HackathonApplicationDashboard() {
                                             <div className="text-sm font-medium">
                                                 {isCompleted && <span className="text-green-600">Completed</span>}
                                                 {isRejected && <span className="text-red-600">Rejected</span>}
+                                                {isReuploadRequested && <span className="text-orange-600 flex items-center gap-1"><AlertCircle className="w-4 h-4" /> Re-upload Requested</span>}
                                                 {isPending && <span className="text-yellow-600 flex items-center gap-1"><Clock className="w-4 h-4" /> Under Review</span>}
                                                 {isActive && !submission && <span className="text-purple-600">Current Phase</span>}
                                                 {isLocked && <span className="text-gray-400">Locked</span>}
@@ -689,7 +785,29 @@ export default function HackathonApplicationDashboard() {
                                             {/* Submission View (if submitted) */}
                                             {submission && (
                                                 <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
-                                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Your Submission</h4>
+                                                    {/* Re-upload Indicator - Show permanently if solution was re-uploaded */}
+                                                    {submission.isReuploaded && (
+                                                        <div className="mb-3 bg-green-50 border border-green-200 rounded-lg p-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm font-bold text-green-900">
+                                                                    ✅ This is a re-uploaded solution
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className="text-sm font-semibold text-gray-700">Your Submission</h4>
+                                                        {reuploadCount > 0 && (
+                                                            <span className={`text-xs font-bold px-2 py-1 rounded ${
+                                                                reuploadCount === 1 ? 'bg-blue-100 text-blue-700' :
+                                                                reuploadCount === 2 ? 'bg-orange-100 text-orange-700' :
+                                                                'bg-gray-100 text-gray-700'
+                                                            }`}>
+                                                                Re-upload requested: {reuploadCount === 1 ? '1st time' : reuploadCount === 2 ? '2nd time (Final)' : `${reuploadCount} times`}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     {submission.solutionStatement && (
                                                         <p className="text-sm text-gray-600 mb-2">{submission.solutionStatement}</p>
                                                     )}
@@ -706,7 +824,9 @@ export default function HackathonApplicationDashboard() {
                                                     {/* Feedback / Score */}
                                                     {(submission.score || submission.remarks) && (
                                                         <div className="mt-4 pt-4 border-t border-gray-200">
-                                                            <h5 className="text-sm font-semibold text-gray-700 mb-2">Feedback</h5>
+                                                            <h5 className="text-sm font-semibold text-gray-700 mb-2">
+                                                                {isReuploadRequested ? 'Re-upload Request' : 'Feedback'}
+                                                            </h5>
                                                             {submission.score && (
                                                                 <div className="mb-1">
                                                                     <span className="text-xs font-bold text-gray-500 uppercase">Score:</span>
@@ -715,7 +835,9 @@ export default function HackathonApplicationDashboard() {
                                                             )}
                                                             {submission.remarks && (
                                                                 <div>
-                                                                    <span className="text-xs font-bold text-gray-500 uppercase">Remarks:</span>
+                                                                    <span className="text-xs font-bold text-gray-500 uppercase">
+                                                                        {isReuploadRequested ? 'Industry Feedback:' : 'Remarks:'}
+                                                                    </span>
                                                                     <p className="text-sm text-gray-700 mt-1 italic">"{submission.remarks}"</p>
                                                                 </div>
                                                             )}
@@ -724,8 +846,21 @@ export default function HackathonApplicationDashboard() {
                                                 </div>
                                             )}
 
-                                            {/* Submission Form (if active and not pending/accepted) */}
-                                            {isActive && !isPending && !isCompleted && !isRejected && (
+                                            {/* Re-upload Request Message */}
+                                            {isReuploadRequested && (
+                                                <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg p-4">
+                                                    <div className="flex items-start gap-2">
+                                                        <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-bold text-orange-900 mb-1">Re-upload Requested</p>
+                                                            <p className="text-sm text-orange-700">Please review the feedback above and submit an improved solution.</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Submission Form (if active and not pending/accepted/rejected, or if re-upload requested) */}
+                                            {((isActive && !isPending && !isCompleted && !isRejected) || (isReuploadRequested && isActive)) && (
                                                 <div className="mt-4 animate-fadeIn">
                                                     <h4 className="text-sm font-bold text-gray-900 mb-3">Submit Solution</h4>
 
@@ -754,13 +889,26 @@ export default function HackathonApplicationDashboard() {
                                                             </label>
                                                             <input
                                                                 type="url"
-                                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                                                placeholder="https://github.com/username/repo or https://project-url.com"
+                                                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                                                                    submissionLink && !isValidDomain(submissionLink) ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                                                }`}
+                                                                placeholder="https://example.com or https://github.com/username/repo"
                                                                 value={submissionLink}
-                                                                onChange={(e) => setSubmissionLink(e.target.value)}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value;
+                                                                    setSubmissionLink(value);
+                                                                    if (value && !isValidDomain(value)) {
+                                                                        // Show validation error
+                                                                    }
+                                                                }}
                                                                 pattern="https?://.*"
-                                                                title="Please enter a valid URL starting with http:// or https://"
+                                                                title="Please enter a valid URL with a valid domain (e.g., https://example.com)"
                                                             />
+                                                            {submissionLink && !isValidDomain(submissionLink) && (
+                                                                <p className="mt-1 text-xs text-red-600">
+                                                                    Please enter a valid URL with a valid domain (e.g., https://example.com, https://github.com/user/repo)
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     )}
 
@@ -807,29 +955,36 @@ export default function HackathonApplicationDashboard() {
                                                         </div>
                                                     )}
 
-                                                    <button
-                                                        onClick={() => handleSubmit(phase.id, phase.uploadFormat)}
-                                                        disabled={
-                                                            submitting ||
-                                                            !solutionText.trim() ||
-                                                            (phase.uploadFormat === 'link' && !submissionLink.trim()) ||
-                                                            ((phase.uploadFormat === 'code' || phase.uploadFormat === 'any') && (!selectedFile || !submissionLink.trim())) ||
-                                                            (phase.uploadFormat !== 'link' && phase.uploadFormat !== 'code' && phase.uploadFormat !== 'any' && !selectedFile)
-                                                        }
-                                                        className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                                    >
-                                                        {submitting ? (
-                                                            <>
-                                                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                                                                Submitting...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Upload className="w-4 h-4" />
-                                                                Submit Solution
-                                                            </>
-                                                        )}
-                                                    </button>
+                                                    {deadlinePassed ? (
+                                                        <div className="w-full bg-red-50 border border-red-200 text-red-700 py-2 px-4 rounded-lg font-medium flex items-center justify-center gap-2">
+                                                            <XCircle className="w-4 h-4" />
+                                                            Submission Deadline Passed
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleSubmit(phase.id, phase.uploadFormat)}
+                                                            disabled={
+                                                                submitting ||
+                                                                !solutionText.trim() ||
+                                                                (phase.uploadFormat === 'link' && (!submissionLink.trim() || !isValidDomain(submissionLink))) ||
+                                                                ((phase.uploadFormat === 'code' || phase.uploadFormat === 'any') && (!selectedFile || !submissionLink.trim() || !isValidDomain(submissionLink))) ||
+                                                                (phase.uploadFormat !== 'link' && phase.uploadFormat !== 'code' && phase.uploadFormat !== 'any' && !selectedFile)
+                                                            }
+                                                            className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                        >
+                                                            {submitting ? (
+                                                                <>
+                                                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                                                    Submitting...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Upload className="w-4 h-4" />
+                                                                    Submit Solution
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
 

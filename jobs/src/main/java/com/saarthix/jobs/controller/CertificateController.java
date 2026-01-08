@@ -13,7 +13,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/certificates")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:2003", allowCredentials = "true")
 public class CertificateController {
 
     private final HackathonApplicationRepository applicationRepository;
@@ -37,7 +37,7 @@ public class CertificateController {
         }
 
         HackathonApplication app = appOpt.get();
-        String baseUrl = "http://localhost:8080/api/certificates/view";
+        String baseUrl = "http://localhost:2000/api/certificates/view";
 
         if (Boolean.TRUE.equals(app.getAsTeam())) {
             // Generate for each team member

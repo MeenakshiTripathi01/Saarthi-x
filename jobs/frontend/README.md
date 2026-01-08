@@ -25,11 +25,11 @@ npm install
 npm run dev
 ```
 
-The frontend will run on `http://localhost:5173`
+The frontend will run on `http://localhost:2003`
 
 ### 3. Backend Requirements
 
-Make sure your Spring Boot backend is running on `http://localhost:8080` before using the frontend.
+Make sure your Spring Boot backend is running on `http://localhost:2000` before using the frontend.
 
 ## API Integration
 
@@ -85,10 +85,10 @@ If you need to change the backend URL, update it in:
 ## Troubleshooting
 
 ### CORS Issues
-Make sure your backend CORS configuration allows `http://localhost:5173`
+Make sure your backend CORS configuration allows `http://localhost:2003`
 
 ### Authentication Not Working
-1. Check that backend is running on port 8080
+1. Check that backend is running on port 2000
 2. Verify OAuth redirect URL in backend config matches frontend URL
 3. Check browser console for errors
 

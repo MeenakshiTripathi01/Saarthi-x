@@ -1,6 +1,7 @@
 // API functions for Student Database Access feature
+import { BACKEND_URL } from '../config';
 
-const API_BASE_URL = 'http://localhost:8080/api/students';
+const API_BASE_URL = `${BACKEND_URL}/api/students`;
 
 /**
  * Get all students with optional filters

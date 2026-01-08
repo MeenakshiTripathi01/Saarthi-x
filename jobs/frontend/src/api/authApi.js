@@ -1,4 +1,4 @@
-const BACKEND_URL = 'http://localhost:8080';
+import { BACKEND_URL } from '../config';
 
 // Check if user is authenticated
 export const checkAuth = async () => {
@@ -30,7 +30,9 @@ export const checkAuth = async () => {
 export const loginWithGoogle = () => {
   // Mark that we're redirecting for OAuth
   sessionStorage.setItem('oauthRedirect', 'true');
-  window.location.href = `${BACKEND_URL}/oauth2/authorization/google`;
+  // Use relative URL so it goes through Vite proxy on port 2003
+  // This will be proxied to http://localhost:2000/oauth2/authorization/google
+  window.location.href = '/oauth2/authorization/google';
 };
 
 // Logout

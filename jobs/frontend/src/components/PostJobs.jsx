@@ -4,6 +4,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 import { loginWithGoogle } from "../api/authApi";
+import { BACKEND_URL } from "../config";
 
 export default function PostJobs() {
   const navigate = useNavigate();
@@ -117,7 +118,7 @@ export default function PostJobs() {
       };
 
       const response = await axios.post(
-        "http://localhost:8080/api/jobs",
+        `${BACKEND_URL}/api/jobs`,
         jobData,
         {
           withCredentials: true,

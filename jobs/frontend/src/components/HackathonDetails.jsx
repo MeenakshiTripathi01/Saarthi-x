@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getHackathonById, applyForHackathon, getMyHackathonApplications } from '../api/jobApi';
+import { getHackathonById, applyForHackathon, getMyHackathonApplications, incrementHackathonViews } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { Calendar, MapPin, Users, Trophy, Clock, CheckCircle, ArrowRight, User, Mail, Phone } from 'lucide-react';
+import { Calendar, MapPin, Users, Trophy, Clock, CheckCircle, ArrowRight, User, Mail, Phone, XCircle } from 'lucide-react';
 
 export default function HackathonDetails() {
     const { id } = useParams();
@@ -87,6 +87,38 @@ export default function HackathonDetails() {
         return `${day.toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${year} (${day}${getSuffix(day)} ${month} ${year})`;
     };
 
+    // Check if Phase 1 deadline has passed
+    const isPhase1DeadlinePassed = () => {
+        if (!hackathon || !hackathon.phases || hackathon.phases.length === 0) {
+            return false;
+        }
+        const phase1 = hackathon.phases[0];
+        if (!phase1.deadline) {
+            return false;
+        }
+        try {
+            const deadline = new Date(phase1.deadline);
+            const now = new Date();
+            return now > deadline;
+        } catch (e) {
+            console.error('Error parsing Phase 1 deadline:', e);
+            return false;
+        }
+    };
+
+    // Check if results are published
+    const areResultsPublished = () => {
+        return hackathon && (hackathon.resultsPublished === true || hackathon.resultsPublished === 'true');
+    };
+
+    // Check if application is allowed
+    const canApply = () => {
+        if (existingApplication) return false;
+        if (areResultsPublished()) return false;
+        if (isPhase1DeadlinePassed()) return false;
+        return true;
+    };
+
     useEffect(() => {
         loadData();
     }, [id, isAuthenticated]);
@@ -128,7 +160,7 @@ export default function HackathonDetails() {
             return;
         }
 
-        // Validation for duplicates
+        // Validation for duplicates and phone number length
         if (asTeam) {
             const emails = new Set();
             const phones = new Set();
@@ -142,6 +174,15 @@ export default function HackathonDetails() {
                     return;
                 }
                 if (member.email) emails.add(member.email.toLowerCase());
+
+                // Validate phone number is exactly 10 digits
+                if (member.phone) {
+                    const phoneDigits = member.phone.replace(/\D/g, '');
+                    if (phoneDigits.length !== 10) {
+                        toast.error(`Team member ${i + 1} phone number must be exactly 10 digits. Current: ${phoneDigits.length} digits`);
+                        return;
+                    }
+                }
 
                 if (member.phone && phones.has(member.phone)) {
                     toast.error(`Duplicate phone number found: ${member.phone}. Each member must have a unique phone number.`);
@@ -176,6 +217,13 @@ export default function HackathonDetails() {
                     setApplying(false);
                     return;
                 }
+                // Validate phone number is exactly 10 digits
+                const phoneDigits = individualPhone.replace(/\D/g, '');
+                if (phoneDigits.length !== 10) {
+                    toast.error('Phone number must be exactly 10 digits');
+                    setApplying(false);
+                    return;
+                }
                 if (!individualQualifications.trim()) {
                     toast.error('Please enter your qualifications');
                     setApplying(false);
@@ -187,14 +235,27 @@ export default function HackathonDetails() {
                 asTeam: hackathon.allowIndividual === false ? true : asTeam,
                 teamName: asTeam || hackathon.allowIndividual === false ? teamName : null,
                 teamSize: asTeam || hackathon.allowIndividual === false ? teamSize : 1,
-                teamMembers: asTeam || hackathon.allowIndividual === false ? teamMembers : [],
+                teamMembers: asTeam || hackathon.allowIndividual === false ? teamMembers.map(member => ({
+                    ...member,
+                    phone: member.phone ? member.phone.replace(/\D/g, '') : '' // Ensure only digits
+                })) : [],
                 individualName: !asTeam && hackathon.allowIndividual !== false ? individualName.trim() : null,
                 individualEmail: !asTeam && hackathon.allowIndividual !== false ? individualEmail.trim() : null,
-                individualPhone: !asTeam && hackathon.allowIndividual !== false ? individualPhone.trim() : null,
+                individualPhone: !asTeam && hackathon.allowIndividual !== false ? individualPhone.replace(/\D/g, '') : null, // Ensure only digits
                 individualQualifications: !asTeam && hackathon.allowIndividual !== false ? individualQualifications.trim() : null
             };
 
             console.log('[Apply] Submitting application data:', applicationData);
+
+            // Increment views when applying
+            try {
+              await incrementHackathonViews(id);
+              // Update local state to reflect the new view count
+              setHackathon(prev => prev ? { ...prev, views: (prev.views || 0) + 1 } : prev);
+            } catch (error) {
+              // Silently fail - views increment is not critical
+              console.error('Failed to increment views:', error);
+            }
 
             const response = await applyForHackathon(id, applicationData);
             
@@ -250,22 +311,24 @@ export default function HackathonDetails() {
 
                     <div className="p-6 sm:p-8">
                         <div className="flex flex-wrap gap-4 mb-8 text-sm text-gray-600">
-                            <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
+                            {/* <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
                                 <Calendar className="w-4 h-4 text-purple-600" />
                                 <span>{formatDate(hackathon.startDate)} - {formatDate(hackathon.endDate)}</span>
-                            </div>
-                            <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
-                                <MapPin className="w-4 h-4 text-purple-600" />
-                                <span>{hackathon.mode} {hackathon.location ? `(${hackathon.location})` : ''}</span>
-                            </div>
-                            <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
-                                <Users className="w-4 h-4 text-purple-600" />
-                                <span>Team Size: {hackathon.minTeamSize} - {hackathon.teamSize} Members</span>
-                            </div>
-                            <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
-                                <Trophy className="w-4 h-4 text-purple-600" />
-                                <span>Prize: {hackathon.prize}</span>
-                            </div>
+                            </div> */}
+                            {/* Mode is now set per phase, so we don't show it at hackathon level */}
+                            {(hackathon.minTeamSize || hackathon.teamSize) && (
+                                <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
+                                    <Users className="w-4 h-4 text-purple-600" />
+                                    <span>Team Size: {hackathon.minTeamSize || 1} - {hackathon.teamSize || 'N/A'} Members</span>
+                                </div>
+                            )}
+                            {/* Reporting date is now set per phase, not at hackathon level */}
+                            {hackathon.industry && (
+                                <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
+                                    <span className="text-purple-600">🏢</span>
+                                    <span>Industry: {hackathon.industry}</span>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -284,25 +347,202 @@ export default function HackathonDetails() {
                                 </section>
 
                                 <section>
-                                    <h3 className="text-xl font-bold text-gray-900 mb-3">Phases & Timeline</h3>
-                                    <div className="space-y-4">
-                                        {hackathon.phases && hackathon.phases.map((phase, index) => (
-                                            <div key={index} className="flex gap-4">
-                                                <div className="flex flex-col items-center">
-                                                    <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-sm border-2 border-purple-200">
-                                                        {index + 1}
+                                    <h3 className="text-xl font-bold text-gray-900 mb-4">Phases & Timeline</h3>
+                                    {hackathon.phases && hackathon.phases.length > 0 ? (
+                                        <div className="space-y-6">
+                                            {hackathon.phases.map((phase, index) => (
+                                                <div key={phase.id || index} className="bg-white border-2 border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                                                    <div className="flex gap-4">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center font-bold text-base border-2 border-purple-300 shadow-md">
+                                                                {index + 1}
+                                                            </div>
+                                                            {index < hackathon.phases.length - 1 && (
+                                                                <div className="w-1 h-full bg-gradient-to-b from-purple-300 to-indigo-300 my-2 rounded-full"></div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 pb-4">
+                                                            <div className="flex items-start justify-between mb-3">
+                                                                <div className="flex-1">
+                                                                    <h4 className="text-lg font-bold text-gray-900 mb-2">{phase.name || `Phase ${index + 1}`}</h4>
+                                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                                                        (phase.phaseMode === 'Online' || !phase.phaseMode) ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                                                                        phase.phaseMode === 'Offline' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                                                                        'bg-purple-100 text-purple-800 border border-purple-200'
+                                                                    }`}>
+                                                                        {(phase.phaseMode === 'Online' || !phase.phaseMode) && '🌐'}
+                                                                        {phase.phaseMode === 'Offline' && '📍'}
+                                                                        {phase.phaseMode === 'Hybrid' && '🔀'}
+                                                                        <span className="ml-1">{phase.phaseMode || 'Online'}</span>
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {/* Phase Description - Always show */}
+                                                            <div className="mb-4">
+                                                                <p className="text-sm font-semibold text-gray-700 mb-1">Description:</p>
+                                                                <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">
+                                                                    {phase.description || <span className="text-gray-400 italic">No description provided</span>}
+                                                                </p>
+                                                            </div>
+                                                            
+                                                            {/* Deadline - Always show */}
+                                                            <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                                                                <p className="text-xs font-semibold text-red-900 mb-1 flex items-center gap-1">
+                                                                    <Clock className="w-3.5 h-3.5" />
+                                                                    Submission Deadline
+                                                                </p>
+                                                                <p className="text-sm font-bold text-red-700">
+                                                                    {phase.deadline ? formatDate(phase.deadline) : <span className="text-gray-400 italic">Not specified</span>}
+                                                                </p>
+                                                            </div>
+                                                            
+                                                            {/* Upload Format - Always show */}
+                                                            <div className="mb-3 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                                                                <p className="text-xs font-semibold text-gray-700 mb-1">📎 Upload Format:</p>
+                                                                <p className="text-sm text-gray-800 font-medium">
+                                                                    {phase.uploadFormat || <span className="text-gray-400 italic">Not specified</span>}
+                                                                </p>
+                                                            </div>
+                                                            
+                                                            {/* Venue and Reporting Time for Offline/Hybrid Phases */}
+                                                            {(phase.phaseMode === 'Offline' || phase.phaseMode === 'Hybrid') && (phase.phaseVenueLocation || phase.phaseReportingTime) && (
+                                                                <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg">
+                                                                    <p className="text-xs font-bold text-blue-900 mb-3 uppercase tracking-wide">📍 Venue & Reporting Details</p>
+                                                                    {phase.phaseVenueLocation && (
+                                                                        <div className="mb-3">
+                                                                            <p className="text-xs font-semibold text-blue-800 mb-1 flex items-center gap-1">
+                                                                                <MapPin className="w-3.5 h-3.5" />
+                                                                                Venue Location
+                                                                            </p>
+                                                                            <p className="text-sm text-gray-800 font-medium pl-5">{phase.phaseVenueLocation}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {phase.phaseReportingTime && (
+                                                                        <div>
+                                                                            <p className="text-xs font-semibold text-blue-800 mb-1 flex items-center gap-1">
+                                                                                <Clock className="w-3.5 h-3.5" />
+                                                                                Reporting Date & Time
+                                                                            </p>
+                                                                            <p className="text-sm text-gray-800 font-medium pl-5">
+                                                                                {new Date(phase.phaseReportingTime).toLocaleString('en-US', {
+                                                                                    weekday: 'long',
+                                                                                    year: 'numeric',
+                                                                                    month: 'long',
+                                                                                    day: 'numeric',
+                                                                                    hour: '2-digit',
+                                                                                    minute: '2-digit',
+                                                                                    hour12: true
+                                                                                })}
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    {index < hackathon.phases.length - 1 && (
-                                                        <div className="w-0.5 h-full bg-gray-200 my-1"></div>
-                                                    )}
                                                 </div>
-                                                <div className="pb-6">
-                                                    <h4 className="font-semibold text-gray-900">{phase.name}</h4>
-                                                    <p className="text-sm text-gray-500 mb-1">Deadline: {formatDate(phase.deadline)}</p>
-                                                    <p className="text-gray-600 text-sm">{phase.description}</p>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                                            <p className="text-gray-500 text-sm">No phases have been defined for this hackathon yet.</p>
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* Eligibility Section */}
+                                {hackathon.eligibility && (
+                                    <section>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-3">Eligibility Criteria</h3>
+                                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                            <p className="text-gray-700 leading-relaxed whitespace-pre-line">{hackathon.eligibility}</p>
+                                        </div>
+                                    </section>
+                                )}
+
+                                {/* Submission Guidelines */}
+                                {(hackathon.submissionGuidelines || hackathon.submissionUrl) && (
+                                    <section>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-3">Submission Details</h3>
+                                        <div className="space-y-4">
+                                            {hackathon.submissionUrl && (
+                                                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-200">
+                                                    <p className="text-sm font-semibold text-indigo-900 mb-2">📤 Submission URL</p>
+                                                    <a 
+                                                        href={hackathon.submissionUrl} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="text-indigo-600 hover:text-indigo-800 text-sm font-medium break-all underline"
+                                                    >
+                                                        {hackathon.submissionUrl}
+                                                    </a>
+                                                </div>
+                                            )}
+                                            {hackathon.submissionGuidelines && (
+                                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                                    <p className="text-sm font-semibold text-gray-900 mb-2">📋 Submission Guidelines</p>
+                                                    <p className="text-gray-700 leading-relaxed whitespace-pre-line text-sm">{hackathon.submissionGuidelines}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {/* Skills Required */}
+                                {hackathon.skills && hackathon.skills.length > 0 && (
+                                    <section>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-3">Required Skills</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {hackathon.skills.map((skill, index) => (
+                                                <span key={index} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                                                    {skill}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {/* Prize Details */}
+                                <section>
+                                    <h3 className="text-xl font-bold text-gray-900 mb-3">Prize Pool</h3>
+                                    <div className="space-y-3">
+                                        {hackathon.firstPrize && (
+                                            <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg">
+                                                <span className="text-2xl">🥇</span>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-yellow-900">1st Place</p>
+                                                    <p className="text-sm font-bold text-gray-900">{hackathon.firstPrize}</p>
                                                 </div>
                                             </div>
-                                        ))}
+                                        )}
+                                        {hackathon.secondPrize && (
+                                            <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-lg">
+                                                <span className="text-2xl">🥈</span>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-gray-700">2nd Place</p>
+                                                    <p className="text-sm font-bold text-gray-900">{hackathon.secondPrize}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {hackathon.thirdPrize && (
+                                            <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg">
+                                                <span className="text-2xl">🥉</span>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-orange-900">3rd Place</p>
+                                                    <p className="text-sm font-bold text-gray-900">{hackathon.thirdPrize}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {hackathon.prize && (
+                                            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                                <p className="text-xs font-semibold text-gray-600 mb-1">Additional Prize Information</p>
+                                                <p className="text-sm text-gray-700">{hackathon.prize}</p>
+                                            </div>
+                                        )}
+                                        {!hackathon.firstPrize && !hackathon.secondPrize && !hackathon.thirdPrize && !hackathon.prize && (
+                                            <p className="text-sm text-gray-500 italic">Prize details not specified</p>
+                                        )}
                                     </div>
                                 </section>
                             </div>
@@ -310,20 +550,72 @@ export default function HackathonDetails() {
                             {/* Sidebar / Action Card */}
                             <div className="lg:col-span-1">
                                 <div className="bg-white border border-gray-200 rounded-xl p-6 sticky top-8 shadow-sm">
-                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Ready to Participate?</h3>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Register for the Hackathon</h3>
 
                                     {existingApplication ? (
                                         <div className="space-y-4">
-                                            <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 text-sm font-medium">
-                                                <CheckCircle className="w-5 h-5" />
-                                                You have already applied!
+                                            {existingApplication.status === 'REJECTED' ? (
+                                                <>
+                                                    <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+                                                        <div className="flex items-start gap-2 mb-2">
+                                                            <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                                            <div className="flex-1">
+                                                                <h4 className="font-bold mb-2">Application Rejected</h4>
+                                                                {existingApplication.rejectionMessage && (
+                                                                    <p className="text-sm whitespace-pre-line">{existingApplication.rejectionMessage}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 text-center">
+                                                        You cannot re-apply to this hackathon.
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 text-sm font-medium">
+                                                        <CheckCircle className="w-5 h-5" />
+                                                        You have already applied!
+                                                    </div>
+                                                    <button
+                                                        onClick={() => navigate(`/hackathon-application/${existingApplication.id}`)}
+                                                        className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                                                    >
+                                                        Go to Dashboard <ArrowRight className="w-4 h-4" />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    ) : areResultsPublished() ? (
+                                        <div className="space-y-4">
+                                            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+                                                <div className="flex items-start gap-2">
+                                                    <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold mb-2">Applications Closed</h4>
+                                                        <p className="text-sm">Results for this hackathon have been declared. New applications are no longer accepted.</p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <button
-                                                onClick={() => navigate(`/hackathon-application/${existingApplication.id}`)}
-                                                className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-                                            >
-                                                Go to Dashboard <ArrowRight className="w-4 h-4" />
-                                            </button>
+                                        </div>
+                                    ) : isPhase1DeadlinePassed() ? (
+                                        <div className="space-y-4">
+                                            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+                                                <div className="flex items-start gap-2">
+                                                    <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold mb-2">Applications Closed</h4>
+                                                        <p className="text-sm">
+                                                            Phase 1 submission deadline has passed. New applications are no longer accepted.
+                                                            {hackathon.phases && hackathon.phases[0] && hackathon.phases[0].deadline && (
+                                                                <span className="block mt-1 text-xs">
+                                                                    Deadline was: {formatDate(hackathon.phases[0].deadline)}
+                                                                </span>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     ) : (
                                         <form onSubmit={handleApply} className="space-y-4">
@@ -390,10 +682,21 @@ export default function HackathonDetails() {
                                                             type="tel"
                                                             required
                                                             value={individualPhone}
-                                                            onChange={(e) => setIndividualPhone(e.target.value)}
+                                                            onChange={(e) => {
+                                                                // Only allow digits, maximum 10 digits
+                                                                const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                                                setIndividualPhone(value);
+                                                            }}
+                                                            maxLength={10}
+                                                            pattern="[0-9]{10}"
                                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                                            placeholder="Enter your phone number"
+                                                            placeholder="Enter 10-digit phone number"
                                                         />
+                                                        {individualPhone && individualPhone.length !== 10 && (
+                                                            <p className="text-xs text-red-500 mt-1">
+                                                                Phone number must be exactly 10 digits. Current: {individualPhone.length} digits
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -553,16 +856,25 @@ export default function HackathonDetails() {
                                                                                     required
                                                                                     value={member.phone}
                                                                                     onChange={(e) => {
+                                                                                        // Only allow digits, maximum 10 digits
+                                                                                        const value = e.target.value.replace(/\D/g, '').slice(0, 10);
                                                                                         const newMembers = [...teamMembers];
-                                                                                        newMembers[index] = { ...newMembers[index], phone: e.target.value };
+                                                                                        newMembers[index] = { ...newMembers[index], phone: value };
                                                                                         setTeamMembers(newMembers);
                                                                                     }}
+                                                                                    maxLength={10}
+                                                                                    pattern="[0-9]{10}"
                                                                                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white ${isPhoneDuplicate ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
                                                                                         }`}
-                                                                                    placeholder="Enter phone number"
+                                                                                    placeholder="Enter 10-digit phone number"
                                                                                 />
                                                                                 {isPhoneDuplicate && (
                                                                                     <p className="text-xs text-red-500 mt-1">This phone number is already used by another member.</p>
+                                                                                )}
+                                                                                {member.phone && member.phone.length !== 10 && (
+                                                                                    <p className="text-xs text-red-500 mt-1">
+                                                                                        Phone number must be exactly 10 digits. Current: {member.phone.length} digits
+                                                                                    </p>
                                                                                 )}
                                                                             </div>
                                                                         </div>
@@ -576,7 +888,7 @@ export default function HackathonDetails() {
 
                                             <button
                                                 type="submit"
-                                                disabled={applying}
+                                                disabled={applying || !canApply()}
                                                 className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                             >
                                                 {applying ? 'Submitting...' : 'Apply Now'}

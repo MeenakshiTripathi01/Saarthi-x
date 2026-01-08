@@ -36,6 +36,7 @@ public class HackathonApplication {
 
     private String currentPhaseId;
     private String status; // "ACTIVE", "REJECTED", "COMPLETED"
+    private String rejectionMessage; // Message from industry when rejecting the application
 
     // Map phaseId -> PhaseSubmission
     private java.util.Map<String, PhaseSubmission> phaseSubmissions = new java.util.HashMap<>();
@@ -178,6 +179,14 @@ public class HackathonApplication {
         this.status = status;
     }
 
+    public String getRejectionMessage() {
+        return rejectionMessage;
+    }
+
+    public void setRejectionMessage(String rejectionMessage) {
+        this.rejectionMessage = rejectionMessage;
+    }
+
     public String getCertificateTemplateId() {
         return certificateTemplateId;
     }
@@ -310,13 +319,16 @@ public class HackathonApplication {
         private String submissionLink; // For URL submissions (GitHub, Project Link)
         private LocalDateTime submittedAt;
 
-        private String status; // "PENDING", "ACCEPTED", "REJECTED"
+        private String status; // "PENDING", "ACCEPTED", "REJECTED", "REUPLOAD_REQUESTED"
         private String remarks;
         private Integer score;
+        private Integer reuploadCount = 0; // Track how many times re-upload has been requested
+        private Boolean isReuploaded = false; // Track if this solution is a re-upload (was submitted after REUPLOAD_REQUESTED)
 
         public PhaseSubmission() {
             this.status = "PENDING";
             this.submittedAt = LocalDateTime.now();
+            this.reuploadCount = 0;
         }
 
         public String getSolutionStatement() {
@@ -381,6 +393,22 @@ public class HackathonApplication {
 
         public void setScore(Integer score) {
             this.score = score;
+        }
+
+        public Integer getReuploadCount() {
+            return reuploadCount != null ? reuploadCount : 0;
+        }
+
+        public void setReuploadCount(Integer reuploadCount) {
+            this.reuploadCount = reuploadCount != null ? reuploadCount : 0;
+        }
+
+        public Boolean getIsReuploaded() {
+            return isReuploaded != null ? isReuploaded : false;
+        }
+
+        public void setIsReuploaded(Boolean isReuploaded) {
+            this.isReuploaded = isReuploaded != null ? isReuploaded : false;
         }
     }
 

@@ -8,23 +8,32 @@ import com.saarthix.jobs.model.User;
 
 import com.saarthix.jobs.repository.HackathonRepository;
 import com.saarthix.jobs.repository.UserRepository;
+import com.saarthix.jobs.repository.HackathonApplicationRepository;
+import com.saarthix.jobs.service.AIProblemStatementService;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.core.Authentication;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/hackathons")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:2003", allowCredentials = "true")
 public class HackathonController {
 
     private final HackathonRepository hackathonRepository;
     private final UserRepository userRepository;
+    private final HackathonApplicationRepository applicationRepository;
+    private final AIProblemStatementService aiProblemStatementService;
 
-    public HackathonController(HackathonRepository hackathonRepository, UserRepository userRepository) {
+    public HackathonController(HackathonRepository hackathonRepository, UserRepository userRepository, HackathonApplicationRepository applicationRepository, AIProblemStatementService aiProblemStatementService) {
         this.hackathonRepository = hackathonRepository;
         this.userRepository = userRepository;
+        this.applicationRepository = applicationRepository;
+        this.aiProblemStatementService = aiProblemStatementService;
     }
 
     // --- KEEP ONLY THIS METHOD ---
@@ -44,7 +53,26 @@ public class HackathonController {
     // GET all hackathons (public)
     @GetMapping
     public List<Hackathon> getAll() {
-        return hackathonRepository.findAll();
+        List<Hackathon> hackathons = hackathonRepository.findAll();
+        // Update resultsPublished status based on whether any application has finalRank
+        for (Hackathon hackathon : hackathons) {
+            updateResultsPublishedStatus(hackathon);
+        }
+        return hackathons;
+    }
+    
+    // Helper method to check and update resultsPublished status
+    private void updateResultsPublishedStatus(Hackathon hackathon) {
+        // Check if any application for this hackathon has a finalRank (results published)
+        boolean hasPublishedResults = applicationRepository.findByHackathonId(hackathon.getId())
+            .stream()
+            .anyMatch(app -> app.getFinalRank() != null && app.getFinalRank() > 0);
+        
+        // Update the hackathon's resultsPublished field if it differs
+        if (hackathon.getResultsPublished() != hasPublishedResults) {
+            hackathon.setResultsPublished(hasPublishedResults);
+            hackathonRepository.save(hackathon);
+        }
     }
 
     // GET hackathons posted by the authenticated industry user
@@ -70,6 +98,10 @@ public class HackathonController {
             }
 
             List<Hackathon> hackathons = hackathonRepository.findByCreatedByIndustryId(user.getId());
+            // Update resultsPublished status based on whether any application has finalRank
+            for (Hackathon hackathon : hackathons) {
+                updateResultsPublishedStatus(hackathon);
+            }
             System.out.println("Retrieved " + hackathons.size() + " hackathons for industry: " + user.getId());
             return ResponseEntity.ok(hackathons);
         } catch (NullPointerException e) {
@@ -80,6 +112,117 @@ public class HackathonController {
             System.err.println("Error retrieving hackathons: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(500).body("Error retrieving hackathons: " + e.getMessage());
+        }
+    }
+
+    // POST improve problem statement with AI (must be before /{hackathonId} to avoid path conflict)
+    @PostMapping("/improve-problem-statement")
+    public ResponseEntity<?> improveProblemStatement(@RequestBody Map<String, String> request, Authentication auth) {
+        try {
+            if (auth == null) {
+                return ResponseEntity.status(401).body("Authentication required. Please log in first.");
+            }
+
+            User user = resolveUser(auth);
+
+            if (user == null) {
+                return ResponseEntity.status(401).body("User not found. Please log in again.");
+            }
+
+            if (!"INDUSTRY".equals(user.getUserType())) {
+                return ResponseEntity.status(403).body("Only INDUSTRY users can use this feature. Your account type is: " + (user.getUserType() != null ? user.getUserType() : "unknown"));
+            }
+
+            String originalStatement = request.get("problemStatement");
+            if (originalStatement == null || originalStatement.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Problem statement is required");
+            }
+
+            String improvedStatement = aiProblemStatementService.improveProblemStatement(originalStatement);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("improvedStatement", improvedStatement);
+            response.put("originalStatement", originalStatement);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("Error improving problem statement: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error improving problem statement: " + e.getMessage());
+        }
+    }
+
+    // POST improve eligibility criteria with AI
+    @PostMapping("/improve-eligibility")
+    public ResponseEntity<?> improveEligibility(@RequestBody Map<String, String> request, Authentication auth) {
+        try {
+            if (auth == null) {
+                return ResponseEntity.status(401).body("Authentication required. Please log in first.");
+            }
+
+            User user = resolveUser(auth);
+
+            if (user == null) {
+                return ResponseEntity.status(401).body("User not found. Please log in again.");
+            }
+
+            if (!"INDUSTRY".equals(user.getUserType())) {
+                return ResponseEntity.status(403).body("Only INDUSTRY users can use this feature. Your account type is: " + (user.getUserType() != null ? user.getUserType() : "unknown"));
+            }
+
+            String originalEligibility = request.get("eligibility");
+            if (originalEligibility == null || originalEligibility.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Eligibility criteria is required");
+            }
+
+            String improvedEligibility = aiProblemStatementService.improveEligibilityCriteria(originalEligibility);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("improvedEligibility", improvedEligibility);
+            response.put("originalEligibility", originalEligibility);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("Error improving eligibility criteria: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error improving eligibility criteria: " + e.getMessage());
+        }
+    }
+
+    // POST improve submission guidelines with AI
+    @PostMapping("/improve-submission-guidelines")
+    public ResponseEntity<?> improveSubmissionGuidelines(@RequestBody Map<String, String> request, Authentication auth) {
+        try {
+            if (auth == null) {
+                return ResponseEntity.status(401).body("Authentication required. Please log in first.");
+            }
+
+            User user = resolveUser(auth);
+
+            if (user == null) {
+                return ResponseEntity.status(401).body("User not found. Please log in again.");
+            }
+
+            if (!"INDUSTRY".equals(user.getUserType())) {
+                return ResponseEntity.status(403).body("Only INDUSTRY users can use this feature. Your account type is: " + (user.getUserType() != null ? user.getUserType() : "unknown"));
+            }
+
+            String originalGuidelines = request.get("submissionGuidelines");
+            if (originalGuidelines == null || originalGuidelines.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Submission guidelines is required");
+            }
+
+            String improvedGuidelines = aiProblemStatementService.improveSubmissionGuidelines(originalGuidelines);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("improvedGuidelines", improvedGuidelines);
+            response.put("originalGuidelines", originalGuidelines);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("Error improving submission guidelines: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error improving submission guidelines: " + e.getMessage());
         }
     }
 
@@ -100,6 +243,9 @@ public class HackathonController {
 
             Hackathon foundHackathon = hackathon.get();
 
+            // Update resultsPublished status based on whether any application has finalRank
+            updateResultsPublishedStatus(foundHackathon);
+
             // Only allow industry users to fetch their own hackathons for editing
             if ("INDUSTRY".equals(user.getUserType())
                     && !user.getId().equals(foundHackathon.getCreatedByIndustryId())) {
@@ -111,6 +257,27 @@ public class HackathonController {
             System.err.println("Error fetching hackathon by ID: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(500).body("Error fetching hackathon: " + e.getMessage());
+        }
+    }
+
+    // POST increment views for a hackathon (public endpoint)
+    @PostMapping("/{hackathonId}/increment-views")
+    public ResponseEntity<?> incrementViews(@PathVariable String hackathonId) {
+        try {
+            var hackathonOpt = hackathonRepository.findById(hackathonId);
+            if (hackathonOpt.isEmpty()) {
+                return ResponseEntity.status(404).body("Hackathon not found");
+            }
+
+            Hackathon hackathon = hackathonOpt.get();
+            hackathon.setViews(hackathon.getViews() + 1);
+            hackathonRepository.save(hackathon);
+
+            return ResponseEntity.ok(Map.of("views", hackathon.getViews()));
+        } catch (Exception e) {
+            System.err.println("Error incrementing views: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error incrementing views: " + e.getMessage());
         }
     }
 
@@ -192,7 +359,12 @@ public class HackathonController {
         existingHackathon.setTitle(updatedHackathon.getTitle());
         existingHackathon.setDescription(updatedHackathon.getDescription());
         existingHackathon.setCompany(updatedHackathon.getCompany());
+        existingHackathon.setIndustry(updatedHackathon.getIndustry());
         existingHackathon.setPrize(updatedHackathon.getPrize());
+        existingHackathon.setFirstPrize(updatedHackathon.getFirstPrize());
+        existingHackathon.setSecondPrize(updatedHackathon.getSecondPrize());
+        existingHackathon.setThirdPrize(updatedHackathon.getThirdPrize());
+        existingHackathon.setMinTeamSize(updatedHackathon.getMinTeamSize());
         existingHackathon.setTeamSize(updatedHackathon.getTeamSize());
         existingHackathon.setSubmissionUrl(updatedHackathon.getSubmissionUrl());
 

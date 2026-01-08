@@ -1,6 +1,7 @@
 {
   "name": "frontend",
   "version": "1.0.0",
+  "type": "module",
   "description": "This is a minimal frontend for the Jobs Portal application.",
   "main": "app.js",
   "scripts": {
@@ -16,11 +17,13 @@
     "axios": "^1.6.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
+    "lucide-react": "^0.263.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.20.0",
     "react-toastify": "^11.0.5",
-    "vite": "^7.2.2"
+    "vite": "^7.2.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { BACKEND_URL } from '../config';
 
 /**
  * RoleSelection Component
@@ -182,7 +183,7 @@ export default function RoleSelection() {
       
       if (isExistingUserWithRole) {
         // Existing user with role - use update-profile endpoint
-        response = await fetch('http://localhost:8080/api/user/update-profile', {
+        response = await fetch(`${BACKEND_URL}/api/user/update-profile`, {
           method: 'PUT',
           credentials: 'include',
           headers: {
@@ -194,7 +195,7 @@ export default function RoleSelection() {
         });
       } else {
         // New user or user without role - try save-role first
-        response = await fetch('http://localhost:8080/api/user/save-role', {
+        response = await fetch(`${BACKEND_URL}/api/user/save-role`, {
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -213,7 +214,7 @@ export default function RoleSelection() {
           const errorText = await response.text();
           if (errorText.includes("already has a role") || errorText.includes("User already registered")) {
             // User exists with a role, use update-profile instead
-            response = await fetch('http://localhost:8080/api/user/update-profile', {
+            response = await fetch(`${BACKEND_URL}/api/user/update-profile`, {
               method: 'PUT',
               credentials: 'include',
               headers: {

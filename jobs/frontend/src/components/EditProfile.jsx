@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { BACKEND_URL } from '../config';
 
 export default function EditProfile() {
   const navigate = useNavigate();
@@ -52,7 +53,7 @@ export default function EditProfile() {
     setSuccess(false);
 
     try {
-      const response = await fetch('http://localhost:8080/api/user/update-profile', {
+      const response = await fetch(`${BACKEND_URL}/api/user/update-profile`, {
         method: 'PUT',
         credentials: 'include',
         headers: {

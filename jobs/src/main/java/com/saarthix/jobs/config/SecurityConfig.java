@@ -40,6 +40,11 @@ public class SecurityConfig {
 
                 // ✅ Authorization rules
                 .authorizeHttpRequests(auth -> auth
+                        // ✅ AI improvement endpoints require authentication (industry users only)
+                        .requestMatchers(HttpMethod.POST, "/api/hackathons/improve-problem-statement").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/hackathons/improve-eligibility").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/hackathons/improve-submission-guidelines").authenticated()
+                        
                         // ✅ Allow GET & POST job APIs without Google login
                         .requestMatchers("/api/hackathons/**").permitAll()
                         .requestMatchers("/api/hackathons/apply/**").permitAll()
@@ -50,8 +55,9 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers(
                                 "/api/auth/**",
-                                "/api/test",
+                                "/api/test/**",
                                 "/",
+                                "/api",
                                 "/index.html",
                                 "/static/**",
                                 "/error",
@@ -70,12 +76,12 @@ public class SecurityConfig {
                 // ✅ OAuth2 Login config
                 .oauth2Login(oauth -> oauth
                         // IMPORTANT: Do not override Google's login page
-                        .defaultSuccessUrl("http://localhost:5173", true)
+                        .defaultSuccessUrl("http://localhost:2003", true)
                         .successHandler(successHandler()))
 
                 // ✅ Logout config
                 .logout(logout -> logout
-                        .logoutSuccessUrl("http://localhost:5173")
+                        .logoutSuccessUrl("http://localhost:2003")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID"));
 
@@ -102,7 +108,7 @@ public class SecurityConfig {
 
                 // Encode URL parameters properly
                 String redirectUrl = String.format(
-                        "http://localhost:5173/choose-role?email=%s&name=%s&picture=%s%s",
+                        "http://localhost:2003/choose-role?email=%s&name=%s&picture=%s%s",
                         java.net.URLEncoder.encode(email, "UTF-8"),
                         java.net.URLEncoder.encode(name != null ? name : "", "UTF-8"),
                         java.net.URLEncoder.encode(picture != null ? picture : "", "UTF-8"),
@@ -113,7 +119,7 @@ public class SecurityConfig {
                 request.getSession().setAttribute("USER_TYPE", existingUser.getUserType());
                 request.getSession().setAttribute("USER_ID", existingUser.getId());
 
-                response.sendRedirect("http://localhost:5173/choose-role");
+                response.sendRedirect("http://localhost:2003/choose-role");
             }
 
         };
@@ -123,7 +129,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
+        configuration.setAllowedOrigins(List.of("http://localhost:2003"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);

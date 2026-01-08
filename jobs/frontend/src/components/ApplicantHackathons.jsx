@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import { getAllHackathons, getMyHackathonApplications, applyForHackathon } from '../api/jobApi';
+import { getAllHackathons, getMyHackathonApplications, applyForHackathon, incrementHackathonViews } from '../api/jobApi';
 
 export default function ApplicantHackathons() {
   const navigate = useNavigate();
@@ -109,7 +109,18 @@ export default function ApplicantHackathons() {
     setShowApplicationForm(false);
   };
 
-  const handleApply = (hackathon) => {
+  const handleApply = async (hackathon) => {
+    // Increment views when clicking to view details
+    try {
+      await incrementHackathonViews(hackathon.id);
+      // Update local state to reflect the new view count
+      setAllHackathons(prev => prev.map(h => 
+        h.id === hackathon.id ? { ...h, views: (h.views || 0) + 1 } : h
+      ));
+    } catch (error) {
+      // Silently fail - views increment is not critical
+      console.error('Failed to increment views:', error);
+    }
     navigate(`/hackathon/${hackathon.id}`);
   };
 
@@ -287,63 +298,128 @@ export default function ApplicantHackathons() {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredHackathons.map((hackathon) => (
-                  <div
-                    key={hackathon.id}
-                    className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-lg transition-all duration-200 group flex flex-col"
-                  >
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                        {hackathon.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-3">{hackathon.company}</p>
-
-                      <p className="text-sm text-gray-700 mb-4 line-clamp-3">
-                        {hackathon.description}
-                      </p>
-
-                      {/* Prize Display */}
-                      {hackathon.prize && (
-                        <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-xs text-gray-600">Prize Pool</p>
-                          <p className="text-sm font-semibold text-blue-700">{hackathon.prize}</p>
-                        </div>
-                      )}
-
-                      {/* Metadata */}
-                      <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                        {hackathon.teamSize > 0 && (
-                          <span className="flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
-                            </svg>
-                            Max team: {hackathon.teamSize}
-                          </span>
-                        )}
-                        {hackathon.views !== undefined && (
-                          <span className="flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            {hackathon.views} views
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Apply Button */}
-                    <button
-                      onClick={() => handleApply(hackathon)}
-                      className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+                {filteredHackathons.map((hackathon) => {
+                  const hasResultsPublished = hackathon.resultsPublished === true || hackathon.resultsPublished === 'true';
+                  
+                  // Check if Phase 1 deadline has passed
+                  const isPhase1DeadlinePassed = () => {
+                    if (!hackathon.phases || hackathon.phases.length === 0) {
+                      return false;
+                    }
+                    const phase1 = hackathon.phases[0];
+                    if (!phase1.deadline) {
+                      return false;
+                    }
+                    try {
+                      const deadline = new Date(phase1.deadline);
+                      const now = new Date();
+                      return now > deadline;
+                    } catch (e) {
+                      return false;
+                    }
+                  };
+                  
+                  const phase1DeadlinePassed = isPhase1DeadlinePassed();
+                  const canApply = !hasResultsPublished && !phase1DeadlinePassed;
+                  
+                  return (
+                    <div
+                      key={hackathon.id}
+                      className={`bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-200 group flex flex-col ${
+                        hasResultsPublished 
+                          ? 'border-2 border-green-500 shadow-green-100' 
+                          : 'border border-gray-200'
+                      }`}
                     >
-                      View Details & Apply
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h3 className="font-bold text-lg text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors flex-1">
+                            {hackathon.title}
+                          </h3>
+                          {hasResultsPublished && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-bold rounded-full shadow-lg flex-shrink-0 whitespace-nowrap animate-pulse">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Results Announced
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">{hackathon.company}</p>
+
+                        <p className="text-sm text-gray-700 mb-4 line-clamp-3">
+                          {hackathon.description}
+                        </p>
+
+                        {/* Prize Display */}
+                        {(hackathon.firstPrize || hackathon.secondPrize || hackathon.thirdPrize || hackathon.prize) && (
+                          <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-xs text-gray-600 mb-1">Prize Pool</p>
+                            {hackathon.firstPrize && (
+                              <p className="text-xs text-blue-700 mb-0.5">
+                                <span className="font-semibold">1st:</span> {hackathon.firstPrize}
+                              </p>
+                            )}
+                            {hackathon.secondPrize && (
+                              <p className="text-xs text-blue-700 mb-0.5">
+                                <span className="font-semibold">2nd:</span> {hackathon.secondPrize}
+                              </p>
+                            )}
+                            {hackathon.thirdPrize && (
+                              <p className="text-xs text-blue-700 mb-0.5">
+                                <span className="font-semibold">3rd:</span> {hackathon.thirdPrize}
+                              </p>
+                            )}
+                            {!hackathon.firstPrize && !hackathon.secondPrize && !hackathon.thirdPrize && hackathon.prize && (
+                              <p className="text-sm font-semibold text-blue-700">{hackathon.prize}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Metadata */}
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                          {hackathon.teamSize > 0 && (
+                            <span className="flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                              </svg>
+                              Max team: {hackathon.teamSize}
+                            </span>
+                          )}
+                          {hackathon.views !== undefined && (
+                            <span className="flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              {hackathon.views} views
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Apply Button */}
+                      {!canApply ? (
+                        <div className="w-full py-2 px-4 bg-gray-400 text-white font-semibold rounded-lg text-sm flex items-center justify-center gap-2 cursor-not-allowed">
+                          {hasResultsPublished ? 'Results Declared' : 'Applications Closed'}
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleApply(hackathon)}
+                          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+                        >
+                          View Details & Apply
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </>

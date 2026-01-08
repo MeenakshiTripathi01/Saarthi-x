@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { BACKEND_URL } from '../config';
 
-const BASE_URL = 'http://localhost:8080/api/notifications';
+const BASE_URL = `${BACKEND_URL}/api/notifications`;
 
 /**
  * Fetch all notifications for the current user

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import { createHackathon, getHackathonById, updateHackathon } from '../api/jobApi';
+import { createHackathon, getHackathonById, updateHackathon, improveProblemStatement, improveEligibilityCriteria, improveSubmissionGuidelines } from '../api/jobApi';
 
 // Tab-based sections for hackathon - matching the image exactly
 const HACKATHON_TABS = [
@@ -10,7 +10,7 @@ const HACKATHON_TABS = [
     { id: 'problem', label: 'Problem & Skills', icon: '🧠', required: true },
     { id: 'phases', label: 'Phases', icon: '📅', required: true },
     { id: 'eligibility', label: 'Eligibility', icon: '👥', required: false },
-    { id: 'dates', label: 'Dates & Mode', icon: '📆', required: true },
+    { id: 'dates', label: 'Dates', icon: '📆', required: true },
     { id: 'submission', label: 'Submission', icon: '🏆', required: false },
     { id: 'capacity', label: 'Capacity & Prizes', icon: '⚙️', required: false },
 ];
@@ -25,6 +25,9 @@ export default function PostHackathon() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+    const [improvingStatement, setImprovingStatement] = useState(false);
+    const [improvingEligibility, setImprovingEligibility] = useState(false);
+    const [improvingGuidelines, setImprovingGuidelines] = useState(false);
 
     const [activeTab, setActiveTab] = useState('basic');
     const [completedTabs, setCompletedTabs] = useState(new Set());
@@ -46,7 +49,7 @@ export default function PostHackathon() {
 
     // Phases state
     const [phases, setPhases] = useState(() => getSavedState('phases', [
-        { id: 1, name: '', description: '', uploadFormat: 'document', deadline: '' }
+        { id: 1, name: '', description: '', uploadFormat: 'document', deadline: '', phaseMode: 'Online', phaseVenueLocation: '', phaseReportingTime: '' }
     ]));
 
     // Skills state
@@ -58,6 +61,7 @@ export default function PostHackathon() {
         title: '',
         company: '',
         description: '',
+        industry: '',
         // Problem & Skills
         problemStatement: '',
         // Eligibility
@@ -76,10 +80,15 @@ export default function PostHackathon() {
         teamSize: '',
         maxTeams: '',
         prize: '',
+        firstPrize: '',
+        secondPrize: '',
+        thirdPrize: '',
         allowIndividual: true,
     }));
 
     const todayStr = new Date().toISOString().split('T')[0];
+    // Get current datetime in YYYY-MM-DDTHH:mm format for datetime-local inputs
+    const nowStr = new Date().toISOString().slice(0, 16);
 
     const getPhaseMinDate = (index) => {
         // earliest allowed is today
@@ -109,6 +118,7 @@ export default function PostHackathon() {
                         title: hackathon.title || '',
                         company: hackathon.company || '',
                         description: hackathon.description || '',
+                        industry: hackathon.industry || '',
                         problemStatement: hackathon.problemStatement || '',
                         eligibility: hackathon.eligibility || '',
                         startDate: hackathon.startDate || '',
@@ -122,6 +132,9 @@ export default function PostHackathon() {
                         teamSize: hackathon.teamSize || '',
                         maxTeams: hackathon.maxTeams || '',
                         prize: hackathon.prize || '',
+                        firstPrize: hackathon.firstPrize || '',
+                        secondPrize: hackathon.secondPrize || '',
+                        thirdPrize: hackathon.thirdPrize || '',
                         // Default to false when not present so we don't accidentally re-enable individuals
                         allowIndividual: hackathon.allowIndividual ?? false,
                     });
@@ -131,9 +144,15 @@ export default function PostHackathon() {
                         setSkills(hackathon.skills);
                     }
 
-                    // Set phases
+                    // Set phases (ensure all phase fields are present)
                     if (hackathon.phases && Array.isArray(hackathon.phases) && hackathon.phases.length > 0) {
-                        setPhases(hackathon.phases);
+                        const phasesWithDefaults = hackathon.phases.map(phase => ({
+                            ...phase,
+                            phaseMode: phase.phaseMode || 'Online',
+                            phaseVenueLocation: phase.phaseVenueLocation || '',
+                            phaseReportingTime: phase.phaseReportingTime || ''
+                        }));
+                        setPhases(phasesWithDefaults);
                     }
 
                     setLoading(false);
@@ -196,11 +215,7 @@ export default function PostHackathon() {
             case 'eligibility':
                 return isFieldFilled('eligibility');
             case 'dates':
-                const basicDatesValid = isFieldFilled('endDate') && isFieldFilled('mode');
-                if (formData.mode === 'Hybrid' || formData.mode === 'Offline') {
-                    return basicDatesValid && isFieldFilled('location') && isFieldFilled('reportingDate');
-                }
-                return basicDatesValid;
+                return isFieldFilled('endDate');
             case 'submission':
                 return isFieldFilled('submissionUrl') || isFieldFilled('submissionGuidelines');
             case 'capacity':
@@ -249,9 +264,192 @@ export default function PostHackathon() {
         setSkills(skills.filter(skill => skill !== skillToRemove));
     };
 
+    // AI improvement handler
+    const handleImproveWithAI = async () => {
+        if (!formData.problemStatement || formData.problemStatement.trim().length < 10) {
+            toast.error('Please write at least a few words before improving with AI');
+            return;
+        }
+
+        // Check authentication before making the request
+        if (!isAuthenticated) {
+            toast.error('Please log in to use the AI improvement feature', {
+                position: "top-right",
+                autoClose: 4000,
+            });
+            return;
+        }
+
+        if (!isIndustry) {
+            toast.error('Only INDUSTRY users can use the AI improvement feature', {
+                position: "top-right",
+                autoClose: 4000,
+            });
+            return;
+        }
+
+        // Store original word count
+        const originalWordCount = formData.problemStatement.trim().split(/\s+/).filter(w => w).length;
+
+        setImprovingStatement(true);
+        try {
+            const response = await improveProblemStatement(formData.problemStatement);
+            
+            if (response && response.improvedStatement) {
+                // Check word count of improved statement
+                const improvedWordCount = response.improvedStatement.trim().split(/\s+/).filter(w => w).length;
+                
+                // If improved statement has less than 50 words, warn user but still apply it
+                if (improvedWordCount < 50) {
+                    toast.warning(`The improved statement has ${improvedWordCount} words (minimum 50 required). Please add more content to meet the requirement.`, {
+                        position: "top-right",
+                        autoClose: 6000,
+                    });
+                }
+                
+                // If improved statement has fewer words than original and both are below 50, warn
+                if (improvedWordCount < originalWordCount && originalWordCount < 50) {
+                    toast.warning(`The improved statement has ${improvedWordCount} words (original had ${originalWordCount}). Please add more content to meet the 50-word minimum.`, {
+                        position: "top-right",
+                        autoClose: 6000,
+                    });
+                }
+                
+                setFormData(prev => ({
+                    ...prev,
+                    problemStatement: response.improvedStatement
+                }));
+                
+                if (improvedWordCount >= 50) {
+                    toast.success('Problem statement improved! Review and edit if needed.', {
+                        position: "top-right",
+                        autoClose: 4000,
+                    });
+                }
+            } else {
+                toast.error('Could not improve problem statement. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error improving problem statement:', error);
+            
+            // Get error message from the error object
+            const errorMessage = error.message || 'Failed to improve problem statement';
+            
+            // Show appropriate error message
+            toast.error(errorMessage, {
+                position: "top-right",
+                autoClose: 5000,
+            });
+        } finally {
+            setImprovingStatement(false);
+        }
+    };
+
+    // AI improvement handler for eligibility
+    const handleImproveEligibility = async () => {
+        if (!formData.eligibility || formData.eligibility.trim().length < 10) {
+            toast.error('Please write at least a few words before improving with AI');
+            return;
+        }
+
+        if (!isAuthenticated) {
+            toast.error('Please log in to use the AI improvement feature', {
+                position: "top-right",
+                autoClose: 4000,
+            });
+            return;
+        }
+
+        if (!isIndustry) {
+            toast.error('Only INDUSTRY users can use the AI improvement feature', {
+                position: "top-right",
+                autoClose: 4000,
+            });
+            return;
+        }
+
+        setImprovingEligibility(true);
+        try {
+            const response = await improveEligibilityCriteria(formData.eligibility);
+            
+            if (response && response.improvedEligibility) {
+                setFormData(prev => ({
+                    ...prev,
+                    eligibility: response.improvedEligibility
+                }));
+                toast.success('Eligibility criteria improved! Review and edit if needed.', {
+                    position: "top-right",
+                    autoClose: 4000,
+                });
+            } else {
+                toast.error('Could not improve eligibility criteria. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error improving eligibility criteria:', error);
+            const errorMessage = error.message || 'Failed to improve eligibility criteria';
+            toast.error(errorMessage, {
+                position: "top-right",
+                autoClose: 5000,
+            });
+        } finally {
+            setImprovingEligibility(false);
+        }
+    };
+
+    // AI improvement handler for submission guidelines
+    const handleImproveGuidelines = async () => {
+        if (!formData.submissionGuidelines || formData.submissionGuidelines.trim().length < 10) {
+            toast.error('Please write at least a few words before improving with AI');
+            return;
+        }
+
+        if (!isAuthenticated) {
+            toast.error('Please log in to use the AI improvement feature', {
+                position: "top-right",
+                autoClose: 4000,
+            });
+            return;
+        }
+
+        if (!isIndustry) {
+            toast.error('Only INDUSTRY users can use the AI improvement feature', {
+                position: "top-right",
+                autoClose: 4000,
+            });
+            return;
+        }
+
+        setImprovingGuidelines(true);
+        try {
+            const response = await improveSubmissionGuidelines(formData.submissionGuidelines);
+            
+            if (response && response.improvedGuidelines) {
+                setFormData(prev => ({
+                    ...prev,
+                    submissionGuidelines: response.improvedGuidelines
+                }));
+                toast.success('Submission guidelines improved! Review and edit if needed.', {
+                    position: "top-right",
+                    autoClose: 4000,
+                });
+            } else {
+                toast.error('Could not improve submission guidelines. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error improving submission guidelines:', error);
+            const errorMessage = error.message || 'Failed to improve submission guidelines';
+            toast.error(errorMessage, {
+                position: "top-right",
+                autoClose: 5000,
+            });
+        } finally {
+            setImprovingGuidelines(false);
+        }
+    };
+
     // Phases handlers
     const handleAddPhase = () => {
-        setPhases([...phases, { id: Date.now(), name: '', description: '', uploadFormat: 'document', deadline: '' }]);
+        setPhases([...phases, { id: Date.now(), name: '', description: '', uploadFormat: 'document', deadline: '', phaseMode: 'Online', phaseVenueLocation: '', phaseReportingTime: '' }]);
     };
 
     const handleRemovePhase = (phaseId) => {
@@ -323,9 +521,7 @@ export default function PostHackathon() {
         if (!formData.problemStatement) missingFields.push('Problem Statement');
         if (phases.length === 0 || !phases.every(p => p.name.trim() && p.description.trim() && p.deadline)) missingFields.push('Phases (all fields required)');
         if (!formData.endDate) missingFields.push('End Date');
-        if (!formData.mode) missingFields.push('Mode');
-        if ((formData.mode === 'Hybrid' || formData.mode === 'Offline') && !formData.location) missingFields.push('Venue Location');
-        if ((formData.mode === 'Hybrid' || formData.mode === 'Offline') && !formData.reportingDate) missingFields.push('Reporting Date & Time');
+        // Note: Mode, location, and reporting date are now set per phase, not at hackathon level
 
         if (missingFields.length > 0) {
             toast.error('Please fill in all required details about the hackathon', {
@@ -365,22 +561,7 @@ export default function PostHackathon() {
             }
         }
 
-        // Validate reporting date (Hybrid/Offline) >= end date
-        if ((formData.mode === 'Hybrid' || formData.mode === 'Offline') && formData.reportingDate) {
-            const repDate = new Date(formData.reportingDate);
-            const regEnd = new Date(formData.endDate);
-            const today = new Date(todayStr);
-            if (repDate < today) {
-                toast.error('Reporting date cannot be in the past', { autoClose: 3000 });
-                setSaving(false);
-                return;
-            }
-            if (repDate < regEnd) {
-                toast.error('Reporting date must be on or after the last registration date', { autoClose: 3000 });
-                setSaving(false);
-                return;
-            }
-        }
+        // Note: Mode, location, and reporting date are now set per phase, not at hackathon level
 
         // Validate phase deadlines order
         for (let i = 1; i < phases.length; i++) {
@@ -406,7 +587,11 @@ export default function PostHackathon() {
                 title: formData.title,
                 description: formData.description,
                 company: formData.company,
+                industry: formData.industry || null,
                 prize: formData.prize || null,
+                firstPrize: formData.firstPrize || null,
+                secondPrize: formData.secondPrize || null,
+                thirdPrize: formData.thirdPrize || null,
                 minTeamSize: formData.minTeamSize ? parseInt(formData.minTeamSize) : 1,
                 teamSize: formData.teamSize ? parseInt(formData.teamSize) : 0,
                 submissionUrl: formData.submissionUrl || null,
@@ -417,9 +602,9 @@ export default function PostHackathon() {
                 eligibility: formData.eligibility,
                 startDate: formData.startDate || new Date().toISOString().split('T')[0],
                 endDate: formData.endDate,
-                mode: formData.mode,
-                location: formData.location || null,
-                reportingDate: formData.reportingDate || null,
+                mode: null, // Mode is now set per phase
+                location: null, // Location is now set per phase
+                reportingDate: null, // Reporting date is now set per phase
                 submissionGuidelines: formData.submissionGuidelines,
                 maxTeams: null,
                 allowIndividual: formData.allowIndividual,
@@ -631,6 +816,35 @@ export default function PostHackathon() {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Industry Type
+                                </label>
+                                <select
+                                    name="industry"
+                                    value={formData.industry}
+                                    onChange={handleInputChange}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                >
+                                    <option value="">Select Industry</option>
+                                    <option value="Technology">Technology</option>
+                                    <option value="Healthcare">Healthcare</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Education">Education</option>
+                                    <option value="E-commerce">E-commerce</option>
+                                    <option value="Manufacturing">Manufacturing</option>
+                                    <option value="Energy">Energy</option>
+                                    <option value="Agriculture">Agriculture</option>
+                                    <option value="Transportation">Transportation</option>
+                                    <option value="Entertainment">Entertainment</option>
+                                    <option value="Real Estate">Real Estate</option>
+                                    <option value="Retail">Retail</option>
+                                    <option value="Food & Beverage">Food & Beverage</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <p className="mt-1 text-xs text-gray-500">Select the industry category for this hackathon</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Hackathon Description <span className="text-red-500">*</span>
                                 </label>
                                 <textarea
@@ -654,23 +868,182 @@ export default function PostHackathon() {
                                 <p className="text-sm text-gray-500 mt-1">Define the problem statement and required skills</p>
                             </div>
 
+                            {/* Helpful Guide Section */}
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+                                <div className="flex items-start gap-3 mb-4">
+                                    <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-2">How to Write a Good Problem Statement</h3>
+                                        <p className="text-sm text-gray-700 mb-4">Answer these questions to help you write clearly:</p>
+                                        <div className="space-y-2 text-sm text-gray-700">
+                                            <div className="flex items-start gap-2">
+                                                <span className="text-blue-600 font-bold mt-0.5">1.</span>
+                                                <span><strong>What problem are you trying to solve?</strong> (e.g., "Many people struggle with...")</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <span className="text-blue-600 font-bold mt-0.5">2.</span>
+                                                <span><strong>Who faces this problem?</strong> (e.g., "Students, small businesses, healthcare workers...")</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <span className="text-blue-600 font-bold mt-0.5">3.</span>
+                                                <span><strong>Why is this problem important?</strong> (e.g., "This affects millions of people because...")</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <span className="text-blue-600 font-bold mt-0.5">4.</span>
+                                                <span><strong>What solution are you looking for?</strong> (e.g., "We need an app/website/system that...")</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Example Problem Statements */}
+                                <details className="mt-4">
+                                    <summary className="cursor-pointer text-sm font-medium text-blue-700 hover:text-blue-800 flex items-center gap-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        View Example Problem Statements
+                                    </summary>
+                                    <div className="mt-4 space-y-4 pl-6 border-l-2 border-blue-300">
+                                        <div className="bg-white rounded-lg p-4 border border-blue-200">
+                                            <p className="text-xs font-semibold text-gray-600 mb-2">Example 1: Healthcare</p>
+                                            <p className="text-sm text-gray-700 italic">
+                                                "Many elderly people living alone struggle to remember when to take their medications. This leads to missed doses and health complications. 
+                                                We need a simple mobile application that sends reminders, tracks medication schedules, and can alert family members if doses are missed. 
+                                                The solution should be easy to use for people who are not tech-savvy."
+                                            </p>
+                                        </div>
+                                        <div className="bg-white rounded-lg p-4 border border-blue-200">
+                                            <p className="text-xs font-semibold text-gray-600 mb-2">Example 2: Education</p>
+                                            <p className="text-sm text-gray-700 italic">
+                                                "Students in remote areas often lack access to quality educational resources and personalized learning support. 
+                                                We need an online platform that provides free educational content, connects students with volunteer tutors, 
+                                                and tracks learning progress. The platform should work on low-end smartphones with limited internet connectivity."
+                                            </p>
+                                        </div>
+                                        <div className="bg-white rounded-lg p-4 border border-blue-200">
+                                            <p className="text-xs font-semibold text-gray-600 mb-2">Example 3: Environment</p>
+                                            <p className="text-sm text-gray-700 italic">
+                                                "Small businesses want to reduce their carbon footprint but don't know where to start or how to measure their impact. 
+                                                We need a tool that helps businesses calculate their carbon emissions, suggests practical reduction strategies, 
+                                                and provides a simple dashboard to track progress over time."
+                                            </p>
+                                        </div>
+                                    </div>
+                                </details>
+                            </div>
+
+                            {/* Problem Statement Input */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Problem Statement <span className="text-red-500">*</span>
+                                    <span className="ml-2 text-xs font-normal text-gray-500">(Minimum 50 words required)</span>
                                 </label>
-                                <textarea
-                                    name="problemStatement"
-                                    value={formData.problemStatement}
-                                    onChange={handleInputChange}
-                                    placeholder="Describe the problem participants will solve... (minimum 50 characters required)"
-                                    rows="6"
-                                    minLength={50}
-                                    required
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
-                                />
-                                <div className={`mt-1 text-xs text-right ${formData.problemStatement.trim().split(/\s+/).filter(w => w).length < 50 ? 'text-red-500' : 'text-green-600'}`}>
-                                    {formData.problemStatement.trim().split(/\s+/).filter(w => w).length} words (min 50)
+                                
+                                {/* Template Structure Helper */}
+                                <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                    <p className="text-xs font-medium text-gray-700 mb-2">💡 Template Structure (Copy and fill this):</p>
+                                    <div className="text-xs text-gray-600 space-y-1 font-mono bg-white p-2 rounded border border-gray-200">
+                                        <p className="text-gray-500">[What problem?] Many people/companies struggle with...</p>
+                                        <p className="text-gray-500">[Who faces it?] This affects...</p>
+                                        <p className="text-gray-500">[Why important?] This is important because...</p>
+                                        <p className="text-gray-500">[What solution?] We need a solution that...</p>
+                                    </div>
                                 </div>
+
+                                <div className="relative">
+                                    <textarea
+                                        name="problemStatement"
+                                        value={formData.problemStatement}
+                                        onChange={handleInputChange}
+                                        placeholder="Start writing your problem statement here. For example: 'Many small business owners struggle to manage their inventory efficiently. This leads to overstocking or running out of products, which causes financial losses. We need a simple inventory management system that helps track products, sends alerts when stock is low, and provides easy-to-understand reports. The solution should be affordable and work on basic smartphones.'"
+                                        rows="10"
+                                        minLength={50}
+                                        required
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+                                        style={{ 
+                                            paddingRight: formData.problemStatement && formData.problemStatement.trim().length >= 10 ? '145px' : '16px'
+                                        }}
+                                    />
+                                    
+                                    {/* AI Improve Button - Positioned to not overlap content */}
+                                    {formData.problemStatement && formData.problemStatement.trim().length >= 10 && (
+                                        <button
+                                            type="button"
+                                            onClick={handleImproveWithAI}
+                                            disabled={improvingStatement}
+                                            className="absolute top-3 right-3 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white text-xs font-medium rounded-lg shadow-sm transition-all duration-200 flex items-center gap-1.5 disabled:cursor-not-allowed z-10 pointer-events-auto"
+                                            style={{ 
+                                                maxWidth: '135px'
+                                            }}
+                                        >
+                                            {improvingStatement ? (
+                                                <>
+                                                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+                                                    <span className="truncate">Improving...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                    <span className="truncate">Improve with AI</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+                                
+                                {/* Word Count and Progress Indicator */}
+                                <div className="mt-2 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`text-xs font-medium ${formData.problemStatement.trim().split(/\s+/).filter(w => w).length < 50 ? 'text-red-600' : 'text-green-600'}`}>
+                                            {formData.problemStatement.trim().split(/\s+/).filter(w => w).length} / 50 words
+                                        </div>
+                                        {formData.problemStatement.trim().split(/\s+/).filter(w => w).length < 50 && (
+                                            <span className="text-xs text-gray-500">
+                                                ({50 - formData.problemStatement.trim().split(/\s+/).filter(w => w).length} more words needed)
+                                            </span>
+                                        )}
+                                    </div>
+                                    {formData.problemStatement.trim().split(/\s+/).filter(w => w).length >= 50 && (
+                                        <div className="flex items-center gap-1 text-xs text-green-600 font-medium">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Good! Minimum requirement met
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* Progress Bar */}
+                                <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                                    <div
+                                        className={`h-2 rounded-full transition-all duration-300 ${
+                                            formData.problemStatement.trim().split(/\s+/).filter(w => w).length >= 50 
+                                                ? 'bg-green-500' 
+                                                : 'bg-blue-500'
+                                        }`}
+                                        style={{ 
+                                            width: `${Math.min(100, (formData.problemStatement.trim().split(/\s+/).filter(w => w).length / 50) * 100)}%` 
+                                        }}
+                                    ></div>
+                                </div>
+
+                                {/* Tips Section
+                                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <p className="text-xs font-semibold text-yellow-800 mb-1">✨ Tips for Better Problem Statements:</p>
+                                    <ul className="text-xs text-yellow-700 space-y-1 list-disc list-inside">
+                                        <li>Write in simple, clear language - don't worry about perfect English</li>
+                                        <li>Explain the problem as if you're telling a friend</li>
+                                        <li>Include who has this problem and why it matters</li>
+                                        <li>Describe what kind of solution you're looking for</li>
+                                        <li>You can write in your own words - clarity is more important than perfect grammar</li>
+                                        <li><strong>💡 Tip:</strong> Write your rough draft first, then click "Improve with AI" to make it clearer and more professional!</li>
+                                    </ul>
+                                </div> */}
                             </div>
 
                             <div>
@@ -818,6 +1191,93 @@ export default function PostHackathon() {
                                                 <option value="any">Any Format</option>
                                             </select>
                                         </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                Phase Mode
+                                            </label>
+                                            <select
+                                                value={phase.phaseMode || 'Online'}
+                                                onChange={(e) => handlePhaseChange(phase.id, 'phaseMode', e.target.value)}
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                            >
+                                                <option value="Online">Online</option>
+                                                <option value="Offline">Offline</option>
+                                                <option value="Hybrid">Hybrid</option>
+                                            </select>
+                                            <p className="mt-1 text-xs text-gray-500">Select how this phase will be conducted</p>
+                                        </div>
+
+                                        {/* Venue Location and Reporting Time - shown only if phase is Offline or Hybrid */}
+                                        {(phase.phaseMode === 'Offline' || phase.phaseMode === 'Hybrid') && (
+                                            <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                <h4 className="text-xs font-semibold text-blue-900">Physical Venue Details for This Phase</h4>
+                                                
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                        Venue Location <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={phase.phaseVenueLocation || ''}
+                                                        onChange={(e) => handlePhaseChange(phase.id, 'phaseVenueLocation', e.target.value)}
+                                                        placeholder="e.g., Tech Hub, 123 Innovation Street, Bangalore"
+                                                        required={phase.phaseMode === 'Offline' || phase.phaseMode === 'Hybrid'}
+                                                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                                    />
+                                                    <p className="mt-1 text-xs text-gray-500">Complete address where participants need to report for this phase</p>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                        Reporting Date & Time <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="datetime-local"
+                                                        value={phase.phaseReportingTime || ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            // Check if reporting time is in the past
+                                                            if (val && val < nowStr) {
+                                                                toast.error('Reporting time cannot be in the past. Please select a future date and time.', { autoClose: 4000 });
+                                                                return;
+                                                            }
+                                                            // Check if reporting time is on or after the phase deadline
+                                                            if (phase.deadline && val) {
+                                                                const reportingDate = val.split('T')[0];
+                                                                const deadlineDate = phase.deadline;
+                                                                if (reportingDate >= deadlineDate) {
+                                                                    const deadlineFormatted = new Date(deadlineDate).toLocaleDateString('en-US', { 
+                                                                        year: 'numeric', 
+                                                                        month: 'short', 
+                                                                        day: 'numeric' 
+                                                                    });
+                                                                    toast.error(`Reporting time must be before the phase deadline (${deadlineFormatted}). Participants need to report before submitting their work.`, { autoClose: 5000 });
+                                                                    return;
+                                                                }
+                                                            }
+                                                            handlePhaseChange(phase.id, 'phaseReportingTime', val);
+                                                        }}
+                                                        min={nowStr}
+                                                        max={phase.deadline ? `${phase.deadline}T23:59` : undefined}
+                                                        required={phase.phaseMode === 'Offline' || phase.phaseMode === 'Hybrid'}
+                                                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                                    />
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        When should participants arrive at the venue for this phase? 
+                                                        {phase.deadline && (
+                                                            <span className="block mt-1 text-gray-600 font-medium">
+                                                                ⚠️ Must be before the phase deadline: {new Date(phase.deadline).toLocaleDateString('en-US', { 
+                                                                    year: 'numeric', 
+                                                                    month: 'short', 
+                                                                    day: 'numeric' 
+                                                                })}
+                                                            </span>
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
 
@@ -847,24 +1307,53 @@ export default function PostHackathon() {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Eligibility Criteria
                                 </label>
-                                <textarea
-                                    name="eligibility"
-                                    value={formData.eligibility}
-                                    onChange={handleInputChange}
-                                    placeholder="Describe who can participate (e.g., students, professionals, age restrictions, etc.)..."
-                                    rows="6"
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
-                                />
+                                <div className="relative">
+                                    <textarea
+                                        name="eligibility"
+                                        value={formData.eligibility}
+                                        onChange={handleInputChange}
+                                        placeholder="Describe who can participate (e.g., students, professionals, age restrictions, etc.)..."
+                                        rows="6"
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+                                    />
+                                    
+                                    {/* AI Improve Button */}
+                                    {formData.eligibility && formData.eligibility.trim().length >= 10 && (
+                                        <button
+                                            type="button"
+                                            onClick={handleImproveEligibility}
+                                            disabled={improvingEligibility}
+                                            className="absolute top-3 right-3 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white text-xs font-medium rounded-lg shadow-sm transition-all duration-200 flex items-center gap-1.5 disabled:cursor-not-allowed"
+                                        >
+                                            {improvingEligibility ? (
+                                                <>
+                                                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    <span>Improving...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                    <span>Improve with AI</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Dates & Mode Tab */}
+                    {/* Dates Tab */}
                     {activeTab === 'dates' && (
                         <div className="space-y-6">
                             <div className="mb-6">
-                                <h2 className="text-2xl font-bold text-gray-900">Dates & Mode</h2>
-                                <p className="text-sm text-gray-500 mt-1">Set the timeline and participation mode</p>
+                                <h2 className="text-2xl font-bold text-gray-900">Dates</h2>
+                                <p className="text-sm text-gray-500 mt-1">Set the registration timeline</p>
+                                <p className="text-xs text-gray-400 mt-2">
+                                    Note: Mode (Online/Offline/Hybrid) is now set individually for each phase in the Phases section.
+                                </p>
                             </div>
 
                             <div className="grid md:grid-cols-2 gap-6">
@@ -896,78 +1385,6 @@ export default function PostHackathon() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Mode <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    name="mode"
-                                    value={formData.mode}
-                                    onChange={handleInputChange}
-                                    required
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                >
-                                    <option value="">Select Mode</option>
-                                    <option value="Online">Online</option>
-                                    <option value="Offline">Offline</option>
-                                    <option value="Hybrid">Hybrid</option>
-                                </select>
-                            </div>
-
-                            {/* Conditional fields for Hybrid/Offline mode */}
-                            {(formData.mode === 'Hybrid' || formData.mode === 'Offline') && (
-                                <div className="space-y-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <h3 className="text-sm font-semibold text-blue-900">Physical Venue Details</h3>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Venue Location <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="location"
-                                            value={formData.location}
-                                            onChange={handleInputChange}
-                                            placeholder="e.g., Tech Hub, 123 Innovation Street, Bangalore"
-                                            required={formData.mode === 'Hybrid' || formData.mode === 'Offline'}
-                                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                        />
-                                        <p className="mt-1 text-xs text-gray-500">
-                                            Provide the complete address where participants need to report
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Reporting Date & Time <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="datetime-local"
-                                            name="reportingDate"
-                                            value={formData.reportingDate}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (val && val < todayStr) {
-                                                    toast.warning('Reporting date cannot be in the past.', { autoClose: 3000 });
-                                                    return;
-                                                }
-                                                if (formData.endDate && val && val.split('T')[0] < formData.endDate) {
-                                                    toast.warning('Reporting date must be on or after registration end date.', { autoClose: 3000 });
-                                                    return;
-                                                }
-                                                handleInputChange(e);
-                                            }}
-                                            min={formData.endDate || todayStr}
-                                            required={formData.mode === 'Hybrid' || formData.mode === 'Offline'}
-                                            disabled={(formData.mode === 'Hybrid' || formData.mode === 'Offline') && !formData.endDate}
-                                            className={`w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 ${((formData.mode === 'Hybrid' || formData.mode === 'Offline') && !formData.endDate) ? 'opacity-60 pointer-events-none blur-[1px]' : ''}`}
-                                        />
-                                        <p className="mt-1 text-xs text-gray-500">
-                                            When should participants arrive at the venue?
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     )}
 
@@ -997,14 +1414,40 @@ export default function PostHackathon() {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Submission Guidelines
                                 </label>
-                                <textarea
-                                    name="submissionGuidelines"
-                                    value={formData.submissionGuidelines}
-                                    onChange={handleInputChange}
-                                    placeholder="Describe what participants need to submit and how..."
-                                    rows="6"
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
-                                />
+                                <div className="relative">
+                                    <textarea
+                                        name="submissionGuidelines"
+                                        value={formData.submissionGuidelines}
+                                        onChange={handleInputChange}
+                                        placeholder="Describe what participants need to submit and how..."
+                                        rows="6"
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+                                    />
+                                    
+                                    {/* AI Improve Button */}
+                                    {formData.submissionGuidelines && formData.submissionGuidelines.trim().length >= 10 && (
+                                        <button
+                                            type="button"
+                                            onClick={handleImproveGuidelines}
+                                            disabled={improvingGuidelines}
+                                            className="absolute top-3 right-3 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white text-xs font-medium rounded-lg shadow-sm transition-all duration-200 flex items-center gap-1.5 disabled:cursor-not-allowed"
+                                        >
+                                            {improvingGuidelines ? (
+                                                <>
+                                                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    <span>Improving...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                    <span>Improve with AI</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1051,18 +1494,69 @@ export default function PostHackathon() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Prize Pool / Prize Details
-                                </label>
-                                <textarea
-                                    name="prize"
-                                    value={formData.prize}
-                                    onChange={handleInputChange}
-                                    placeholder="Describe the prizes (e.g., 1st Prize: $10,000, 2nd Prize: $5,000, etc.)..."
-                                    rows="4"
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
-                                />
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Prize Pool / Prize Details (Optional)
+                                    </label>
+                                    <textarea
+                                        name="prize"
+                                        value={formData.prize}
+                                        onChange={handleInputChange}
+                                        placeholder="General prize information or additional prizes..."
+                                        rows="3"
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+                                    />
+                                    <p className="mt-1 text-xs text-gray-500">Optional: General prize pool description or additional prizes</p>
+                                </div>
+
+                                <div className="border-t border-gray-200 pt-4">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Winner Prizes</h3>
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                🥇 1st Place Prize
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="firstPrize"
+                                                value={formData.firstPrize}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., $10,000 or ₹75,000 or Laptop + Certificate"
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-100"
+                                            />
+                                        </div>
+
+                                        <div className="p-4 bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-lg">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                🥈 2nd Place Prize
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="secondPrize"
+                                                value={formData.secondPrize}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., $5,000 or ₹50,000 or Tablet + Certificate"
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-100"
+                                            />
+                                        </div>
+
+                                        <div className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                🥉 3rd Place Prize
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="thirdPrize"
+                                                value={formData.thirdPrize}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., $2,500 or ₹25,000 or Smartwatch + Certificate"
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="mt-3 text-xs text-gray-500">Specify the prizes for top 3 winners. You can include cash amounts, products, certificates, or any combination.</p>
+                                </div>
                             </div>
 
                             <div>

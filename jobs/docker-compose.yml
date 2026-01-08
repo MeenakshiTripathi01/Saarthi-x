@@ -1,35 +1,61 @@
 services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: saarthix-frontend
+    ports:
+      - "2003:80"
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - saarthix-network
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile
+      # Add build args for network retry
+      args:
+        BUILDKIT_INLINE_CACHE: 1
     container_name: saarthix-backend
     ports:
-      - "8081:8080"
+      - "2000:2000"
     environment:
-      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/saarthix
-      - SPRING_DATA_MONGODB_DATABASE=saarthix
-      - SPRING_PROFILES_ACTIVE=default
+      - SPRING_PROFILES_ACTIVE=docker
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     depends_on:
-      - mongo
-      - redis
+      mongo:
+        condition: service_healthy
     restart: always
+    # Add DNS configuration to help with network issues
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - saarthix-network
 
   mongo:
     image: mongo:7
     container_name: saarthix-mongo
     ports:
-      - "27017:27017"
+      - "2002:2002"
+    command: ["mongod", "--port", "2002"]
     volumes:
       - mongo-data:/data/db
     restart: always
-
-  redis:
-    image: redis:latest
-    container_name: saarthix-redis
-    ports:
-      - "6379:6379"
-    restart: always
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "2002", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - saarthix-network
 
 volumes:
   mongo-data:
+
+networks:
+  saarthix-network:
+    driver: bridge

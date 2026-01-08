@@ -33,6 +33,60 @@ const COMMON_HOBBIES = [
   'Trekking', 'Camping', 'Fishing', 'Bird Watching'
 ];
 
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Delhi', 'Chandigarh', 'Puducherry'
+];
+
+const CITIES_BY_STATE = {
+  'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Thane', 'Aurangabad', 'Solapur'],
+  'Karnataka': ['Bangalore', 'Mysore', 'Mangalore', 'Hubli', 'Belgaum'],
+  'Delhi': ['New Delhi', 'South Delhi', 'North Delhi', 'East Delhi', 'West Delhi', 'Central Delhi'],
+  'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Trichy', 'Salem', 'Tirunelveli'],
+  'Uttar Pradesh': ['Lucknow', 'Kanpur', 'Noida', 'Ghaziabad', 'Agra', 'Varanasi', 'Meerut', 'Allahabad'],
+  'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Gandhinagar'],
+  'West Bengal': ['Kolkata', 'Durgapur', 'Siliguri', 'Asansol'],
+  'Rajasthan': ['Jaipur', 'Udaipur', 'Jodhpur', 'Kota', 'Ajmer'],
+  'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar'],
+  'Kerala': ['Kochi', 'Thiruvananthapuram', 'Kozhikode', 'Thrissur'],
+  'Punjab': ['Chandigarh', 'Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala'],
+  'Haryana': ['Gurgaon', 'Faridabad', 'Panipat', 'Ambala', 'Karnal'],
+  'Madhya Pradesh': ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain'],
+  'Bihar': ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur'],
+  'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Tirupati']
+};
+
+const JOB_ROLES = [
+  'Software Developer',
+  'Full Stack Developer',
+  'Frontend Developer',
+  'Backend Developer',
+  'Data Scientist',
+  'Machine Learning Engineer',
+  'DevOps Engineer',
+  'Mobile Developer',
+  'UI/UX Designer',
+  'Product Manager',
+  'Business Analyst',
+  'QA Engineer',
+  'System Administrator',
+  'Database Administrator',
+  'Cloud Architect',
+  'Cybersecurity Analyst',
+  'Network Engineer',
+  'Technical Writer',
+  'Sales Executive',
+  'Marketing Manager',
+  'HR Manager',
+  'Financial Analyst',
+  'Consultant',
+  'Project Manager'
+];
+
 // Section definitions for the journey
 const PROFILE_SECTIONS = [
   {
@@ -40,14 +94,15 @@ const PROFILE_SECTIONS = [
     title: 'Personal Information',
     icon: '👤',
     description: 'Tell us about yourself',
-    fields: ['profilePicture', 'fullName', 'phoneNumber', 'email']
+    fields: ['profilePicture', 'fullName', 'phoneNumber', 'email', 'gender']
   },
   {
     id: 'professional',
     title: 'Professional Background',
     icon: '💼',
     description: 'Your work experience and skills',
-    fields: ['professionalExperiences', 'skills', 'summary']
+    // Use currentRoles for completion tracking (can contain multiple roles)
+    fields: ['currentRoles', 'professionalExperiences', 'skills', 'summary']
   },
   {
     id: 'education',
@@ -61,7 +116,7 @@ const PROFILE_SECTIONS = [
     title: 'Location Preferences',
     icon: '📍',
     description: 'Where do you want to work?',
-    fields: ['currentLocation', 'preferredLocations', 'workPreference', 'willingToRelocate']
+    fields: ['currentLocationState', 'currentLocationCity', 'preferredLocations', 'workPreference', 'willingToRelocate']
   },
   {
     id: 'hobbies',
@@ -122,17 +177,22 @@ export default function ProfileBuilder() {
     fullName: '',
     phoneNumber: '',
     email: '',
+    gender: '',  // New field for gender
     profilePictureBase64: '',
     profilePictureFileType: '',
     profilePictureFileName: '',
     profilePictureFileSize: 0,
     currentPosition: '',  // Keep for backward compatibility
     currentCompany: '',  // Keep for backward compatibility
+    currentRole: '',  // Primary role (for backward compatibility / first selected role)
+    currentRoles: [], // Multiple current/desired job roles
     experience: '',
     professionalExperiences: [],
     skills: [],
     summary: '',
-    currentLocation: '',
+    currentLocationState: '',  // New: State for location
+    currentLocationCity: '',   // New: City for location
+    currentLocation: '',  // Keep for backward compatibility
     preferredLocations: [],
     workPreference: 'Remote',
     willingToRelocate: false,
@@ -155,6 +215,7 @@ export default function ProfileBuilder() {
   const [skillsInput, setSkillsInput] = useState('');
   const [locationInput, setLocationInput] = useState('');
   const [hobbiesInput, setHobbiesInput] = useState('');
+  const [customRoleInput, setCustomRoleInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [showSkillsSuggestions, setShowSkillsSuggestions] = useState(false);
@@ -184,15 +245,21 @@ export default function ProfileBuilder() {
           fullName: profile.fullName || user?.name || '',
           phoneNumber: profile.phoneNumber || '',
           email: profile.email || user?.email || '',
+          gender: profile.gender || '',  // Load gender from database
           profilePictureBase64: profile.profilePictureBase64 || '',
           profilePictureFileType: profile.profilePictureFileType || '',
           profilePictureFileName: profile.profilePictureFileName || '',
           profilePictureFileSize: profile.profilePictureFileSize || 0,
           currentPosition: profile.currentPosition || '',
           currentCompany: profile.currentCompany || '',
+          // If backend has multiple roles, use them; otherwise derive from single currentRole
+          currentRoles: profile.currentRoles || (profile.currentRole ? [profile.currentRole] : []),
+          currentRole: profile.currentRole || (profile.currentRoles && profile.currentRoles.length > 0 ? profile.currentRoles[0] : ''),  // Primary role
           experience: profile.experience || '',
           skills: profile.skills || [],
           summary: profile.summary || '',
+          currentLocationState: profile.currentLocationState || '',  // Load state from database
+          currentLocationCity: profile.currentLocationCity || '',    // Load city from database
           currentLocation: profile.currentLocation || '',
           preferredLocations: profile.preferredLocations || (profile.preferredLocation ? [profile.preferredLocation] : []),
           workPreference: profile.workPreference || 'Remote',
@@ -282,9 +349,16 @@ export default function ProfileBuilder() {
     if (fieldName === 'profilePicture') {
       return formData.profilePictureBase64 && formData.profilePictureBase64.length > 0;
     }
-    if (fieldName === 'skills' || fieldName === 'preferredLocations' || fieldName === 'hobbies' ||
-      fieldName === 'professionalExperiences' || fieldName === 'educationEntries' || fieldName === 'certificationFiles' ||
-      fieldName === 'projects') {
+    if (
+      fieldName === 'skills' ||
+      fieldName === 'preferredLocations' ||
+      fieldName === 'hobbies' ||
+      fieldName === 'professionalExperiences' ||
+      fieldName === 'educationEntries' ||
+      fieldName === 'certificationFiles' ||
+      fieldName === 'projects' ||
+      fieldName === 'currentRoles' // New multi-role field
+    ) {
       return Array.isArray(value) && value.length > 0;
     }
     if (fieldName === 'willingToRelocate') {
@@ -392,6 +466,40 @@ export default function ProfileBuilder() {
       skills: prev.skills.filter(skill => skill !== skillToRemove)
     }));
     // Force update of completed sections
+    setTimeout(() => updateCompletedSections(), 100);
+  };
+
+  // Job roles handlers (allow multiple current/desired roles)
+  const handleAddRole = (role) => {
+    const trimmedRole = role.trim();
+    if (!trimmedRole) return;
+
+    setFormData(prev => {
+      const existing = prev.currentRoles || [];
+      if (existing.includes(trimmedRole)) {
+        return prev; // Avoid duplicates
+      }
+      const updatedRoles = [...existing, trimmedRole];
+      return {
+        ...prev,
+        currentRoles: updatedRoles,
+        currentRole: updatedRoles[0] || '' // Keep primary role in sync for backward compatibility
+      };
+    });
+    setCustomRoleInput('');
+    setTimeout(() => updateCompletedSections(), 100);
+  };
+
+  const handleRemoveRole = (roleToRemove) => {
+    setFormData(prev => {
+      const existing = prev.currentRoles || [];
+      const updatedRoles = existing.filter(r => r !== roleToRemove);
+      return {
+        ...prev,
+        currentRoles: updatedRoles,
+        currentRole: updatedRoles[0] || ''
+      };
+    });
     setTimeout(() => updateCompletedSections(), 100);
   };
 
@@ -771,6 +879,10 @@ export default function ProfileBuilder() {
       console.log('=========================================');
       console.log('SAVING PROFILE DATA TO BACKEND');
       console.log('Full profile data object:', JSON.stringify(profileData, null, 2));
+      console.log('Gender:', profileData.gender);
+      console.log('Current Role:', profileData.currentRole);
+      console.log('Current Location State:', profileData.currentLocationState);
+      console.log('Current Location City:', profileData.currentLocationCity);
       console.log('Skills:', profileData.skills);
       console.log('Professional Experiences:', profileData.professionalExperiences);
       console.log('Education Entries:', profileData.educationEntries);
@@ -1148,11 +1260,126 @@ export default function ProfileBuilder() {
                   />
                 </div>
               </div>
-              </div>
-            )}
+
+                {/* Gender Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    Gender
+                    {isFieldFilled('gender') && <span className="text-blue-600 text-xs">✓</span>}
+                  </label>
+                  <select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                    <option value="Prefer not to say">Prefer not to say</option>
+                  </select>
+                </div>
+            </div>
+          )}
 
             {currentSection.id === 'professional' && (
               <div className="space-y-6">
+                {/* Current/Desired Job Roles (multiple) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    Current or Desired Job Roles
+                    {Array.isArray(formData.currentRoles) && formData.currentRoles.length > 0 && (
+                      <span className="text-blue-600 text-xs">✓</span>
+                    )}
+                  </label>
+
+                  {/* Selected roles as chips */}
+                  {Array.isArray(formData.currentRoles) && formData.currentRoles.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {formData.currentRoles.map((role) => (
+                        <span
+                          key={role}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium border border-indigo-200"
+                        >
+                          {role}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRole(role)}
+                            className="text-indigo-500 hover:text-indigo-700 focus:outline-none"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {/* Select from common roles */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Select from common roles
+                      </label>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value) {
+                            handleAddRole(value);
+                          }
+                        }}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                      >
+                        <option value="">Select role to add</option>
+                        {JOB_ROLES.filter(
+                          (role) => !formData.currentRoles || !formData.currentRoles.includes(role)
+                        ).map((role) => (
+                          <option key={role} value={role}>
+                            {role}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Custom role input */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Or type your own role
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={customRoleInput}
+                          onChange={(e) => setCustomRoleInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddRole(customRoleInput);
+                            }
+                          }}
+                          placeholder="e.g., SDE 1, Data Engineer"
+                          className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddRole(customRoleInput)}
+                          className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-500 mt-2">
+                    Add multiple roles you&apos;re suitable for (current or desired). Recruiters can then find you when
+                    they filter by these roles.
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between mb-4">
                   <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
                     Professional Experiences
@@ -1394,16 +1621,60 @@ export default function ProfileBuilder() {
                                 <option value="Other">Other</option>
                               </select>
                             </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">Degree/Course</label>
-                              <input
-                                type="text"
-                                value={edu.degree || ''}
-                                onChange={(e) => handleUpdateEducation(index, 'degree', e.target.value)}
-                                placeholder="e.g., B.Tech, B.Sc, M.Tech"
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
-                              />
-                            </div>
+                            {edu.level !== 'Class 12th' && (
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Degree/Course</label>
+                                <select
+                                  value={edu.degree || ''}
+                                  onChange={(e) => handleUpdateEducation(index, 'degree', e.target.value)}
+                                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                                >
+                                  <option value="">Select Degree/Course</option>
+                                  {(edu.level === 'Graduation' || edu.level === '') && (
+                                    <>
+                                      <option value="BE/B.Tech">BE/B.Tech</option>
+                                      <option value="B.Sc">B.Sc</option>
+                                      <option value="B.Com">B.Com</option>
+                                      <option value="B.A">B.A</option>
+                                      <option value="BBA">BBA</option>
+                                      <option value="BCA">BCA</option>
+                                      <option value="MBBS">MBBS</option>
+                                      <option value="BDS">BDS</option>
+                                      <option value="B.Pharm">B.Pharm</option>
+                                      <option value="B.Ed">B.Ed</option>
+                                      <option value="LLB">LLB</option>
+                                    </>
+                                  )}
+                                  {edu.level === 'Post Graduation' && (
+                                    <>
+                                      <option value="ME/M.Tech">ME/M.Tech</option>
+                                      <option value="M.Sc">M.Sc</option>
+                                      <option value="M.Com">M.Com</option>
+                                      <option value="M.A">M.A</option>
+                                      <option value="MBA">MBA</option>
+                                      <option value="MCA">MCA</option>
+                                      <option value="MD">MD</option>
+                                      <option value="MS">MS</option>
+                                      <option value="M.Pharm">M.Pharm</option>
+                                      <option value="M.Ed">M.Ed</option>
+                                      <option value="LLM">LLM</option>
+                                      <option value="PhD">PhD</option>
+                                    </>
+                                  )}
+                                  {edu.level === 'Diploma' && (
+                                    <>
+                                      <option value="Diploma in Engineering">Diploma in Engineering</option>
+                                      <option value="Diploma in Management">Diploma in Management</option>
+                                      <option value="Diploma in Computer Applications">Diploma in Computer Applications</option>
+                                      <option value="Diploma in Pharmacy">Diploma in Pharmacy</option>
+                                      <option value="Diploma in Hotel Management">Diploma in Hotel Management</option>
+                                      <option value="Diploma in Fashion Design">Diploma in Fashion Design</option>
+                                    </>
+                                  )}
+                                  <option value="Other">Other</option>
+                                </select>
+                              </div>
+                            )}
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">Institution/University *</label>
                               <input
@@ -1417,13 +1688,20 @@ export default function ProfileBuilder() {
                             {edu.level === 'Class 12th' && (
                               <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Board</label>
-                                <input
-                                  type="text"
+                                <select
                                   value={edu.board || ''}
                                   onChange={(e) => handleUpdateEducation(index, 'board', e.target.value)}
-                                  placeholder="e.g., CBSE, ICSE, State Board"
-                                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
-                                />
+                                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-100"
+                                >
+                                  <option value="">Select Board</option>
+                                  <option value="CBSE">CBSE</option>
+                                  <option value="ICSE">ICSE</option>
+                                  <option value="State Board">State Board</option>
+                                  <option value="IB">IB (International Baccalaureate)</option>
+                                  <option value="IGCSE">IGCSE</option>
+                                  <option value="NIOS">NIOS</option>
+                                  <option value="Other">Other</option>
+                                </select>
                               </div>
                             )}
                             {edu.level === 'Class 12th' && (
@@ -1599,18 +1877,65 @@ export default function ProfileBuilder() {
             {currentSection.id === 'location' && (
               <div className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
+                  {/* Current Location - State */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Current Location
-                      {isFieldFilled('currentLocation') && <span className="text-blue-600 text-xs">✓</span>}
+                      Current State
+                      {isFieldFilled('currentLocationState') && <span className="text-blue-600 text-xs">✓</span>}
                     </label>
-                    <input
-                      type="text"
-                      name="currentLocation"
-                      value={formData.currentLocation}
-                      onChange={handleInputChange}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
-                    />
+                    <select
+                      name="currentLocationState"
+                      value={formData.currentLocationState}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          currentLocationState: value,
+                          currentLocationCity: '', // Reset city when state changes
+                          currentLocation: value // Maintain backward compatibility
+                        }));
+                        setTimeout(() => updateCompletedSections(), 100);
+                      }}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                    >
+                      <option value="">Select State</option>
+                      {INDIAN_STATES.map(state => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Current Location - City */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      Current City
+                      {isFieldFilled('currentLocationCity') && <span className="text-blue-600 text-xs">✓</span>}
+                    </label>
+                    <select
+                      name="currentLocationCity"
+                      value={formData.currentLocationCity}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          currentLocationCity: value,
+                          currentLocation: prev.currentLocationState ? `${value}, ${prev.currentLocationState}` : value // Update combined location
+                        }));
+                        setTimeout(() => updateCompletedSections(), 100);
+                      }}
+                      disabled={!formData.currentLocationState}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Select City</option>
+                      {formData.currentLocationState && CITIES_BY_STATE[formData.currentLocationState] && 
+                        CITIES_BY_STATE[formData.currentLocationState].map(city => (
+                          <option key={city} value={city}>{city}</option>
+                        ))
+                      }
+                    </select>
+                    {!formData.currentLocationState && (
+                      <p className="mt-1 text-xs text-gray-400">Select a state first</p>
+                    )}
                   </div>
 
                   <div>

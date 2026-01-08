@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getHackathonResults, finalizeHackathonResults, publishShowcaseContent, deleteHackathonApplication, getHackathonById } from '../api/jobApi';
+import { BACKEND_URL } from '../config';
 import { toast } from 'react-toastify';
 import { Trophy, Medal, Award, Users, Star, CheckCircle, Upload, X, FileText, Mail } from 'lucide-react';
 
@@ -27,6 +28,31 @@ export default function IndustryHackathonResults() {
     useEffect(() => {
         loadResults();
     }, [hackathonId]);
+
+    // Auto-populate showcase data when modal opens
+    useEffect(() => {
+        if (showcaseModal) {
+            // Auto-populate title with team/candidate name
+            const defaultTitle = showcaseModal.asTeam 
+                ? `${showcaseModal.teamName || 'Team'}'s Winning Solution`
+                : `${showcaseModal.individualName || 'Candidate'}'s Winning Solution`;
+            
+            // Auto-populate description if not already set
+            const defaultDescription = showcaseModal.showcaseContent?.description || '';
+            
+            // Auto-populate innovation highlights if not already set
+            const defaultHighlights = showcaseModal.showcaseContent?.innovationHighlights || '';
+            
+            setShowcaseData(prev => ({
+                title: prev.title || defaultTitle,
+                description: prev.description || defaultDescription,
+                innovationHighlights: prev.innovationHighlights || defaultHighlights
+            }));
+        } else {
+            // Reset when modal closes
+            setShowcaseData({ title: '', description: '', innovationHighlights: '' });
+        }
+    }, [showcaseModal]);
 
     const loadResults = async () => {
         try {
@@ -90,7 +116,7 @@ export default function IndustryHackathonResults() {
 
                     console.log(`Updating ${appId}: rank=${rank}, score=${totalScore}`);
 
-                    const response = await fetch(`http://localhost:8080/api/hackathon-applications/${appId}`, {
+                    const response = await fetch(`${BACKEND_URL}/api/hackathon-applications/${appId}`, {
                         method: 'PATCH',
                         credentials: 'include',
                         headers: {
@@ -399,12 +425,56 @@ export default function IndustryHackathonResults() {
                                                 {getTotalScore(result)?.toFixed(2) || 0}
                                             </span>
                                         </div>
-                                        {result.asTeam && (
-                                            <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
-                                                <Users className="w-4 h-4" />
-                                                {result.teamSize} members
-                                            </div>
-                                        )}
+                                        
+                                        {/* Team/Individual Details Section */}
+                                        <div className="bg-white/60 rounded-lg p-4 mb-3 border border-gray-200">
+                                            <h4 className="text-xs font-bold text-gray-700 uppercase mb-2">
+                                                {result.asTeam ? 'Team Details' : 'Candidate Details'}
+                                            </h4>
+                                            {result.asTeam ? (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <Users className="w-4 h-4" />
+                                                        <span className="font-medium">{result.teamSize || 0} members</span>
+                                                    </div>
+                                                    {result.teamMembers && result.teamMembers.length > 0 && (
+                                                        <div className="mt-2 space-y-1">
+                                                            {result.teamMembers.map((member, idx) => (
+                                                                <div key={idx} className="text-xs text-gray-700 bg-white/50 rounded px-2 py-1">
+                                                                    <span className="font-semibold">{member.name}</span>
+                                                                    {member.role && <span className="text-gray-500 ml-1">- {member.role}</span>}
+                                                                    {member.email && <div className="text-gray-500 text-xs mt-0.5">{member.email}</div>}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-1">
+                                                    {result.individualName && (
+                                                        <div className="text-sm text-gray-700">
+                                                            <span className="font-semibold">Name:</span> {result.individualName}
+                                                        </div>
+                                                    )}
+                                                    {result.individualEmail && (
+                                                        <div className="text-sm text-gray-700">
+                                                            <span className="font-semibold">Email:</span> {result.individualEmail}
+                                                        </div>
+                                                    )}
+                                                    {result.individualPhone && (
+                                                        <div className="text-sm text-gray-700">
+                                                            <span className="font-semibold">Phone:</span> {result.individualPhone}
+                                                        </div>
+                                                    )}
+                                                    {result.individualQualifications && (
+                                                        <div className="text-sm text-gray-700">
+                                                            <span className="font-semibold">Qualifications:</span> {result.individualQualifications}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                        
                                         <button
                                             onClick={() => setShowcaseModal(result)}
                                             className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
@@ -504,7 +574,7 @@ export default function IndustryHackathonResults() {
                 {/* Back Button */}
                 <div className="mt-8 text-center">
                     <button
-                        onClick={() => navigate('/industry-hackathons')}
+                        onClick={() => navigate('/manage-hackathons')}
                         className="text-purple-600 hover:text-purple-700 font-medium"
                     >
                         ← Back to Hackathons
@@ -519,13 +589,73 @@ export default function IndustryHackathonResults() {
                         <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
                             <h3 className="text-2xl font-bold text-gray-900">Publish Showcase Content</h3>
                             <button
-                                onClick={() => setShowcaseModal(null)}
+                                onClick={() => {
+                                    setShowcaseModal(null);
+                                    setShowcaseData({ title: '', description: '', innovationHighlights: '' });
+                                }}
                                 className="text-gray-400 hover:text-gray-600"
                             >
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
                         <div className="p-6 space-y-4">
+                            {/* Auto-populated Team/Candidate Details */}
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                <h4 className="text-sm font-bold text-purple-900 mb-3">Team/Candidate Details</h4>
+                                {showcaseModal.asTeam ? (
+                                    <div className="space-y-2">
+                                        <div>
+                                            <span className="text-xs font-semibold text-purple-700">Team Name:</span>
+                                            <p className="text-sm text-purple-900 font-medium">{showcaseModal.teamName || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-xs font-semibold text-purple-700">Team Size:</span>
+                                            <p className="text-sm text-purple-900 font-medium">{showcaseModal.teamSize || 0} members</p>
+                                        </div>
+                                        {showcaseModal.teamMembers && showcaseModal.teamMembers.length > 0 && (
+                                            <div>
+                                                <span className="text-xs font-semibold text-purple-700">Team Members:</span>
+                                                <div className="mt-1 space-y-1">
+                                                    {showcaseModal.teamMembers.map((member, idx) => (
+                                                        <div key={idx} className="text-sm text-purple-900 bg-white rounded px-2 py-1">
+                                                            <span className="font-medium">{member.name}</span>
+                                                            {member.email && <span className="text-xs text-purple-600 ml-2">({member.email})</span>}
+                                                            {member.phone && <span className="text-xs text-purple-600 ml-2">- {member.phone}</span>}
+                                                            {member.role && <span className="text-xs text-purple-500 ml-2">- {member.role}</span>}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <div>
+                                            <span className="text-xs font-semibold text-purple-700">Name:</span>
+                                            <p className="text-sm text-purple-900 font-medium">{showcaseModal.individualName || 'N/A'}</p>
+                                        </div>
+                                        {showcaseModal.individualEmail && (
+                                            <div>
+                                                <span className="text-xs font-semibold text-purple-700">Email:</span>
+                                                <p className="text-sm text-purple-900 font-medium">{showcaseModal.individualEmail}</p>
+                                            </div>
+                                        )}
+                                        {showcaseModal.individualPhone && (
+                                            <div>
+                                                <span className="text-xs font-semibold text-purple-700">Phone:</span>
+                                                <p className="text-sm text-purple-900 font-medium">{showcaseModal.individualPhone}</p>
+                                            </div>
+                                        )}
+                                        {showcaseModal.individualQualifications && (
+                                            <div>
+                                                <span className="text-xs font-semibold text-purple-700">Qualifications:</span>
+                                                <p className="text-sm text-purple-900 font-medium">{showcaseModal.individualQualifications}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
                                 <input
@@ -558,7 +688,10 @@ export default function IndustryHackathonResults() {
                             </div>
                             <div className="flex gap-3 pt-4">
                                 <button
-                                    onClick={() => setShowcaseModal(null)}
+                                    onClick={() => {
+                                        setShowcaseModal(null);
+                                        setShowcaseData({ title: '', description: '', innovationHighlights: '' });
+                                    }}
                                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                                 >
                                     Cancel

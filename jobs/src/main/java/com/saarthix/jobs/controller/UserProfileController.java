@@ -15,7 +15,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/profile")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:2003", allowCredentials = "true")
 public class UserProfileController {
 
     private final UserProfileRepository userProfileRepository;
@@ -59,6 +59,9 @@ public class UserProfileController {
             System.out.println("RECEIVED PROFILE SAVE REQUEST");
             System.out.println("Profile data keys: " + profileData.keySet());
             System.out.println("Full profile data: " + profileData);
+            System.out.println("Gender (payload): " + profileData.get("gender"));
+            System.out.println("CurrentRole (payload): " + profileData.get("currentRole"));
+            System.out.println("CurrentRoles (payload): " + profileData.get("currentRoles"));
             System.out.println("Skills: " + profileData.get("skills"));
             System.out.println("Professional Experiences: " + profileData.get("professionalExperiences"));
             System.out.println("Education Entries: " + profileData.get("educationEntries"));
@@ -121,6 +124,11 @@ public class UserProfileController {
             profile.setEmail(email != null ? email : user.getEmail());
             System.out.println("Email set: " + (email != null && !email.isEmpty() ? email : "empty"));
 
+            // Gender
+            String gender = (String) profileData.getOrDefault("gender", "");
+            profile.setGender(gender != null ? gender : "");
+            System.out.println("Gender set: " + (gender != null && !gender.isEmpty() ? gender : "empty"));
+
             // Resume information
             String resumeFileName = (String) profileData.getOrDefault("resumeFileName", "");
             profile.setResumeFileName(resumeFileName != null ? resumeFileName : "");
@@ -179,6 +187,23 @@ public class UserProfileController {
             String currentCompany = (String) profileData.getOrDefault("currentCompany", "");
             profile.setCurrentCompany(currentCompany != null ? currentCompany : "");
             System.out.println("Current Company set: " + (currentCompany != null && !currentCompany.isEmpty() ? currentCompany : "empty"));
+
+            String currentRole = (String) profileData.getOrDefault("currentRole", "");
+            profile.setCurrentRole(currentRole != null ? currentRole : "");
+            System.out.println("Current Role set (primary): " + (currentRole != null && !currentRole.isEmpty() ? currentRole : "empty"));
+
+            // Multiple current/desired roles
+            Object currentRolesObj = profileData.get("currentRoles");
+            if (currentRolesObj instanceof java.util.List) {
+                @SuppressWarnings("unchecked")
+                java.util.List<String> roles = (java.util.List<String>) currentRolesObj;
+                profile.setCurrentRoles(roles != null ? roles : new java.util.ArrayList<>());
+            } else if (currentRole != null && !currentRole.isEmpty()) {
+                profile.setCurrentRoles(java.util.List.of(currentRole));
+            } else {
+                profile.setCurrentRoles(new java.util.ArrayList<>());
+            }
+            System.out.println("Current Roles list size: " + (profile.getCurrentRoles() != null ? profile.getCurrentRoles().size() : 0));
             
             String experience = (String) profileData.getOrDefault("experience", "");
             profile.setExperience(experience != null ? experience : "");
@@ -207,7 +232,25 @@ public class UserProfileController {
             System.out.println("Summary set: " + (summary != null && !summary.isEmpty() ? summary.substring(0, Math.min(50, summary.length())) + "..." : "empty"));
 
             // Location preferences
+            String currentLocationState = (String) profileData.getOrDefault("currentLocationState", "");
+            profile.setCurrentLocationState(currentLocationState != null ? currentLocationState : "");
+            System.out.println("Current Location State set: " + (currentLocationState != null && !currentLocationState.isEmpty() ? currentLocationState : "empty"));
+
+            String currentLocationCity = (String) profileData.getOrDefault("currentLocationCity", "");
+            profile.setCurrentLocationCity(currentLocationCity != null ? currentLocationCity : "");
+            System.out.println("Current Location City set: " + (currentLocationCity != null && !currentLocationCity.isEmpty() ? currentLocationCity : "empty"));
+
+            // Backward-compatible combined location (if frontend didn't already send one)
             String currentLocation = (String) profileData.getOrDefault("currentLocation", "");
+            if ((currentLocation == null || currentLocation.isEmpty())
+                    && currentLocationCity != null && !currentLocationCity.isEmpty()) {
+                // Build "City, State" if possible
+                if (currentLocationState != null && !currentLocationState.isEmpty()) {
+                    currentLocation = currentLocationCity + ", " + currentLocationState;
+                } else {
+                    currentLocation = currentLocationCity;
+                }
+            }
             profile.setCurrentLocation(currentLocation != null ? currentLocation : "");
             System.out.println("Current Location set: " + (currentLocation != null && !currentLocation.isEmpty() ? currentLocation : "empty"));
             

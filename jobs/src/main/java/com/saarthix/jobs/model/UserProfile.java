@@ -35,13 +35,17 @@ public class UserProfile {
     // Professional Information
     private String currentPosition;  // Keep for backward compatibility
     private String currentCompany;   // Keep for backward compatibility
+    private String currentRole;      // Primary current or desired job role (backward compatibility)
+    private List<String> currentRoles; // Multiple current/desired job roles
     private String experience;       // Years of experience
     private List<ProfessionalExperience> professionalExperiences;  // Multiple professional experiences
     private List<String> skills;    // List of skills
     private String summary;         // Professional summary/bio
     
     // Location Preferences
-    private String currentLocation;
+    private String currentLocationState;  // Current state (for hierarchical location)
+    private String currentLocationCity;   // Current city (for hierarchical location)
+    private String currentLocation;       // Combined location (for backward compatibility)
     private List<String> preferredLocations;  // Multiple preferred locations
     private String preferredLocation;  // Keep for backward compatibility
     private String workPreference;  // Remote, On-site, Hybrid
@@ -126,6 +130,12 @@ public class UserProfile {
     public String getCurrentCompany() { return currentCompany; }
     public void setCurrentCompany(String currentCompany) { this.currentCompany = currentCompany; }
 
+    public String getCurrentRole() { return currentRole; }
+    public void setCurrentRole(String currentRole) { this.currentRole = currentRole; }
+
+    public List<String> getCurrentRoles() { return currentRoles; }
+    public void setCurrentRoles(List<String> currentRoles) { this.currentRoles = currentRoles; }
+
     public String getExperience() { return experience; }
     public void setExperience(String experience) { this.experience = experience; }
 
@@ -134,6 +144,12 @@ public class UserProfile {
 
     public String getSummary() { return summary; }
     public void setSummary(String summary) { this.summary = summary; }
+
+    public String getCurrentLocationState() { return currentLocationState; }
+    public void setCurrentLocationState(String currentLocationState) { this.currentLocationState = currentLocationState; }
+
+    public String getCurrentLocationCity() { return currentLocationCity; }
+    public void setCurrentLocationCity(String currentLocationCity) { this.currentLocationCity = currentLocationCity; }
 
     public String getCurrentLocation() { return currentLocation; }
     public void setCurrentLocation(String currentLocation) { this.currentLocation = currentLocation; }

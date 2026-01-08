@@ -6,6 +6,9 @@ public class HackathonPhase {
     private String description;
     private String uploadFormat;
     private String deadline;
+    private String phaseMode; // Online, Offline, or Hybrid for this phase
+    private String phaseVenueLocation; // Venue location if phase is offline/hybrid
+    private String phaseReportingTime; // Reporting time if phase is offline/hybrid
 
     // Constructors
     public HackathonPhase() {
@@ -58,5 +61,29 @@ public class HackathonPhase {
 
     public void setDeadline(String deadline) {
         this.deadline = deadline;
+    }
+
+    public String getPhaseMode() {
+        return phaseMode;
+    }
+
+    public void setPhaseMode(String phaseMode) {
+        this.phaseMode = phaseMode;
+    }
+
+    public String getPhaseVenueLocation() {
+        return phaseVenueLocation;
+    }
+
+    public void setPhaseVenueLocation(String phaseVenueLocation) {
+        this.phaseVenueLocation = phaseVenueLocation;
+    }
+
+    public String getPhaseReportingTime() {
+        return phaseReportingTime;
+    }
+
+    public void setPhaseReportingTime(String phaseReportingTime) {
+        this.phaseReportingTime = phaseReportingTime;
     }
 }

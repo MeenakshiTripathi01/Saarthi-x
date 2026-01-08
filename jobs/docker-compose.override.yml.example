@@ -1,0 +1,18 @@
+# Example override file for network issues
+# Copy this to docker-compose.override.yml if you need custom network settings
+# docker-compose automatically uses override files
+
+services:
+  backend:
+    build:
+      # Use local Dockerfile if you built JAR locally
+      dockerfile: Dockerfile.local
+    # Add custom DNS if needed
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    # Add network mode if needed
+    network_mode: bridge
+
+

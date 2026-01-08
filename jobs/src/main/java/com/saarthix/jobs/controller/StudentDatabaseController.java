@@ -1,8 +1,11 @@
 package com.saarthix.jobs.controller;
 
 import com.saarthix.jobs.model.User;
+import com.saarthix.jobs.model.UserProfile;
 import com.saarthix.jobs.model.dto.StudentDatabaseDto;
+import com.saarthix.jobs.repository.UserProfileRepository;
 import com.saarthix.jobs.repository.UserRepository;
+import com.saarthix.jobs.service.EmailService;
 import com.saarthix.jobs.service.StudentDatabaseService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -16,15 +19,23 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/students")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:2003", allowCredentials = "true")
 public class StudentDatabaseController {
     
     private final StudentDatabaseService studentDatabaseService;
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final EmailService emailService;
     
-    public StudentDatabaseController(StudentDatabaseService studentDatabaseService, UserRepository userRepository) {
+    public StudentDatabaseController(
+            StudentDatabaseService studentDatabaseService, 
+            UserRepository userRepository,
+            UserProfileRepository userProfileRepository,
+            EmailService emailService) {
         this.studentDatabaseService = studentDatabaseService;
         this.userRepository = userRepository;
+        this.userProfileRepository = userProfileRepository;
+        this.emailService = emailService;
     }
     
     /**
@@ -282,6 +293,35 @@ public class StudentDatabaseController {
             
             if (resumeData == null) {
                 return ResponseEntity.status(404).body("Resume not found");
+            }
+            
+            // Send notification to student
+            try {
+                Optional<UserProfile> profileOpt = userProfileRepository.findById(studentId);
+                if (profileOpt.isPresent()) {
+                    UserProfile profile = profileOpt.get();
+                    String studentEmail = profile.getApplicantEmail() != null ? profile.getApplicantEmail() : profile.getEmail();
+                    if (studentEmail != null && !studentEmail.isEmpty()) {
+                        // Get student user to get their name
+                        Optional<User> studentUserOpt = userRepository.findByEmail(studentEmail);
+                        String studentName = studentUserOpt.map(User::getName).orElse(null);
+                        
+                        // Get industry company name from user name or email
+                        String industryCompany = user.getName() != null ? user.getName() : null;
+                        
+                        // Send notification email
+                        emailService.sendProfileDownloadNotification(
+                            studentEmail, 
+                            studentName, 
+                            industryCompany, 
+                            user.getEmail()
+                        );
+                    }
+                }
+            } catch (Exception e) {
+                // Log error but don't fail the download if notification fails
+                System.err.println("Error sending download notification: " + e.getMessage());
+                e.printStackTrace();
             }
             
             return ResponseEntity.ok(resumeData);

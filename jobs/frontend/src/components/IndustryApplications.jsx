@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,10 @@ export default function IndustryApplications() {
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [applicationsWithProfiles, setApplicationsWithProfiles] = useState([]);
+  
+  // Ref to track if counts have been loaded to prevent infinite loops
+  const countsLoadedRef = useRef(false);
+  const jobsIdsRef = useRef('');
 
   // Search and filter states
   const [jobSearchQuery, setJobSearchQuery] = useState('');
@@ -73,12 +77,31 @@ export default function IndustryApplications() {
     }
   }, [location.state, jobs]);
 
-  // Load application counts for all jobs
+  // Load application counts for all jobs (only once when jobs are first loaded)
   useEffect(() => {
     if (jobs.length > 0 && !selectedJob) {
-      loadAllApplicationCounts();
+      // Create a string of job IDs to track if the job list has changed
+      const currentJobIds = jobs.map(j => j.id).sort().join(',');
+      
+      // Only load counts if:
+      // 1. Counts haven't been loaded yet, OR
+      // 2. The job list has changed (different IDs)
+      if (!countsLoadedRef.current || jobsIdsRef.current !== currentJobIds) {
+        const needsCounts = jobs.some(job => job.applicationCount === undefined);
+        if (needsCounts) {
+          jobsIdsRef.current = currentJobIds;
+          countsLoadedRef.current = true;
+          loadAllApplicationCounts();
+        }
+      }
     }
-  }, [jobs]);
+    
+    // Reset the ref when a job is selected/deselected
+    if (selectedJob) {
+      countsLoadedRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs.length, selectedJob]); // Only depend on jobs.length, not the entire jobs array
 
   const loadJobs = async () => {
     try {
@@ -92,6 +115,9 @@ export default function IndustryApplications() {
       }
 
       setJobs(allJobs);
+      // Reset counts loaded flag when jobs are reloaded
+      countsLoadedRef.current = false;
+      jobsIdsRef.current = '';
     } catch (err) {
       console.error('Error loading jobs:', err);
       let errorMessage = 'Failed to load your posted jobs';
@@ -115,8 +141,15 @@ export default function IndustryApplications() {
   };
 
   const loadAllApplicationCounts = async () => {
-    // Load application counts for all jobs in parallel
-    const countPromises = jobs.map(async (job) => {
+    // Only load counts for jobs that don't already have the count
+    const jobsNeedingCounts = jobs.filter(job => job.applicationCount === undefined);
+    
+    if (jobsNeedingCounts.length === 0) {
+      return; // All jobs already have counts, no need to fetch
+    }
+
+    // Load application counts for jobs that need it in parallel
+    const countPromises = jobsNeedingCounts.map(async (job) => {
       try {
         const apps = await getApplicationsByJobId(job.id);
         return { jobId: job.id, count: apps.length };
@@ -128,6 +161,10 @@ export default function IndustryApplications() {
     const counts = await Promise.all(countPromises);
     setJobs(prevJobs =>
       prevJobs.map(job => {
+        // Only update if this job was in the list needing counts
+        if (job.applicationCount !== undefined) {
+          return job; // Keep existing job unchanged
+        }
         const countData = counts.find(c => c.jobId === job.id);
         return { ...job, applicationCount: countData?.count || 0 };
       })
@@ -226,7 +263,9 @@ export default function IndustryApplications() {
 
       if (selectedJob) {
         await loadApplications(selectedJob.id);
-        await loadJobs(); // Refresh job list to update counts
+        // Only reload jobs if we need to refresh counts, not on every status update
+        // This prevents unnecessary API calls
+        await loadJobs();
       }
 
       const statusLabel = statusOptions.find(s => s.value === newStatus)?.label || newStatus;

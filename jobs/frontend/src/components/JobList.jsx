@@ -6,6 +6,7 @@ import { fetchJobs, fetchJobDetails, getRecommendedJobs, getUserProfile } from "
 import { loginWithGoogle } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
 import JobApplicationForm from "./JobApplicationForm";
+import { BACKEND_URL } from "../config";
 
 // Component to format and display job description in an organized way
 function FormattedJobDescription({ description }) {
@@ -326,7 +327,7 @@ export default function JobList() {
       setError(null);
 
       const [localResult, externalResult] = await Promise.allSettled([
-        axios.get("http://localhost:8080/api/jobs", {
+        axios.get(`${BACKEND_URL}/api/jobs`, {
           withCredentials: true,
         }),
         fetchJobs("software developer in India"),

@@ -18,10 +18,18 @@ import com.saarthix.jobs.service.JobService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+//job controller
+//get all jobs
+//get a single job by id
+//get recommended jobs for authenticated applicant
+//post a new job
+//put update a job
+//delete a job
+//apply to job
 
 @RestController
 @RequestMapping("/api/jobs")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:2003", allowCredentials = "true")
 public class JobController {
 
     private final JobRepository jobRepository;
