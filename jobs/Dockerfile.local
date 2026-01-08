@@ -1,0 +1,16 @@
+# Alternative Dockerfile for local builds
+# Use this if you build the JAR locally first: ./gradlew bootJar
+# Then run: docker build -f Dockerfile.local -t saarthix-backend .
+
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+# Create non-root user for security
+RUN groupadd -r spring && useradd -r -g spring spring
+USER spring:spring
+# Copy the pre-built JAR from local build
+COPY build/libs/*.jar app.jar
+
+EXPOSE 2000
+
+ENTRYPOINT ["java","-Xms256m","-Xmx512m","-XX:+UseContainerSupport","-XX:MaxMetaspaceSize=128m","-jar","app.jar"]
+
