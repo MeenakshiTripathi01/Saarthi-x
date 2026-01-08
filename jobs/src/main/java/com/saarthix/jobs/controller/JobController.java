@@ -18,6 +18,14 @@ import com.saarthix.jobs.service.JobService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+//job controller
+//get all jobs
+//get a single job by id
+//get recommended jobs for authenticated applicant
+//post a new job
+//put update a job
+//delete a job
+//apply to job
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -25,10 +33,6 @@ import java.util.Optional;
 public class JobController {
 
     private final JobRepository jobRepository;
-
-
-
-    
     private final UserRepository userRepository;
     private final ApplicationRepository applicationRepository;
     private final EmailService emailService;
