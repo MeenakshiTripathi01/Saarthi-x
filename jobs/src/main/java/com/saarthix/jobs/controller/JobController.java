@@ -25,6 +25,10 @@ import java.util.Optional;
 public class JobController {
 
     private final JobRepository jobRepository;
+
+
+
+    
     private final UserRepository userRepository;
     private final ApplicationRepository applicationRepository;
     private final EmailService emailService;
