@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Flow Diagrams - Saarthi Jobs Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        .service-section {
+            margin-bottom: 60px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 5px solid #667eea;
+        }
+        .service-title {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .service-description {
+            color: #555;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .diagram-container {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        .mermaid {
+            text-align: center;
+        }
+        .toc {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+        }
+        .toc h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        .toc ul {
+            list-style: none;
+            padding: 0;
+        }
+        .toc li {
+            margin: 10px 0;
+        }
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Saarthi Jobs Portal</h1>
+        <p class="subtitle">Complete Service Flow Diagrams</p>
+
+        <div class="toc">
+            <h2>📋 Table of Contents</h2>
+            <ul>
+                <li><a href="#auth-service">1. Authentication Service</a></li>
+                <li><a href="#job-service">2. Job Management Service</a></li>
+                <li><a href="#application-service">3. Job Application Service</a></li>
+                <li><a href="#profile-service">4. User Profile Service</a></li>
+                <li><a href="#user-service">5. User Management Service</a></li>
+                <li><a href="#hackathon-service">6. Hackathon Management Service</a></li>
+                <li><a href="#hackathon-application-service">7. Hackathon Application Service</a></li>
+                <li><a href="#notification-service">8. Notification Service</a></li>
+                <li><a href="#student-db-service">9. Student Database Service</a></li>
+                <li><a href="#certificate-service">10. Certificate Generation Service</a></li>
+            </ul>
+        </div>
+
+        <!-- 1. Authentication Service -->
+        <div id="auth-service" class="service-section">
+            <h2 class="service-title">1. Authentication Service</h2>
+            <p class="service-description">
+                Handles user authentication for both Applicants and Industry users. Supports Google OAuth authentication 
+                and traditional email/password authentication for Industry users. Includes role-based access control.
+            </p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant AuthController
+    participant UserRepository
+    participant PasswordEncoder
+    participant MongoDB
+
+    Note over User,MongoDB: Google OAuth Authentication Flow
+    User->>Frontend: Click "Sign in with Google"
+    Frontend->>AuthController: GET /api/auth/me
+    AuthController->>MongoDB: Find User by Email
+    alt User Exists
+        MongoDB-->>AuthController: User Object
+        AuthController-->>Frontend: User Info + Authenticated Status
+    else User Not Found
+        AuthController-->>Frontend: Authenticated: false
+    end
+    Frontend-->>User: Display User Info
+
+    Note over User,MongoDB: Industry Registration Flow
+    User->>Frontend: Fill Registration Form
+    Frontend->>AuthController: POST /api/auth/industry/register
+    AuthController->>UserRepository: Check if Email Exists
+    alt Email Already Registered
+        UserRepository-->>AuthController: User Found
+        AuthController-->>Frontend: 400 - Email Already Registered
+    else Email Available
+        AuthController->>PasswordEncoder: Hash Password (BCrypt)
+        PasswordEncoder-->>AuthController: Hashed Password
+        AuthController->>MongoDB: Save User (Role=INDUSTRY)
+        MongoDB-->>AuthController: User Saved
+        AuthController-->>Frontend: 200 - Registration Success
+    end
+    Frontend-->>User: Show Success/Error Message
+
+    Note over User,MongoDB: Industry Login Flow
+    User->>Frontend: Enter Credentials
+    Frontend->>AuthController: POST /api/auth/industry/login
+    AuthController->>MongoDB: Find User by Email
+    alt User Not Found
+        MongoDB-->>AuthController: User Not Found
+        AuthController-->>Frontend: 401 - Invalid Email
+    else User Found
+        MongoDB-->>AuthController: User Object with Hashed Password
+        AuthController->>PasswordEncoder: Match Password
+        alt Password Matches
+            PasswordEncoder-->>AuthController: Match Success
+            AuthController->>AuthController: Verify UserType = INDUSTRY
+            AuthController-->>Frontend: 200 - User Object
+        else Password Mismatch
+            PasswordEncoder-->>AuthController: Match Failed
+            AuthController-->>Frontend: 401 - Incorrect Password
+        end
+    end
+    Frontend-->>User: Login Success/Error
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Job Management Service -->
+        <div id="job-service" class="service-section">
+            <h2 class="service-title">2. Job Management Service</h2>
+            <p class="service-description">
+                Manages job postings, job listings, recommended jobs, and job applications. Industry users can create, 
+                update, and delete jobs. Applicants can view jobs, get personalized recommendations, and apply to jobs.
+            </p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant Applicant
+    participant Industry
+    participant Frontend
+    participant JobController
+    participant JobService
+    participant JobRepository
+    participant UserProfileRepository
+    participant EmailService
+    participant MongoDB
+
+    Note over Applicant,MongoDB: Get All Jobs (Public)
+    Applicant->>Frontend: Browse Jobs
+    Frontend->>JobController: GET /api/jobs
+    JobController->>JobRepository: findAll()
+    JobRepository->>MongoDB: Query All Jobs
+    MongoDB-->>JobRepository: Job List
+    JobRepository-->>JobController: List&lt;Job&gt;
+    JobController-->>Frontend: Job List
+    Frontend-->>Applicant: Display Jobs
+
+    Note over Applicant,MongoDB: Get Recommended Jobs (Authenticated)
+    Applicant->>Frontend: View Recommended Jobs
+    Frontend->>JobController: GET /api/jobs/recommended/jobs (Auth Header)
+    JobController->>JobController: Verify Authentication & UserType=APPLICANT
+    JobController->>UserProfileRepository: Find Profile by Email
+    UserProfileRepository->>MongoDB: Query User Profile
+    MongoDB-->>UserProfileRepository: UserProfile
+    UserProfileRepository-->>JobController: UserProfile
+    JobController->>JobService: getRecommendedJobs(profile)
+    JobService->>JobRepository: findAll()
+    JobRepository->>MongoDB: Query All Jobs
+    MongoDB-->>JobRepository: Job List
+    JobService->>JobService: Calculate Match % (Skills 50%, Location 30%, Experience 20%)
+    JobService-->>JobController: List&lt;Job with Match%&gt;
+    JobController-->>Frontend: Recommended Jobs with Match %
+    Frontend-->>Applicant: Display Recommended Jobs
+
+    Note over Industry,MongoDB: Create Job (Industry Only)
+    Industry->>Frontend: Fill Job Posting Form
+    Frontend->>JobController: POST /api/jobs (Auth Header)
+    JobController->>JobController: Verify Authentication & UserType=INDUSTRY
+    JobController->>JobController: Set industryId & createdAt
+    JobController->>JobRepository: save(job)
+    JobRepository->>MongoDB: Save Job Document
+    MongoDB-->>JobRepository: Saved Job
+    JobRepository-->>JobController: Job Object
+    JobController-->>Frontend: 200 - Job Created
+    Frontend-->>Industry: Show Success Message
+
+    Note over Industry,MongoDB: Update Job (Industry Only - Own Jobs)
+    Industry->>Frontend: Edit Job Details
+    Frontend->>JobController: PUT /api/jobs/{id} (Auth Header)
+    JobController->>JobController: Verify Authentication & UserType=INDUSTRY
+    JobController->>JobRepository: findById(id)
+    JobRepository->>MongoDB: Query Job
+    MongoDB-->>JobRepository: Job Object
+    JobRepository-->>JobController: Job
+    JobController->>JobController: Verify Ownership (industryId match)
+    alt Not Owner
+        JobController-->>Frontend: 403 - Access Denied
+    else Is Owner
+        JobController->>JobRepository: save(updatedJob)
+        JobRepository->>MongoDB: Update Job Document
+        MongoDB-->>JobRepository: Updated Job
+        JobRepository-->>JobController: Updated Job
+        JobController-->>Frontend: 200 - Job Updated
+    end
+    Frontend-->>Industry: Show Success/Error
+
+    Note over Applicant,MongoDB: Apply to Job (Applicant Only)
+    Applicant->>Frontend: Click "Apply"
+    Frontend->>JobController: POST /api/jobs/{jobId}/apply (Auth Header)
+    JobController->>JobController: Verify Authentication & UserType=APPLICANT
+    JobController->>JobRepository: findById(jobId)
+    JobRepository->>MongoDB: Query Job
+    MongoDB-->>JobRepository: Job Object
+    JobController->>JobController: Check Duplicate Application
+    alt Already Applied
+        JobController-->>Frontend: 400 - Already Applied
+    else New Application
+        JobController->>JobController: Create Application Object
+        JobController->>MongoDB: Save Application
+        MongoDB-->>JobController: Application Saved
+        JobController->>EmailService: sendApplicationConfirmation()
+        EmailService-->>JobController: Email Sent
+        JobController-->>Frontend: 200 - Application Success
+    end
+    Frontend-->>Applicant: Show Success/Error
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Job Application Service -->
+        <div id="application-service" class="service-section">
+            <h2 class="service-title">3. Job Application Service</h2>
+            <p class="service-description">
+                Manages job applications with resume uploads, cover letters, and application status tracking. 
+                Industry users can view applications, update status, and manage candidates. Applicants can track their applications.
+            </p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant Applicant
+    participant Industry
+    participant Frontend
+    participant ApplicationController
+    participant ApplicationRepository
+    participant ResumeAndDetailsRepository
+    participant JobRepository
+    participant NotificationService
+    participant MongoDB
+
+    Note over Applicant,MongoDB: Create Application with Resume
+    Applicant->>Frontend: Fill Application Form + Upload Resume
+    Frontend->>ApplicationController: POST /api/applications (Auth Header)
+    ApplicationController->>ApplicationController: Verify Authentication & UserType=APPLICANT
+    ApplicationController->>JobRepository: Verify Job Exists
+    ApplicationController->>ApplicationRepository: Check Duplicate Application
+    alt Already Applied
+        ApplicationRepository-->>ApplicationController: Application Found
+        ApplicationController-->>Frontend: 400 - Already Applied
+    else New Application
+        ApplicationController->>ApplicationController: Create Application Object
+        ApplicationController->>ApplicationRepository: save(application)
+        ApplicationRepository->>MongoDB: Save to all_applied_jobs
+        MongoDB-->>ApplicationRepository: Application Saved
+        ApplicationController->>ResumeAndDetailsRepository: save(resumeDetails)
+        ResumeAndDetailsRepository->>MongoDB: Save to resume_and_details
+        MongoDB-->>ResumeAndDetailsRepository: Resume Saved
+        ApplicationController->>NotificationService: createNewApplicationNotification()
+        NotificationService-->>ApplicationController: Notification Created
+        ApplicationController-->>Frontend: 200 - Application Saved
+    end
+    Frontend-->>Applicant: Show Success Message
+
+    Note over Applicant,MongoDB: Get My Applications (Applicant)
+    Applicant->>Frontend: View My Applications
+    Frontend->>ApplicationController: GET /api/applications (Auth Header)
+    ApplicationController->>ApplicationController: Verify Authentication
+    ApplicationController->>ApplicationRepository: findByApplicantEmail()
+    ApplicationRepository->>MongoDB: Query Applications
+    MongoDB-->>ApplicationRepository: Application List
+    ApplicationRepository-->>ApplicationController: List&lt;Application&gt;
+    ApplicationController-->>Frontend: Application List
+    Frontend-->>Applicant: Display Applications
+
+    Note over Industry,MongoDB: Get Applications for Job (Industry)
+    Industry->>Frontend: View Job Applications
+    Frontend->>ApplicationController: GET /api/applications/job/{jobId} (Auth Header)
+    ApplicationController->>ApplicationController: Verify Authentication & UserType=INDUSTRY
+    ApplicationController->>JobRepository: Verify Job Ownership
+    alt Not Owner
+        JobRepository-->>ApplicationController: Access Denied
+        ApplicationController-->>Frontend: 403 - Access Denied
+    else Is Owner
+        ApplicationController->>ApplicationRepository: findByJobId(jobId)
+        ApplicationRepository->>MongoDB: Query Applications
+        MongoDB-->>ApplicationRepository: Application List
+        ApplicationRepository-->>ApplicationController: List&lt;Application&gt;
+        ApplicationController-->>Frontend: Application List
+    end
+    Frontend-->>Industry: Display Applications
+
+    Note over Industry,MongoDB: Update Application Status (Industry)
+    Industry->>Frontend: Update Status (pending/resume_viewed/interview_scheduled/etc.)
+    Frontend->>ApplicationController: PUT /api/applications/{id}/status (Auth Header)
+    ApplicationController->>ApplicationController: Verify Authentication & UserType=INDUSTRY
+    ApplicationController->>ApplicationRepository: findById(id)
+    ApplicationRepository->>MongoDB: Query Application
+    MongoDB-->>ApplicationRepository: Application
+    ApplicationController->>JobRepository: Verify Job Ownership
+    ApplicationController->>ApplicationController: Validate Status
+    ApplicationController->>ApplicationRepository: save(updatedApplication)
+    ApplicationRepository->>MongoDB: Update Application
+    ApplicationController->>NotificationService: createStatusUpdateNotification()
+    NotificationService-->>ApplicationController: Notification Created
+    ApplicationController-->>Frontend: 200 - Status Updated
+    Frontend-->>Industry: Show Success
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. User Profile Service -->
+        <div id="profile-service" class="service-section">
+            <h2 class="service-title">4. User Profile Service</h2>
+            <p class="service-description">
+                Manages comprehensive user profiles for applicants including skills, experience, education, 
+                certifications, projects, and resume uploads. Supports profile creation and updates.
+            </p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant Applicant
+    participant Frontend
+    participant UserProfileController
+    participant UserProfileRepository
+    participant UserRepository
+    participant MongoDB
+
+    Note over Applicant,MongoDB: Get My Profile
+    Applicant->>Frontend: View My Profile
+    Frontend->>UserProfileController: GET /api/profile (Auth Header)
+    UserProfileController->>UserProfileController: Verify Authentication & UserType=APPLICANT
+    UserProfileController->>UserProfileRepository: findByApplicantEmail()
+    UserProfileRepository->>MongoDB: Query User Profile
+    alt Profile Found
+        MongoDB-->>UserProfileRepository: UserProfile
+        UserProfileRepository-->>UserProfileController: UserProfile
+        UserProfileController-->>Frontend: 200 - Profile Data
+    else Profile Not Found
+        MongoDB-->>UserProfileRepository: Not Found
+        UserProfileRepository-->>UserProfileController: Empty
+        UserProfileController-->>Frontend: 404 - Profile Not Found
+    end
+    Frontend-->>Applicant: Display Profile/Create Profile Prompt
+
+    Note over Applicant,MongoDB: Create/Update Profile
+    Applicant->>Frontend: Fill Profile Form (Skills, Experience, Education, etc.)
+    Frontend->>UserProfileController: POST /api/profile (Auth Header)
+    UserProfileController->>UserProfileController: Verify Authentication & UserType=APPLICANT
+    UserProfileController->>UserProfileRepository: findByApplicantEmail()
+    UserProfileRepository->>MongoDB: Query Existing Profile
+    alt Profile Exists
+        MongoDB-->>UserProfileRepository: UserProfile
+        UserProfileRepository-->>UserProfileController: Existing Profile
+        UserProfileController->>UserProfileController: Update All Fields
+        UserProfileController->>UserProfileController: Set lastUpdated = now()
+    else New Profile
+        MongoDB-->>UserProfileRepository: Not Found
+        UserProfileRepository-->>UserProfileController: Empty
+        UserProfileController->>UserProfileController: Create New Profile
+        UserProfileController->>UserProfileController: Set applicantEmail, applicantId
+        UserProfileController->>UserProfileController: Set createdAt = now()
+    end
+    UserProfileController->>UserProfileRepository: save(profile)
+    UserProfileRepository->>MongoDB: Save/Update Profile Document
+    MongoDB-->>UserProfileRepository: Saved Profile
+    UserProfileRepository-->>UserProfileController: UserProfile
+    UserProfileController-->>Frontend: 200 - Profile Saved
+    Frontend-->>Applicant: Show Success Message
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. User Management Service -->
+        <div id="user-service" class="service-section">
+            <h2 class="service-title">5. User Management Service</h2>
+            <p class="service-description">
+                Handles user role selection during OAuth signup, user information retrieval, and role management. 
+                Enforces role-based access control and prevents role switching.
+            </p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant UserController
+    participant UserRepository
+    participant MongoDB
+
+    Note over User,MongoDB: Save User Role (OAuth Signup)
+    User->>Frontend: Select Role (APPLICANT or INDUSTRY)
+    Frontend->>UserController: POST /api/user/save-role
+    UserController->>UserRepository: findByEmail(email)
+    UserRepository->>MongoDB: Query User
+    alt User Exists
+        MongoDB-->>UserRepository: User Object
+        UserRepository-->>UserController: Existing User
+        UserController->>UserController: Check Role Match
+        alt Role Mismatch
+            UserController-->>Frontend: 409 - Role Mismatch Error
+        else Role Matches
+            UserController->>UserRepository: save(updatedUser)
+            UserRepository->>MongoDB: Update User
+            UserController-->>Frontend: 200 - Role Confirmed
+        end
+    else New User
+        MongoDB-->>UserRepository: Not Found
+        UserRepository-->>UserController: Empty
+        UserController->>UserController: Create New User
+        UserController->>UserController: Set userType, email, name
+        UserController->>UserRepository: save(newUser)
+        UserRepository->>MongoDB: Save User Document
+        MongoDB-->>UserRepository: Saved User
+        UserController-->>Frontend: 200 - User Registered
+    end
+    Frontend-->>User: Show Success/Error
+
+    Note over User,MongoDB: Get Current User Info
+    User->>Frontend: Page Load / Check Auth
+    Frontend->>UserController: GET /api/user/me (Auth Header)
+    UserController->>UserController: Extract OAuth2User Principal
+    UserController->>UserRepository: findByEmail(email)
+    UserRepository->>MongoDB: Query User
+    alt User Found
+        MongoDB-->>UserRepository: User Object
+        UserRepository-->>UserController: User with userType
+        UserController-->>Frontend: 200 - UserResponse (id, name, email, userType, authenticated)
+    else User Not Found
+        MongoDB-->>UserRepository: Not Found
+        UserController-->>Frontend: 401 - User Not Found
+    end
+    Frontend-->>User: Display User Info / Redirect to Login
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Hackathon Management Service -->
+        <div id="hackathon-service" class="service-section">
+            <h2 class="service-title">6. Hackathon Management Service</h2>
+            <p class="service-description">
+                Manages hackathon creation, updates, and viewing. Industry users can create hackathons with problem 
+                statements, eligibility criteria, phases, and prizes. Includes AI-powered content improvement features.
+            </p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant Industry
+    participant Frontend
+    participant HackathonController
+    participant AIProblemStatementService
+    participant HackathonRepository
+    participant MongoDB
+
+    Note over Industry,MongoDB: Create Hackathon (Industry Only)
+    Industry->>Frontend: Fill Hackathon Form
+    Frontend->>HackathonController: POST /api/hackathons (Auth Header)
+    HackathonController->>HackathonController: Verify Authentication & UserType=INDUSTRY
+    HackathonController->>HackathonController: Validate Problem Statement (min 50 words)
+    alt Validation Failed
+        HackathonController-->>Frontend: 400 - Problem Statement Too Short
+    else Validation Passed
+        HackathonController->>HackathonController: Set createdByIndustryId, views=0
+        HackathonController->>HackathonRepository: save(hackathon)
+        HackathonRepository->>MongoDB: Save Hackathon Document
+        MongoDB-->>HackathonRepository: Saved Hackathon
+        HackathonRepository-->>HackathonController: Hackathon Object
+        HackathonController-->>Frontend: 200 - Hackathon Created
+    end
+    Frontend-->>Industry: Show Success/Error
+
+    Note over Industry,MongoDB: Improve Problem Statement with AI
+    Industry->>Frontend: Click "Improve with AI"
+    Frontend->>HackathonController: POST /api/hackathons/improve-problem-statement
+    HackathonController->>HackathonController: Verify Authentication & UserType=INDUSTRY
+    HackathonController->>AIProblemStatementService: improveProblemStatement(original)
+    AIProblemStatementService->>AIProblemStatementService: Call AI API / Process
+    AIProblemStatementService-->>HackathonController: Improved Statement
+    HackathonController-->>Frontend: 200 - Improved Statement
+    Frontend-->>Industry: Display Improved Content
+
+    Note over Industry,MongoDB: Get My Hackathons (Industry)
+    Industry->>Frontend: View My Hackathons
+    Frontend->>HackathonController: GET /api/hackathons/my-hackathons (Auth Header)
+    HackathonController->>HackathonController: Verify Authentication & UserType=INDUSTRY
+    HackathonController->>HackathonRepository: findByCreatedByIndustryId(userId)
+    HackathonRepository->>MongoDB: Query Hackathons
+    MongoDB-->>HackathonRepository: Hackathon List
+    HackathonController->>HackathonController: Update resultsPublished Status
+    HackathonController-->>Frontend: 200 - Hackathon List
+    Frontend-->>Industry: Display Hackathons
+
+    Note over Industry,MongoDB: Update Hackathon (Industry - Own Only)
+    Industry->>Frontend: Edit Hackathon
+    Frontend->>HackathonController: PUT /api/hackathons/{id} (Auth Header)
+    HackathonController->>HackathonController: Verify Authentication & UserType=INDUSTRY
+    HackathonController->>HackathonRepository: findById(id)
+    HackathonRepository->>MongoDB: Query Hackathon
+    MongoDB-->>HackathonRepository: Hackathon
+    HackathonController->>HackathonController: Verify Ownership
+    alt Not Owner
+        HackathonController-->>Frontend: 403 - Access Denied
+    else Is Owner
+        HackathonController->>HackathonController: Validate Problem Statement
+        HackathonController->>HackathonController: Update All Fields
+        HackathonController->>HackathonRepository: save(updatedHackathon)
+        HackathonRepository->>MongoDB: Update Hackathon
+        MongoDB-->>HackathonRepository: Updated Hackathon
+        HackathonController-->>Frontend: 200 - Hackathon Updated
+    end
+    Frontend-->>Industry: Show Success/Error
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Hackathon Application Service -->
+        <div id="hackathon-application-service" class="service-section">
+            <h2 class="service-title">7. Hackathon Application Service</h2>
+            <p class="service-description">
+                Manages hackathon applications including individual and team applications, phase submissions, 
+                reviews, rankings, and certificate generation. Supports multi-phase hackathons with deadline enforcement.
+            </p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant Applicant
+    participant Industry
+    participant Frontend
+    participant HackathonApplicationController
+    participant HackathonApplicationRepository
+    participant HackathonRepository
+    participant MongoDB
+
+    Note over Applicant,MongoDB: Apply to Hackathon (Individual/Team)
+    Applicant->>Frontend: Fill Application Form
+    Frontend->>HackathonApplicationController: POST /api/hackathon-applications/{hackathonId}/apply
+    HackathonApplicationController->>HackathonApplicationController: Verify Authentication & UserType=APPLICANT
+    HackathonApplicationController->>HackathonRepository: findById(hackathonId)
+    HackathonRepository->>MongoDB: Query Hackathon
+    MongoDB-->>HackathonRepository: Hackathon
+    HackathonApplicationController->>HackathonApplicationController: Check Results Published
+    HackathonApplicationController->>HackathonApplicationController: Check Phase 1 Deadline
+    HackathonApplicationController->>HackathonApplicationController: Check Registration End Date
+    HackathonApplicationController->>HackathonApplicationRepository: Check Existing Application
+    alt Application Closed / Already Applied / Rejected
+        HackathonApplicationController-->>Frontend: 403/400 - Error
+    else Application Allowed
+        HackathonApplicationController->>HackathonApplicationController: Validate Team/Individual Data
+        HackathonApplicationController->>HackathonApplicationController: Set applicantId, appliedAt
+        HackathonApplicationController->>HackathonApplicationRepository: save(application)
+        HackathonApplicationRepository->>MongoDB: Save Application
+        MongoDB-->>HackathonApplicationRepository: Saved Application
+        HackathonApplicationController-->>Frontend: 200 - Application Saved
+    end
+    Frontend-->>Applicant: Show Success/Error
+
+    Note over Applicant,MongoDB: Submit Phase Solution
+    Applicant->>Frontend: Upload Phase Solution
+    Frontend->>HackathonApplicationController: POST /api/hackathon-applications/{applicationId}/phases/{phaseId}/submit
+    HackathonApplicationController->>HackathonApplicationController: Verify Authentication & UserType=APPLICANT
+    HackathonApplicationController->>HackathonApplicationRepository: findById(applicationId)
+    HackathonApplicationRepository->>MongoDB: Query Application
+    MongoDB-->>HackathonApplicationRepository: Application
+    HackathonApplicationController->>HackathonApplicationController: Verify Ownership
+    HackathonApplicationController->>HackathonRepository: Get Hackathon & Check Phase Deadline
+    alt Deadline Passed
+        HackathonApplicationController-->>Frontend: 403 - Deadline Passed
+    else Deadline Valid
+        HackathonApplicationController->>HackathonApplicationController: Update Phase Submission
+        HackathonApplicationController->>HackathonApplicationController: Set status=PENDING, submittedAt
+        HackathonApplicationController->>HackathonApplicationRepository: save(application)
+        HackathonApplicationRepository->>MongoDB: Update Application
+        HackathonApplicationController-->>Frontend: 200 - Submission Saved
+    end
+    Frontend-->>Applicant: Show Success/Error
+
+    Note over Industry,MongoDB: Review Phase Submission
+    Industry->>Frontend: Review & Score Submission
+    Frontend->>HackathonApplicationController: PUT /api/hackathon-applications/{applicationId}/phases/{phaseId}/review
+    HackathonApplicationController->>HackathonApplicationController: Verify Authentication & UserType=INDUSTRY
+    HackathonApplicationController->>HackathonApplicationRepository: findById(applicationId)
+    HackathonApplicationRepository->>MongoDB: Query Application
+    MongoDB-->>HackathonApplicationRepository: Application
+    HackathonApplicationController->>HackathonRepository: Verify Hackathon Ownership
+    HackathonApplicationController->>HackathonApplicationController: Update Submission Status & Score
+    alt Status = REJECTED
+        HackathonApplicationController->>HackathonApplicationController: Set application.status = REJECTED
+    end
+    HackathonApplicationController->>HackathonApplicationRepository: save(application)
+    HackathonApplicationRepository->>MongoDB: Update Application
+    HackathonApplicationController-->>Frontend: 200 - Review Saved
+    Frontend-->>Industry: Show Success
+
+    Note over Industry,MongoDB: Finalize Results & Calculate Rankings
+    Industry->>Frontend: Finalize Results
+    Frontend->>HackathonApplicationController: POST /api/hackathon-applications/hackathon/{hackathonId}/finalize-results
+    HackathonApplicationController->>HackathonApplicationController: Verify Authentication & UserType=INDUSTRY
+    HackathonApplicationController->>HackathonApplicationRepository: findByHackathonId(hackathonId)
+    HackathonApplicationRepository->>MongoDB: Query All Applications
+    MongoDB-->>HackathonApplicationRepository: Application List
+    HackathonApplicationController->>HackathonApplicationController: Calculate Total Scores
+    HackathonApplicationController->>HackathonApplicationController: Apply Certificate Customization
+    HackathonApplicationController->>HackathonApplicationController: Generate Certificate URLs
+    HackathonApplicationController->>HackathonApplicationRepository: saveAll(applications)
+    HackathonApplicationRepository->>MongoDB: Update All Applications
+    HackathonApplicationController-->>Frontend: 200 - Results Finalized
+    Frontend-->>Industry: Show Success
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. Notification Service -->
+        <div id="notification-service" class="service-section">
+            <h2 class="service-title">8. Notification Service</h2>
+            <p class="service-description">
+                Manages user notifications for job applications, status updates, and system events. 
+                Supports read/unread status tracking and notification filtering by user type.
+            </p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant NotificationController
+    participant NotificationRepository
+    participant UserRepository
+    participant MongoDB
+
+    Note over User,MongoDB: Get My Notifications
+    User->>Frontend: View Notifications
+    Frontend->>NotificationController: GET /api/notifications (Auth Header)
+    NotificationController->>NotificationController: Verify Authentication
+    NotificationController->>UserRepository: Get User by Email
+    UserRepository->>MongoDB: Query User
+    MongoDB-->>UserRepository: User Object
+    NotificationController->>NotificationRepository: findByUserIdOrderByCreatedAtDesc(userId)
+    NotificationRepository->>MongoDB: Query Notifications
+    MongoDB-->>NotificationRepository: Notification List
+    NotificationController->>NotificationController: Filter by userType
+    NotificationController-->>Frontend: 200 - Filtered Notifications
+    Frontend-->>User: Display Notifications
+
+    Note over User,MongoDB: Get Unread Count
+    User->>Frontend: Check Notification Badge
+    Frontend->>NotificationController: GET /api/notifications/unread-count (Auth Header)
+    NotificationController->>NotificationController: Verify Authentication
+    NotificationController->>NotificationRepository: findByUserIdAndIsReadFalse(userId)
+    NotificationRepository->>MongoDB: Query Unread Notifications
+    MongoDB-->>NotificationRepository: Notification List
+    NotificationController->>NotificationController: Filter by userType & Count
+    NotificationController-->>Frontend: 200 - {count: N}
+    Frontend-->>User: Update Badge Count
+
+    Note over User,MongoDB: Mark Notification as Read
+    User->>Frontend: Click Notification
+    Frontend->>NotificationController: PUT /api/notifications/{id}/read (Auth Header)
+    NotificationController->>NotificationController: Verify Authentication
+    NotificationController->>NotificationRepository: findById(id)
+    NotificationRepository->>MongoDB: Query Notification
+    MongoDB-->>NotificationRepository: Notification
+    NotificationController->>NotificationController: Verify Ownership
+    NotificationController->>NotificationController: Set isRead = true
+    NotificationController->>NotificationRepository: save(notification)
+    NotificationRepository->>MongoDB: Update Notification
+    NotificationController-->>Frontend: 200 - Notification Updated
+    Frontend-->>User: Mark as Read in UI
+
+    Note over User,MongoDB: Mark All as Read
+    User->>Frontend: Click "Mark All as Read"
+    Frontend->>NotificationController: PUT /api/notifications/mark-all-read (Auth Header)
+    NotificationController->>NotificationController: Verify Authentication
+    NotificationController->>NotificationRepository: findByUserIdAndIsReadFalse(userId)
+    NotificationRepository->>MongoDB: Query Unread Notifications
+    MongoDB-->>NotificationRepository: Notification List
+    NotificationController->>NotificationController: Set isRead = true for All
+    NotificationController->>NotificationRepository: saveAll(notifications)
+    NotificationRepository->>MongoDB: Update All Notifications
+    NotificationController-->>Frontend: 200 - All Marked as Read
+    Frontend-->>User: Update UI
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. Student Database Service -->
+        <div id="student-db-service" class="service-section">
+            <h2 class="service-title">9. Student Database Service</h2>
+            <p class="service-description">
+                Provides Industry users with access to student profiles for recruitment purposes. Includes filtering, 
+                shortlisting, resume downloads, and subscription-based access control (FREE/PAID tiers).
+            </p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant Industry
+    participant Frontend
+    participant StudentDatabaseController
+    participant StudentDatabaseService
+    participant UserProfileRepository
+    participant UserRepository
+    participant EmailService
+    participant MongoDB
+
+    Note over Industry,MongoDB: Get All Students (Industry Only)
+    Industry->>Frontend: Browse Student Database
+    Frontend->>StudentDatabaseController: GET /api/students?filters (Auth Header)
+    StudentDatabaseController->>StudentDatabaseController: Verify Authentication & UserType=INDUSTRY
+    StudentDatabaseController->>UserRepository: Get User Subscription Type
+    UserRepository->>MongoDB: Query User
+    MongoDB-->>UserRepository: User Object
+    StudentDatabaseController->>StudentDatabaseService: getAllStudents(email, isPaidUser, filters)
+    StudentDatabaseService->>UserProfileRepository: Find All Profiles with Filters
+    UserProfileRepository->>MongoDB: Query User Profiles
+    MongoDB-->>UserProfileRepository: Profile List
+    StudentDatabaseService->>StudentDatabaseService: Apply Access Control (FREE/PAID)
+    StudentDatabaseService-->>StudentDatabaseController: List&lt;StudentDatabaseDto&gt;
+    StudentDatabaseController-->>Frontend: 200 - {students, subscriptionType, totalCount}
+    Frontend-->>Industry: Display Students
+
+    Note over Industry,MongoDB: Get Student Details
+    Industry->>Frontend: View Student Profile
+    Frontend->>StudentDatabaseController: GET /api/students/{studentId} (Auth Header)
+    StudentDatabaseController->>StudentDatabaseController: Verify Authentication & UserType=INDUSTRY
+    StudentDatabaseController->>StudentDatabaseService: getStudentById(studentId, email, userId, isPaidUser)
+    StudentDatabaseService->>UserProfileRepository: findById(studentId)
+    UserProfileRepository->>MongoDB: Query User Profile
+    MongoDB-->>UserProfileRepository: UserProfile
+    StudentDatabaseService->>StudentDatabaseService: Apply Access Control
+    StudentDatabaseService-->>StudentDatabaseController: StudentDatabaseDto
+    StudentDatabaseController-->>Frontend: 200 - {student, subscriptionType}
+    Frontend-->>Industry: Display Student Details
+
+    Note over Industry,MongoDB: Shortlist Student
+    Industry->>Frontend: Click "Shortlist"
+    Frontend->>StudentDatabaseController: POST /api/students/{studentId}/shortlist (Auth Header)
+    StudentDatabaseController->>StudentDatabaseController: Verify Authentication & UserType=INDUSTRY
+    StudentDatabaseController->>StudentDatabaseService: shortlistStudent(studentId, email, userId, allowAll)
+    StudentDatabaseService->>MongoDB: Add to Shortlist Collection
+    MongoDB-->>StudentDatabaseService: Shortlist Saved
+    StudentDatabaseService-->>StudentDatabaseController: Success Message
+    StudentDatabaseController-->>Frontend: 200 - {message: "Shortlisted"}
+    Frontend-->>Industry: Show Success
+
+    Note over Industry,MongoDB: Download Resume
+    Industry->>Frontend: Click "Download Resume"
+    Frontend->>StudentDatabaseController: GET /api/students/{studentId}/resume/download (Auth Header)
+    StudentDatabaseController->>StudentDatabaseController: Verify Authentication & UserType=INDUSTRY
+    StudentDatabaseController->>StudentDatabaseService: downloadResume(studentId, email, userId, allowAll)
+    StudentDatabaseService->>UserProfileRepository: Get Resume Data
+    UserProfileRepository->>MongoDB: Query Resume (Base64)
+    MongoDB-->>UserProfileRepository: Resume Data
+    StudentDatabaseService-->>StudentDatabaseController: {fileName, fileType, base64}
+    StudentDatabaseController->>EmailService: sendProfileDownloadNotification()
+    EmailService-->>StudentDatabaseController: Email Sent
+    StudentDatabaseController-->>Frontend: 200 - Resume Data
+    Frontend-->>Industry: Download Resume File
+                </div>
+            </div>
+        </div>
+
+        <!-- 10. Certificate Generation Service -->
+        <div id="certificate-service" class="service-section">
+            <h2 class="service-title">10. Certificate Generation Service</h2>
+            <p class="service-description">
+                Generates and displays certificates for hackathon participants. Supports individual and team certificates 
+                with customizable templates, logos, and signatures. Certificates are generated based on hackathon results and rankings.
+            </p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant Industry
+    participant Applicant
+    participant Frontend
+    participant CertificateController
+    participant HackathonApplicationRepository
+    participant HackathonRepository
+    participant UserRepository
+    participant MongoDB
+
+    Note over Industry,MongoDB: Generate Certificates for Application
+    Industry->>Frontend: Generate Certificates for Hackathon
+    Frontend->>CertificateController: POST /api/certificates/generate/applicationId
+    CertificateController->>HackathonApplicationRepository: findById(applicationId)
+    HackathonApplicationRepository->>MongoDB: Query Application
+    MongoDB-->>HackathonApplicationRepository: HackathonApplication
+    HackathonApplicationRepository-->>CertificateController: Application
+    CertificateController->>CertificateController: Check Application Type
+    alt Team Application
+        CertificateController->>CertificateController: Generate URL for Each Team Member
+        CertificateController->>CertificateController: Set certificateUrl for Each Member
+    else Individual Application
+        CertificateController->>CertificateController: Generate Single Certificate URL
+        CertificateController->>CertificateController: Set certificateUrl
+    end
+    CertificateController->>HackathonApplicationRepository: save(application)
+    HackathonApplicationRepository->>MongoDB: Update Application
+    MongoDB-->>HackathonApplicationRepository: Updated Application
+    HackathonApplicationRepository-->>CertificateController: Application Saved
+    CertificateController-->>Frontend: 200 - Certificates Generated
+    Frontend-->>Industry: Show Success
+
+    Note over Applicant,MongoDB: View Certificate
+    Applicant->>Frontend: Open Certificate Link
+    Frontend->>CertificateController: GET /api/certificates/view
+    CertificateController->>HackathonApplicationRepository: findById(applicationId)
+    HackathonApplicationRepository->>MongoDB: Query Application
+    MongoDB-->>HackathonApplicationRepository: HackathonApplication
+    HackathonApplicationRepository-->>CertificateController: Application
+    CertificateController->>HackathonRepository: findById(hackathonId)
+    HackathonRepository->>MongoDB: Query Hackathon
+    MongoDB-->>HackathonRepository: Hackathon
+    HackathonRepository-->>CertificateController: Hackathon
+    CertificateController->>CertificateController: Determine Recipient Name
+    alt Team Application
+        CertificateController->>CertificateController: Find Team Member by Email
+        CertificateController->>CertificateController: Get Member Name
+    else Individual Application
+        CertificateController->>UserRepository: findById(applicantId)
+        UserRepository->>MongoDB: Query User
+        MongoDB-->>UserRepository: User Object
+        UserRepository-->>CertificateController: User
+        CertificateController->>CertificateController: Get User Name
+    end
+    CertificateController->>CertificateController: Get Certificate Type
+    CertificateController->>CertificateController: Generate HTML Certificate
+    CertificateController-->>Frontend: HTML Certificate Page
+    Frontend-->>Applicant: Display Certificate
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            sequence: {
+                diagramMarginX: 50,
+                diagramMarginY: 10,
+                actorMargin: 50,
+                width: 150,
+                height: 65,
+                boxMargin: 10,
+                boxTextMargin: 5,
+                noteMargin: 10,
+                messageMargin: 35,
+                mirrorActors: true,
+                bottomMarginAdj: 1,
+                useMaxWidth: true,
+                rightAngles: false,
+                showSequenceNumbers: false
+            }
+        });
+    </script>
+</body>
+</html>
