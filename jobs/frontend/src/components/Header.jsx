@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { loginWithGoogle, logout } from '../api/authApi';
+import { logout } from '../api/authApi';
 import { getUserProfile } from '../api/jobApi';
 import { useAuth } from '../context/AuthContext';
 import NotificationCenter from './NotificationCenter';
@@ -14,10 +14,8 @@ export default function Header() {
   const location = useLocation();
 
   const handleLogin = () => {
-    // Clear any previous login intent
-    localStorage.removeItem('loginIntent');
-    localStorage.removeItem('redirectRoute');
-    loginWithGoogle();
+    // Redirect to SomethingX to login
+    window.location.href = 'http://localhost:3000/login';
   };
 
   const handleLogout = () => {

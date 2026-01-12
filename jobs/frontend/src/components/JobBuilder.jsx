@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import axios from 'axios';
+import axiosInstance from '../api/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import { BACKEND_URL } from '../config';
 
@@ -86,9 +86,8 @@ export default function JobBuilder() {
   const loadJob = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `${BACKEND_URL}/api/jobs/${editingJobId}`,
-        { withCredentials: true }
+      const response = await axiosInstance.get(
+        `/api/jobs/${editingJobId}`
       );
       
       const job = response.data;
@@ -254,17 +253,15 @@ export default function JobBuilder() {
       
       if (jobIdToUpdate) {
         // Update existing job
-        response = await axios.put(
-          `${BACKEND_URL}/api/jobs/${jobIdToUpdate}`,
-          jobData,
-          { withCredentials: true }
+        response = await axiosInstance.put(
+          `/api/jobs/${jobIdToUpdate}`,
+          jobData
         );
       } else {
         // Create new draft job
-        response = await axios.post(
-          `${BACKEND_URL}/api/jobs`,
-          jobData,
-          { withCredentials: true }
+        response = await axiosInstance.post(
+          `/api/jobs`,
+          jobData
         );
         // Store the ID of the newly created draft job
         if (response.data && response.data.id) {
@@ -362,17 +359,22 @@ export default function JobBuilder() {
       
       if (jobIdToUpdate) {
         // Update existing job (convert draft to active or update active job)
-        response = await axios.put(
-          `${BACKEND_URL}/api/jobs/${jobIdToUpdate}`,
-          jobData,
-          { withCredentials: true }
+        response = await axiosInstance.put(
+          `/api/jobs/${jobIdToUpdate}`,
+          jobData
         );
       } else {
         // Create new active job
-        response = await axios.post(
-          `${BACKEND_URL}/api/jobs`,
-          jobData,
-          { withCredentials: true }
+        // Check if token is available before making request
+        const token = localStorage.getItem('saarthixToken');
+        console.log('[JobBuilder] Posting job - Token available:', !!token);
+        if (token) {
+          console.log('[JobBuilder] Token length:', token.length);
+        }
+        
+        response = await axiosInstance.post(
+          `/api/jobs`,
+          jobData
         );
       }
 

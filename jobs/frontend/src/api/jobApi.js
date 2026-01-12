@@ -1,4 +1,5 @@
 import axios from 'axios';
+import axiosInstance from './axiosConfig';
 import { BACKEND_URL } from '../config';
 
 const API_KEY = 'af93a5aec5msh431daab4f70e59fp1726b9jsn6d555bb1cda3';
@@ -84,11 +85,8 @@ export const fetchJobSalaries = async (jobTitle, location, radius = 200) => {
 
 // Get user's job applications with tracking (from database only)
 export const getUserJobApplications = async () => {
-  const response = await axios.get(
-    `${BACKEND_URL}/api/applications`,
-    {
-      withCredentials: true,
-    }
+  const response = await axiosInstance.get(
+    `${BACKEND_URL}/api/applications`
   );
   return response.data || [];
 };
@@ -96,12 +94,9 @@ export const getUserJobApplications = async () => {
 // Update job application status
 export const updateApplicationStatus = async (applicationId, status) => {
   try {
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${BACKEND_URL}/api/applications/${applicationId}`,
-      { status },
-      {
-        withCredentials: true,
-      }
+      { status }
     );
     return response.data;
   } catch (error) {
@@ -113,11 +108,10 @@ export const updateApplicationStatus = async (applicationId, status) => {
 // Record job application (add to tracker with full form data)
 export const recordJobApplication = async (applicationData) => {
   try {
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${BACKEND_URL}/api/applications`,
       applicationData,
       {
-        withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -133,11 +127,8 @@ export const recordJobApplication = async (applicationData) => {
 // Profile API functions
 export const getUserProfile = async () => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/profile`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `${BACKEND_URL}/api/profile`
     );
     return response.data;
   } catch (error) {
@@ -157,11 +148,10 @@ export const saveUserProfile = async (profileData) => {
       hasResume: !!profileData.resumeBase64
     });
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${BACKEND_URL}/api/profile`,
       profileData,
       {
-        withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -187,11 +177,10 @@ export const saveUserProfile = async (profileData) => {
 
 export const updateUserProfile = async (profileData) => {
   try {
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${BACKEND_URL}/api/profile`,
       profileData,
       {
-        withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -207,11 +196,8 @@ export const updateUserProfile = async (profileData) => {
 // Industry API functions
 export const getMyPostedJobs = async () => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/applications/my-jobs`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `${BACKEND_URL}/api/applications/my-jobs`
     );
     console.log('getMyPostedJobs response:', response);
     console.log('Response data:', response.data);
@@ -254,11 +240,8 @@ export const getMyPostedJobs = async () => {
 
 export const getApplicationsByJobId = async (jobId) => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/applications/job/${jobId}`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/applications/job/${jobId}`
     );
     return response.data || [];
   } catch (error) {
@@ -269,11 +252,10 @@ export const getApplicationsByJobId = async (jobId) => {
 
 export const updateApplicationStatusByIndustry = async (applicationId, status) => {
   try {
-    const response = await axios.put(
-      `${BACKEND_URL}/api/applications/${applicationId}/status`,
+    const response = await axiosInstance.put(
+      `/api/applications/${applicationId}/status`,
       { status },
       {
-        withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -289,11 +271,10 @@ export const updateApplicationStatusByIndustry = async (applicationId, status) =
 // Update a job (INDUSTRY users only)
 export const updateJob = async (jobId, jobData) => {
   try {
-    const response = await axios.put(
-      `${BACKEND_URL}/api/jobs/${jobId}`,
+    const response = await axiosInstance.put(
+      `/api/jobs/${jobId}`,
       jobData,
       {
-        withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -309,11 +290,8 @@ export const updateJob = async (jobId, jobData) => {
 // Delete a job (INDUSTRY users only)
 export const deleteJob = async (jobId) => {
   try {
-    const response = await axios.delete(
-      `${BACKEND_URL}/api/jobs/${jobId}`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.delete(
+      `/api/jobs/${jobId}`
     );
     return response.data;
   } catch (error) {
@@ -325,11 +303,8 @@ export const deleteJob = async (jobId) => {
 // Get applicant profiles for a job (INDUSTRY users only)
 export const getApplicantProfilesByJobId = async (jobId) => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/applications/job/${jobId}/profiles`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/applications/job/${jobId}/profiles`
     );
     return response.data || [];
   } catch (error) {
@@ -341,11 +316,8 @@ export const getApplicantProfilesByJobId = async (jobId) => {
 // Get recommended jobs for authenticated applicant
 export const getRecommendedJobs = async () => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/jobs/recommended/jobs`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/jobs/recommended/jobs`
     );
     return response.data || [];
   } catch (error) {
@@ -357,11 +329,8 @@ export const getRecommendedJobs = async () => {
 // Hackathon API functions
 export const getAllHackathons = async () => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/hackathons`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/hackathons`
     );
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
@@ -372,11 +341,8 @@ export const getAllHackathons = async () => {
 
 export const getMyHackathons = async () => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/hackathons/my-hackathons`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/hackathons/my-hackathons`
     );
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
@@ -387,15 +353,9 @@ export const getMyHackathons = async () => {
 
 export const createHackathon = async (hackathonData) => {
   try {
-    const response = await axios.post(
-      `${BACKEND_URL}/api/hackathons`,
-      hackathonData,
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.post(
+      `/api/hackathons`,
+      hackathonData
     );
     return response.data;
   } catch (error) {
@@ -406,11 +366,8 @@ export const createHackathon = async (hackathonData) => {
 
 export const deleteHackathon = async (hackathonId) => {
   try {
-    const response = await axios.delete(
-      `${BACKEND_URL}/api/hackathons/${hackathonId}`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.delete(
+      `/api/hackathons/${hackathonId}`
     );
     return response.data;
   } catch (error) {
@@ -421,15 +378,9 @@ export const deleteHackathon = async (hackathonId) => {
 
 export const updateHackathon = async (hackathonId, hackathonData) => {
   try {
-    const response = await axios.put(
-      `${BACKEND_URL}/api/hackathons/${hackathonId}`,
-      hackathonData,
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.put(
+      `/api/hackathons/${hackathonId}`,
+      hackathonData
     );
     return response.data;
   } catch (error) {
@@ -445,15 +396,9 @@ export const applyForHackathon = async (hackathonId, applicationData) => {
     console.log('[API] individualName being sent:', applicationData.individualName);
     console.log('[API] individualQualifications being sent:', applicationData.individualQualifications);
     
-    const response = await axios.post(
-      `${BACKEND_URL}/api/hackathon-applications/${hackathonId}/apply`,
-      applicationData,
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.post(
+      `/api/hackathon-applications/${hackathonId}/apply`,
+      applicationData
     );
     
     console.log('[API] Response from backend:', response.data);
@@ -469,11 +414,8 @@ export const applyForHackathon = async (hackathonId, applicationData) => {
 
 export const getMyHackathonApplications = async () => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/hackathon-applications/my-applications`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/hackathon-applications/my-applications`
     );
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
@@ -483,11 +425,8 @@ export const getMyHackathonApplications = async () => {
 };
 export const getHackathonById = async (hackathonId) => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/hackathons/${hackathonId}`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/hackathons/${hackathonId}`
     );
     return response.data;
   } catch (error) {
@@ -498,12 +437,9 @@ export const getHackathonById = async (hackathonId) => {
 
 export const incrementHackathonViews = async (hackathonId) => {
   try {
-    const response = await axios.post(
-      `${BACKEND_URL}/api/hackathons/${hackathonId}/increment-views`,
-      {},
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.post(
+      `/api/hackathons/${hackathonId}/increment-views`,
+      {}
     );
     return response.data;
   } catch (error) {
@@ -515,15 +451,9 @@ export const incrementHackathonViews = async (hackathonId) => {
 
 export const submitHackathonPhase = async (applicationId, phaseId, submissionData) => {
   try {
-    const response = await axios.post(
-      `${BACKEND_URL}/api/hackathon-applications/${applicationId}/phases/${phaseId}/submit`,
-      submissionData,
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.post(
+      `/api/hackathon-applications/${applicationId}/phases/${phaseId}/submit`,
+      submissionData
     );
     return response.data;
   } catch (error) {
@@ -534,15 +464,9 @@ export const submitHackathonPhase = async (applicationId, phaseId, submissionDat
 
 export const reviewHackathonPhase = async (applicationId, phaseId, reviewData) => {
   try {
-    const response = await axios.put(
-      `${BACKEND_URL}/api/hackathon-applications/${applicationId}/phases/${phaseId}/review`,
-      reviewData,
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.put(
+      `/api/hackathon-applications/${applicationId}/phases/${phaseId}/review`,
+      reviewData
     );
     return response.data;
   } catch (error) {
@@ -553,11 +477,8 @@ export const reviewHackathonPhase = async (applicationId, phaseId, reviewData) =
 
 export const getHackathonApplications = async (hackathonId) => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/hackathon-applications/hackathon/${hackathonId}`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/hackathon-applications/hackathon/${hackathonId}`
     );
     return response.data || [];
   } catch (error) {
@@ -568,11 +489,8 @@ export const getHackathonApplications = async (hackathonId) => {
 
 export const getHackathonApplicationDetails = async (applicationId) => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/hackathon-applications/${applicationId}`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/hackathon-applications/${applicationId}`
     );
     return response.data;
   } catch (error) {
@@ -583,11 +501,8 @@ export const getHackathonApplicationDetails = async (applicationId) => {
 
 export const deleteHackathonApplication = async (applicationId) => {
   try {
-    const response = await axios.delete(
-      `${BACKEND_URL}/api/hackathon-applications/${applicationId}`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.delete(
+      `/api/hackathon-applications/${applicationId}`
     );
     return response.data;
   } catch (error) {
@@ -598,15 +513,9 @@ export const deleteHackathonApplication = async (applicationId) => {
 
 export const rejectHackathonApplication = async (applicationId, rejectionMessage) => {
   try {
-    const response = await axios.put(
-      `${BACKEND_URL}/api/hackathon-applications/${applicationId}/reject`,
-      { rejectionMessage },
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.put(
+      `/api/hackathon-applications/${applicationId}/reject`,
+      { rejectionMessage }
     );
     return response.data;
   } catch (error) {
@@ -617,15 +526,9 @@ export const rejectHackathonApplication = async (applicationId, rejectionMessage
 
 export const requestReupload = async (applicationId, phaseId, message) => {
   try {
-    const response = await axios.put(
-      `${BACKEND_URL}/api/hackathon-applications/${applicationId}/phases/${phaseId}/request-reupload`,
-      { message },
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.put(
+      `/api/hackathon-applications/${applicationId}/phases/${phaseId}/request-reupload`,
+      { message }
     );
     return response.data;
   } catch (error) {
@@ -639,12 +542,9 @@ export const requestReupload = async (applicationId, phaseId, message) => {
 export const finalizeHackathonResults = async (hackathonId, payload) => {
   try {
     console.log('[API] finalizeHackathonResults', { hackathonId, payload });
-    const response = await axios.post(
-      `${BACKEND_URL}/api/hackathon-applications/hackathon/${hackathonId}/finalize-results`,
-      payload,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.post(
+      `/api/hackathon-applications/hackathon/${hackathonId}/finalize-results`,
+      payload
     );
     return response.data;
   } catch (error) {
@@ -655,15 +555,9 @@ export const finalizeHackathonResults = async (hackathonId, payload) => {
 
 export const publishShowcaseContent = async (applicationId, showcaseData) => {
   try {
-    const response = await axios.put(
-      `${BACKEND_URL}/api/hackathon-applications/${applicationId}/showcase`,
-      showcaseData,
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.put(
+      `/api/hackathon-applications/${applicationId}/showcase`,
+      showcaseData
     );
     return response.data;
   } catch (error) {
@@ -674,11 +568,8 @@ export const publishShowcaseContent = async (applicationId, showcaseData) => {
 
 export const getApplicationResults = async (applicationId) => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/hackathon-applications/${applicationId}/results`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/hackathon-applications/${applicationId}/results`
     );
     return response.data;
   } catch (error) {
@@ -689,11 +580,8 @@ export const getApplicationResults = async (applicationId) => {
 
 export const getHackathonResults = async (hackathonId) => {
   try {
-    const response = await axios.get(
-      `${BACKEND_URL}/api/hackathon-applications/hackathon/${hackathonId}/results`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/api/hackathon-applications/hackathon/${hackathonId}/results`
     );
     return response.data || [];
   } catch (error) {
@@ -705,15 +593,9 @@ export const getHackathonResults = async (hackathonId) => {
 // Improve problem statement with AI
 export const improveProblemStatement = async (problemStatement) => {
   try {
-    const response = await axios.post(
-      `${BACKEND_URL}/api/hackathons/improve-problem-statement`,
-      { problemStatement },
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.post(
+      `/api/hackathons/improve-problem-statement`,
+      { problemStatement }
     );
     return response.data;
   } catch (error) {
@@ -746,15 +628,9 @@ export const improveProblemStatement = async (problemStatement) => {
 // Improve eligibility criteria with AI
 export const improveEligibilityCriteria = async (eligibility) => {
   try {
-    const response = await axios.post(
-      `${BACKEND_URL}/api/hackathons/improve-eligibility`,
-      { eligibility },
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.post(
+      `/api/hackathons/improve-eligibility`,
+      { eligibility }
     );
     return response.data;
   } catch (error) {
@@ -782,15 +658,9 @@ export const improveEligibilityCriteria = async (eligibility) => {
 // Improve submission guidelines with AI
 export const improveSubmissionGuidelines = async (submissionGuidelines) => {
   try {
-    const response = await axios.post(
-      `${BACKEND_URL}/api/hackathons/improve-submission-guidelines`,
-      { submissionGuidelines },
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    const response = await axiosInstance.post(
+      `/api/hackathons/improve-submission-guidelines`,
+      { submissionGuidelines }
     );
     return response.data;
   } catch (error) {

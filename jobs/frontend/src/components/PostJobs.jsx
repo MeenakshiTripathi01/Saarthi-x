@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosInstance from "../api/axiosConfig";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
-import { loginWithGoogle } from "../api/authApi";
+// OAuth login removed - using token-based auth from SomethingX
 import { BACKEND_URL } from "../config";
 
 export default function PostJobs() {
@@ -117,12 +117,9 @@ export default function PostJobs() {
           : [],
       };
 
-      const response = await axios.post(
-        `${BACKEND_URL}/api/jobs`,
-        jobData,
-        {
-          withCredentials: true,
-        }
+      const response = await axiosInstance.post(
+        `/api/jobs`,
+        jobData
       );
 
       console.log("Job Posted Successfully:", response.data);
@@ -216,9 +213,8 @@ export default function PostJobs() {
             </p>
             <button
               onClick={() => {
-                loginWithGoogle();
-                // Redirect to role selection after OAuth
-                sessionStorage.setItem('postJobsRedirect', 'true');
+                // Redirect to SomethingX to login
+                window.location.href = 'http://localhost:3000/login';
               }}
               className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors duration-200 font-semibold"
             >

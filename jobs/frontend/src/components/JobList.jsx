@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { fetchJobs, fetchJobDetails, getRecommendedJobs, getUserProfile } from "../api/jobApi";
-import { loginWithGoogle } from "../api/authApi";
+// OAuth login removed - using token-based auth from SomethingX
 import { useAuth } from "../context/AuthContext";
 import JobApplicationForm from "./JobApplicationForm";
 import { BACKEND_URL } from "../config";
@@ -327,7 +327,7 @@ export default function JobList() {
       setError(null);
 
       const [localResult, externalResult] = await Promise.allSettled([
-        axios.get(`${BACKEND_URL}/api/jobs`, {
+        axios.get(`/api/jobs`, {
           withCredentials: true,
         }),
         fetchJobs("software developer in India"),
@@ -649,7 +649,8 @@ export default function JobList() {
       if (
         window.confirm("Please sign in with Google to apply. Continue to login?")
       ) {
-        loginWithGoogle();
+        // Redirect to SomethingX to login
+        window.location.href = 'http://localhost:3000/login';
       }
       return;
     }

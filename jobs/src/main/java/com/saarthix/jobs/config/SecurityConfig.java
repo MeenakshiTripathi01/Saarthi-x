@@ -6,9 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -38,48 +36,15 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
 
-                // ✅ Authorization rules
+                // ✅ Authorization rules - All endpoints are public, authentication handled via tokens
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ AI improvement endpoints require authentication (industry users only)
-                        .requestMatchers(HttpMethod.POST, "/api/hackathons/improve-problem-statement").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/hackathons/improve-eligibility").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/hackathons/improve-submission-guidelines").authenticated()
-                        
-                        // ✅ Allow GET & POST job APIs without Google login
-                        .requestMatchers("/api/hackathons/**").permitAll()
-                        .requestMatchers("/api/hackathons/apply/**").permitAll()
-
-                        .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/jobs/**").permitAll()
-
-                        // Public endpoints
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/api/test/**",
-                                "/",
-                                "/api",
-                                "/index.html",
-                                "/static/**",
-                                "/error",
-                                "/oauth2/**")
-                        .permitAll()
-
-                        // ✅ Get current user endpoint (requires auth)
-                        .requestMatchers(HttpMethod.GET, "/api/user/me").authenticated()
-
-                        // ✅ Save role endpoint (public, called after OAuth)
-                        .requestMatchers(HttpMethod.POST, "/api/user/save-role").permitAll()
-
-                        // Everything else requires Google OAuth
-                        .anyRequest().authenticated())
-
-                // ✅ OAuth2 Login config
-                .oauth2Login(oauth -> oauth
-                        // IMPORTANT: Do not override Google's login page
-                        .defaultSuccessUrl("http://localhost:2003", true)
-                        .successHandler(successHandler()))
-
-                // ✅ Logout config
+                        // All endpoints are public - authentication is handled via token validation in controllers
+                        .anyRequest().permitAll())
+                
+                // Disable OAuth2 login - using token-based auth only
+                // .oauth2Login() - REMOVED
+                
+                // ✅ Logout config (simplified, no OAuth session to clear)
                 .logout(logout -> logout
                         .logoutSuccessUrl("http://localhost:2003")
                         .invalidateHttpSession(true)
@@ -88,42 +53,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ✅ Success handler — handles both new and existing users
-    @Bean
-    public AuthenticationSuccessHandler successHandler() {
-        return (request, response, authentication) -> {
-            OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
-
-            String email = oauthUser.getAttribute("email");
-            String name = oauthUser.getAttribute("name");
-            String picture = oauthUser.getAttribute("picture");
-
-            User existingUser = userRepository.findByEmail(email).orElse(null);
-
-            if (existingUser == null) {
-                // NEW USER - redirect to role selection
-                // Get intent from session/cookie if available (from Dashboard click)
-                String intent = request.getParameter("intent");
-                String intentParam = (intent != null && !intent.isEmpty()) ? "&intent=" + intent : "";
-
-                // Encode URL parameters properly
-                String redirectUrl = String.format(
-                        "http://localhost:2003/choose-role?email=%s&name=%s&picture=%s%s",
-                        java.net.URLEncoder.encode(email, "UTF-8"),
-                        java.net.URLEncoder.encode(name != null ? name : "", "UTF-8"),
-                        java.net.URLEncoder.encode(picture != null ? picture : "", "UTF-8"),
-                        intentParam);
-                response.sendRedirect(redirectUrl);
-            } else {
-                // Existing user -> attach userType into session
-                request.getSession().setAttribute("USER_TYPE", existingUser.getUserType());
-                request.getSession().setAttribute("USER_ID", existingUser.getId());
-
-                response.sendRedirect("http://localhost:2003/choose-role");
-            }
-
-        };
-    }
+    // OAuth2 success handler removed - using token-based auth only
 
     // ✅ Proper CORS config
     @Bean

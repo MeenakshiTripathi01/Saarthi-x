@@ -11,8 +11,7 @@ import com.saarthix.jobs.repository.ResumeAndDetailsRepository;
 import com.saarthix.jobs.repository.UserRepository;
 import com.saarthix.jobs.repository.UserProfileRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+// OAuth2 imports removed - using token-based auth only
 import org.springframework.web.bind.annotation.*;
 import com.saarthix.jobs.service.NotificationService;
 
@@ -50,13 +49,9 @@ public class ApplicationController {
      * Get all applications for the current authenticated user
      */
     @GetMapping
-    public ResponseEntity<?> getMyApplications(Authentication auth) {
-        // Check authentication
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Must be logged in to view applications");
-        }
-
-        User user = resolveUserFromOAuth(auth);
+    public ResponseEntity<?> getMyApplications(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // Try to resolve user from token
+        User user = resolveUser(authHeader);
         if (user == null) {
             return ResponseEntity.status(401).body("User not found");
         }
@@ -74,14 +69,10 @@ public class ApplicationController {
      * Create a new application (alternative endpoint for frontend)
      */
     @PostMapping
-    public ResponseEntity<?> createApplication(@RequestBody Map<String, Object> applicationData, Authentication auth) {
+    public ResponseEntity<?> createApplication(@RequestBody Map<String, Object> applicationData, @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            // Check authentication
-            if (auth == null || !auth.isAuthenticated()) {
-                return ResponseEntity.status(401).body("Must be logged in to apply");
-            }
-
-            User user = resolveUserFromOAuth(auth);
+            // Try to resolve user from token
+            User user = resolveUser(authHeader);
             if (user == null) {
                 return ResponseEntity.status(401).body("User not found");
             }
@@ -257,13 +248,9 @@ public class ApplicationController {
      * IMPORTANT: This must be defined BEFORE @PutMapping("/{id}") to avoid path conflict
      */
     @GetMapping("/my-jobs")
-    public ResponseEntity<?> getMyPostedJobs(Authentication auth) {
-        // Check authentication
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Must be logged in to view your jobs");
-        }
-
-        User user = resolveUserFromOAuth(auth);
+    public ResponseEntity<?> getMyPostedJobs(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // Try to resolve user from token
+        User user = resolveUser(authHeader);
         if (user == null) {
             return ResponseEntity.status(401).body("User not found");
         }
@@ -326,14 +313,18 @@ public class ApplicationController {
     @GetMapping("/job/{jobId}")
     public ResponseEntity<?> getApplicationsByJobId(
             @PathVariable String jobId,
-            Authentication auth) {
-        // Check authentication
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Must be logged in to view applications");
-        }
-
-        User user = resolveUserFromOAuth(auth);
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        System.out.println("=========================================");
+        System.out.println("GET /api/applications/job/" + jobId);
+        System.out.println("AuthHeader: " + (authHeader != null ? (authHeader.length() > 50 ? authHeader.substring(0, 50) + "..." : authHeader) : "null"));
+        System.out.println("=========================================");
+        
+        // Try to resolve user from token
+        User user = resolveUser(authHeader);
+        System.out.println("Resolved user: " + (user != null ? user.getEmail() + " (type: " + user.getUserType() + ")" : "null"));
+        
         if (user == null) {
+            System.err.println("User resolution failed - returning 401");
             return ResponseEntity.status(401).body("User not found");
         }
 
@@ -349,12 +340,18 @@ public class ApplicationController {
         }
 
         Job job = jobOpt.get();
+        System.out.println("Job found - Title: " + job.getTitle() + ", Company: " + job.getCompany());
+        System.out.println("User ID: " + user.getId() + ", Job Industry ID: " + job.getIndustryId());
+        
         if (!user.getId().equals(job.getIndustryId())) {
+            System.err.println("User ID mismatch - User: " + user.getId() + ", Job Industry: " + job.getIndustryId());
             return ResponseEntity.status(403).body("You can only view applications for your own jobs");
         }
 
         // Get all applications for this job
+        System.out.println("Querying applications for jobId: " + jobId);
         List<Application> applications = applicationRepository.findByJobId(jobId);
+        System.out.println("Found " + applications.size() + " applications with exact jobId match");
         
         // Also check for applications that might have been created with different job ID formats
         // (e.g., if job ID was stored differently)
@@ -416,13 +413,9 @@ public class ApplicationController {
     @GetMapping("/job/{jobId}/profiles")
     public ResponseEntity<?> getApplicantProfilesByJobId(
             @PathVariable String jobId,
-            Authentication auth) {
-        // Check authentication
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Must be logged in to view applicant profiles");
-        }
-
-        User user = resolveUserFromOAuth(auth);
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // Try to resolve user from token
+        User user = resolveUser(authHeader);
         if (user == null) {
             return ResponseEntity.status(401).body("User not found");
         }
@@ -529,13 +522,9 @@ public class ApplicationController {
     public ResponseEntity<?> updateApplicationStatusByIndustry(
             @PathVariable String id,
             @RequestBody Map<String, String> body,
-            Authentication auth) {
-        // Check authentication
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Must be logged in to update application status");
-        }
-
-        User user = resolveUserFromOAuth(auth);
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // Try to resolve user from token
+        User user = resolveUser(authHeader);
         if (user == null) {
             return ResponseEntity.status(401).body("User not found");
         }
@@ -613,13 +602,9 @@ public class ApplicationController {
      * Get applications by email (for admin or user verification)
      */
     @GetMapping("/by-email/{email}")
-    public ResponseEntity<?> getApplicationsByEmail(@PathVariable String email, Authentication auth) {
-        // Check authentication
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Must be logged in");
-        }
-
-        User user = resolveUserFromOAuth(auth);
+    public ResponseEntity<?> getApplicationsByEmail(@PathVariable String email, @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // Try to resolve user from token
+        User user = resolveUser(authHeader);
         if (user == null) {
             return ResponseEntity.status(401).body("User not found");
         }
@@ -637,13 +622,9 @@ public class ApplicationController {
      * Get all resume and details for the current authenticated user
      */
     @GetMapping("/resume-details")
-    public ResponseEntity<?> getMyResumeAndDetails(Authentication auth) {
-        // Check authentication
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Must be logged in to view resume and details");
-        }
-
-        User user = resolveUserFromOAuth(auth);
+    public ResponseEntity<?> getMyResumeAndDetails(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // Try to resolve user from token
+        User user = resolveUser(authHeader);
         if (user == null) {
             return ResponseEntity.status(401).body("User not found");
         }
@@ -658,22 +639,67 @@ public class ApplicationController {
     }
 
     /**
-     * Helper method to extract user from OAuth2 principal
+     * Helper method to resolve user from Saarthix token (token-based auth only)
      */
-    private User resolveUserFromOAuth(Authentication auth) {
-        if (auth == null || auth.getPrincipal() == null) {
+    private User resolveUser(String authHeader) {
+        System.out.println("=== ApplicationController.resolveUser ===");
+        System.out.println("AuthHeader: " + (authHeader != null ? (authHeader.length() > 50 ? authHeader.substring(0, 50) + "..." : authHeader) : "null"));
+        
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.err.println("No Bearer token found in Authorization header");
             return null;
         }
-
-        Object principal = auth.getPrincipal();
-
-        if (principal instanceof OAuth2User oauthUser) {
-            String email = oauthUser.getAttribute("email");
-            if (email != null) {
-                return userRepository.findByEmail(email).orElse(null);
+        
+        String token = authHeader.substring(7);
+        System.out.println("Token length: " + token.length());
+        
+        // Decode custom SomethingX JWT token format
+        try {
+            String[] parts = token.split("\\.");
+            System.out.println("Token parts count: " + parts.length);
+            
+            if (parts.length >= 2) {
+                // Decode the payload (first part)
+                String payload = new String(java.util.Base64.getDecoder().decode(parts[0]), 
+                    java.nio.charset.StandardCharsets.UTF_8);
+                System.out.println("Decoded payload: " + payload);
+                
+                // Parse the custom format: key:value|key:value|
+                Map<String, String> claims = new java.util.HashMap<>();
+                String[] claimPairs = payload.split("\\|");
+                for (String pair : claimPairs) {
+                    if (pair.contains(":")) {
+                        String[] keyValue = pair.split(":", 2);
+                        if (keyValue.length == 2) {
+                            claims.put(keyValue[0], keyValue[1]);
+                        }
+                    }
+                }
+                
+                System.out.println("Extracted claims: " + claims);
+                
+                // Get email from claims
+                String email = claims.get("email");
+                if (email != null) {
+                    System.out.println("Extracted email: " + email);
+                    Optional<User> userOpt = userRepository.findByEmail(email);
+                    if (userOpt.isPresent()) {
+                        System.out.println("User found: " + userOpt.get().getEmail() + " (type: " + userOpt.get().getUserType() + ")");
+                        return userOpt.get();
+                    } else {
+                        System.err.println("User not found in database for email: " + email);
+                    }
+                } else {
+                    System.err.println("Email not found in token claims");
+                }
+            } else {
+                System.err.println("Token does not have expected format (expected at least 2 parts)");
             }
+        } catch (Exception e) {
+            System.err.println("Error decoding token in ApplicationController: " + e.getMessage());
+            e.printStackTrace();
         }
-
+        
         return null;
     }
 }

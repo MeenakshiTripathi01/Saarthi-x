@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getUserJobApplications } from "../api/jobApi";
 import { useAuth } from "../context/AuthContext";
-import { loginWithGoogle } from "../api/authApi";
+// OAuth login removed - using token-based auth from SomethingX
 
 export default function JobTracker() {
   const navigate = useNavigate();
@@ -115,7 +115,7 @@ export default function JobTracker() {
               Sign in with your Google account to track your job applications.
             </p>
             <button
-              onClick={loginWithGoogle}
+              onClick={() => window.location.href = 'http://localhost:3000/login'}
               className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors duration-200 font-semibold"
             >
               <svg width="20" height="20" viewBox="0 0 18 18" fill="none">

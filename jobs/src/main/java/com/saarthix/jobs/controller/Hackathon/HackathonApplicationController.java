@@ -10,8 +10,6 @@ import com.saarthix.jobs.repository.UserRepository;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +17,7 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
+import java.util.Base64;
 
 @RestController
 @RequestMapping("/api/hackathon-applications")
@@ -46,7 +45,7 @@ public class HackathonApplicationController {
     public ResponseEntity<?> apply(
             @PathVariable String hackathonId,
             @RequestBody HackathonApplication req,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         try {
             System.out.println("=== Apply endpoint called ===");
@@ -56,10 +55,10 @@ public class HackathonApplicationController {
             System.out.println("Request body individualQualifications (RAW): " + req.getIndividualQualifications());
             System.out.println("Request body teamName: " + req.getTeamName());
             System.out.println("Request body: " + req);
-            System.out.println("Auth is null: " + (auth == null));
+            System.out.println("AuthHeader: " + (authHeader != null ? "present" : "null"));
 
             // 1️⃣ Validate logged-in user
-            User user = resolveUser(auth);
+            User user = resolveUser(authHeader);
             System.out.println("User resolved: " + (user != null));
 
             if (user == null) {
@@ -207,12 +206,12 @@ public class HackathonApplicationController {
     // GET /api/hackathon-applications/my-applications
     // --------------------------------------------
     @GetMapping("/my-applications")
-    public ResponseEntity<?> getMyApplications(Authentication auth) {
+    public ResponseEntity<?> getMyApplications(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             System.out.println("=== getMyApplications called ===");
-            System.out.println("Auth is null: " + (auth == null));
+            System.out.println("AuthHeader: " + (authHeader != null ? "present" : "null"));
 
-            User user = resolveUser(auth);
+            User user = resolveUser(authHeader);
             System.out.println("User resolved: " + (user != null));
 
             if (user == null) {
@@ -257,9 +256,9 @@ public class HackathonApplicationController {
             @PathVariable String applicationId,
             @PathVariable String phaseId,
             @RequestBody HackathonApplication.PhaseSubmission submission,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null || !"APPLICANT".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only applicants can submit solutions.");
         }
@@ -373,9 +372,9 @@ public class HackathonApplicationController {
             @PathVariable String applicationId,
             @PathVariable String phaseId,
             @RequestBody HackathonApplication.PhaseSubmission review,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can review submissions.");
         }
@@ -425,9 +424,9 @@ public class HackathonApplicationController {
             @PathVariable String applicationId,
             @PathVariable String phaseId,
             @RequestBody Map<String, String> request,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can request re-upload.");
         }
@@ -487,9 +486,9 @@ public class HackathonApplicationController {
     public ResponseEntity<?> rejectApplication(
             @PathVariable String applicationId,
             @RequestBody Map<String, String> request,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can reject applications.");
         }
@@ -524,9 +523,9 @@ public class HackathonApplicationController {
     @GetMapping("/hackathon/{hackathonId}")
     public ResponseEntity<?> getApplicationsByHackathon(
             @PathVariable String hackathonId,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can view applications.");
         }
@@ -547,9 +546,9 @@ public class HackathonApplicationController {
     @GetMapping("/{applicationId}")
     public ResponseEntity<?> getApplicationDetails(
             @PathVariable String applicationId,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null)
             return ResponseEntity.status(401).build();
 
@@ -583,9 +582,9 @@ public class HackathonApplicationController {
     public ResponseEntity<?> finalizeResults(
             @PathVariable String hackathonId,
             @RequestBody(required = false) Map<String, Object> body,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can finalize results");
         }
@@ -710,9 +709,9 @@ public class HackathonApplicationController {
     public ResponseEntity<?> publishShowcase(
             @PathVariable String applicationId,
             @RequestBody HackathonApplication.ShowcaseContent showcase,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can publish showcase");
         }
@@ -743,9 +742,9 @@ public class HackathonApplicationController {
     @GetMapping("/{applicationId}/results")
     public ResponseEntity<?> getResults(
             @PathVariable String applicationId,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null) {
             return ResponseEntity.status(401).body("Authentication required");
         }
@@ -783,9 +782,9 @@ public class HackathonApplicationController {
     @GetMapping("/hackathon/{hackathonId}/results")
     public ResponseEntity<?> getHackathonResults(
             @PathVariable String hackathonId,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can view all results");
         }
@@ -817,9 +816,9 @@ public class HackathonApplicationController {
     public ResponseEntity<?> updateApplicationRank(
             @PathVariable String applicationId,
             @RequestBody Map<String, Object> updates,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         System.out.println("PATCH /api/hackathon-applications/" + applicationId);
         System.out.println("User: " + (user != null ? user.getEmail() : "null"));
         System.out.println("User Type: " + (user != null ? user.getUserType() : "null"));
@@ -871,9 +870,9 @@ public class HackathonApplicationController {
     @DeleteMapping("/{applicationId}")
     public ResponseEntity<?> deleteApplication(
             @PathVariable String applicationId,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can delete applications");
         }
@@ -942,15 +941,67 @@ public class HackathonApplicationController {
     }
 
     // --------------------------------------------
-    // Helper — resolve logged-in user from OAuth
+    // Helper — resolve logged-in user from token
     // --------------------------------------------
-    private User resolveUser(Authentication auth) {
-        if (auth == null)
+    private User resolveUser(String authHeader) {
+        System.out.println("=== HackathonApplicationController.resolveUser ===");
+        System.out.println("AuthHeader: " + (authHeader != null ? (authHeader.length() > 50 ? authHeader.substring(0, 50) + "..." : authHeader) : "null"));
+        
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.err.println("No Bearer token found in Authorization header");
             return null;
-        if (auth.getPrincipal() instanceof OAuth2User oauth) {
-            String email = oauth.getAttribute("email");
-            return userRepository.findByEmail(email).orElse(null);
         }
+        
+        String token = authHeader.substring(7);
+        System.out.println("Token length: " + token.length());
+        
+        // Decode custom SomethingX JWT token format
+        try {
+            String[] parts = token.split("\\.");
+            System.out.println("Token parts count: " + parts.length);
+            
+            if (parts.length >= 2) {
+                // Decode the payload (first part)
+                String payload = new String(Base64.getDecoder().decode(parts[0]), 
+                    java.nio.charset.StandardCharsets.UTF_8);
+                System.out.println("Decoded payload: " + payload);
+                
+                // Parse the custom format: key:value|key:value|
+                Map<String, String> claims = new java.util.HashMap<>();
+                String[] claimPairs = payload.split("\\|");
+                for (String pair : claimPairs) {
+                    if (pair.contains(":")) {
+                        String[] keyValue = pair.split(":", 2);
+                        if (keyValue.length == 2) {
+                            claims.put(keyValue[0], keyValue[1]);
+                        }
+                    }
+                }
+                
+                System.out.println("Extracted claims: " + claims);
+                
+                // Get email from claims
+                String email = claims.get("email");
+                if (email != null) {
+                    System.out.println("Extracted email: " + email);
+                    Optional<User> userOpt = userRepository.findByEmail(email);
+                    if (userOpt.isPresent()) {
+                        System.out.println("User found: " + userOpt.get().getEmail() + " (type: " + userOpt.get().getUserType() + ")");
+                        return userOpt.get();
+                    } else {
+                        System.err.println("User not found in database for email: " + email);
+                    }
+                } else {
+                    System.err.println("Email not found in token claims");
+                }
+            } else {
+                System.err.println("Token does not have expected format (expected at least 2 parts)");
+            }
+        } catch (Exception e) {
+            System.err.println("Error decoding token in HackathonApplicationController: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         return null;
     }
 }

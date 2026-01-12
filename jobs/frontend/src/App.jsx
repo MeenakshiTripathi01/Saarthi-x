@@ -25,12 +25,14 @@ import IndustryHackathonResults from './components/IndustryHackathonResults';
 import IndustryResultPublisher from './components/IndustryResultPublisher';
 import StudentDatabase from './components/StudentDatabaseEnhanced';
 import ShortlistedCandidates from './components/ShortlistedCandidates';
+import TokenHandler from './components/TokenHandler';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <div className="min-h-screen bg-gray-50">
+          <TokenHandler />
           <Header />
           <Routes>
             <Route path="/" element={<Dashboard />} />

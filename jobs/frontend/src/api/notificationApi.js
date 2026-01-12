@@ -1,4 +1,5 @@
 import axios from 'axios';
+import axiosInstance from './axiosConfig';
 import { BACKEND_URL } from '../config';
 
 const BASE_URL = `${BACKEND_URL}/api/notifications`;
@@ -8,9 +9,7 @@ const BASE_URL = `${BACKEND_URL}/api/notifications`;
  */
 export const fetchNotifications = async () => {
   try {
-    const response = await axios.get(BASE_URL, {
-      withCredentials: true,
-    });
+    const response = await axiosInstance.get(BASE_URL);
     return response.data || [];
   } catch (error) {
     console.error('Error fetching notifications:', error);
@@ -23,9 +22,7 @@ export const fetchNotifications = async () => {
  */
 export const getUnreadCount = async () => {
   try {
-    const response = await axios.get(`${BASE_URL}/unread-count`, {
-      withCredentials: true,
-    });
+    const response = await axiosInstance.get(`${BASE_URL}/unread-count`);
     return response.data.count || 0;
   } catch (error) {
     console.error('Error fetching unread count:', error);
@@ -38,12 +35,9 @@ export const getUnreadCount = async () => {
  */
 export const markNotificationAsRead = async (notificationId) => {
   try {
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${BASE_URL}/${notificationId}/read`,
-      {},
-      {
-        withCredentials: true,
-      }
+      {}
     );
     return response.data;
   } catch (error) {
@@ -57,12 +51,9 @@ export const markNotificationAsRead = async (notificationId) => {
  */
 export const markAllNotificationsAsRead = async () => {
   try {
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${BASE_URL}/mark-all-read`,
-      {},
-      {
-        withCredentials: true,
-      }
+      {}
     );
     return response.data;
   } catch (error) {
@@ -76,11 +67,8 @@ export const markAllNotificationsAsRead = async () => {
  */
 export const deleteNotification = async (notificationId) => {
   try {
-    const response = await axios.delete(
-      `${BASE_URL}/${notificationId}`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.delete(
+      `${BASE_URL}/${notificationId}`
     );
     return response.data;
   } catch (error) {

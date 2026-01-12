@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { loginWithGoogle } from "../api/authApi";
+// OAuth login removed - using token-based auth from SomethingX
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -96,13 +96,8 @@ export default function Dashboard() {
           <div
             onClick={() => {
               if (!isAuthenticated) {
-                // Not logged in - clear any previous intent and save applicant intent
-                localStorage.removeItem('loginIntent');
-                localStorage.removeItem('redirectRoute');
-                localStorage.setItem('loginIntent', 'applicant');
-                localStorage.setItem('redirectRoute', 'apply-jobs'); // Route to applicant dashboard
-                console.log('[DASHBOARD] Setting loginIntent to: applicant, redirectRoute to: apply-jobs');
-                loginWithGoogle();
+                // Not logged in - redirect to SomethingX to login
+                window.location.href = 'http://localhost:3000/login';
               } else {
                 // Already logged in - go to jobs
                 navigate("/apply-jobs");
@@ -219,10 +214,8 @@ export default function Dashboard() {
                   // Not logged in - clear any previous intent and save industry intent
                   localStorage.removeItem('loginIntent');
                   localStorage.removeItem('redirectRoute');
-                  localStorage.setItem('loginIntent', 'industry');
-                  localStorage.setItem('redirectRoute', 'post-jobs'); // Route to industry dashboard
-                  console.log('[DASHBOARD] Setting loginIntent to: industry, redirectRoute to: post-jobs');
-                  loginWithGoogle();
+                  // Redirect to SomethingX to login
+                  window.location.href = 'http://localhost:3000/login';
                 } else if (isIndustry) {
                   // Already logged in as INDUSTRY - go to posting form
                   navigate("/manage-applications");

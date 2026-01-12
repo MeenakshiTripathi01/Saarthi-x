@@ -3,8 +3,7 @@ package com.saarthix.jobs.controller;
 import com.saarthix.jobs.model.User;
 import com.saarthix.jobs.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+// OAuth2 imports removed - using token-based auth only
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -108,71 +107,88 @@ public class UserController {
 
     /**
      * Get current user info (called by AuthContext.jsx on page load)
-     * Returns the logged-in user with their role
+     * Returns the logged-in user with their role - now uses token-based auth
      */
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(Authentication auth) {
-        // Check if user is authenticated via OAuth
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Not authenticated");
-        }
-
-        // Get OAuth user principal
-        Object principal = auth.getPrincipal();
-        if (!(principal instanceof org.springframework.security.oauth2.core.user.OAuth2User)) {
-            return ResponseEntity.status(401).body("Not an OAuth user");
-        }
-
-        org.springframework.security.oauth2.core.user.OAuth2User oauthUser = 
-            (org.springframework.security.oauth2.core.user.OAuth2User) principal;
-
-        String email = oauthUser.getAttribute("email");
-        String name = oauthUser.getAttribute("name");
-        String picture = oauthUser.getAttribute("picture");
-
-        // Find user in database by email
-        User user = userRepository.findByEmail(email).orElse(null);
+    public ResponseEntity<?> getCurrentUser(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        
+        // Try to resolve user from token
+        User user = resolveUserFromToken(authHeader);
+        
         if (user == null) {
-            // User not found (shouldn't happen if authenticated)
-            return ResponseEntity.status(401).body("User not found in database");
+            return ResponseEntity.status(401).body("Not authenticated");
         }
 
         // Return user with role information
         return ResponseEntity.ok(new UserResponse(
             user.getId(),
-            name != null ? name : user.getName(),
-            email,
-            picture != null ? picture : user.getPictureUrl(),
+            user.getName(),
+            user.getEmail(),
+            user.getPictureUrl() != null ? user.getPictureUrl() : "",
             user.getUserType(),  // This is the role: APPLICANT or INDUSTRY
             true  // authenticated
         ));
     }
+    
+    /**
+     * Helper method to resolve user from Saarthix token
+     */
+    private User resolveUserFromToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        
+        String token = authHeader.substring(7);
+        
+        // Decode custom SomethingX JWT token format
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length >= 2) {
+                // Decode the payload (first part)
+                String payload = new String(java.util.Base64.getDecoder().decode(parts[0]), 
+                    java.nio.charset.StandardCharsets.UTF_8);
+                
+                // Parse the custom format: key:value|key:value|
+                Map<String, String> claims = new java.util.HashMap<>();
+                String[] claimPairs = payload.split("\\|");
+                for (String pair : claimPairs) {
+                    if (pair.contains(":")) {
+                        String[] keyValue = pair.split(":", 2);
+                        if (keyValue.length == 2) {
+                            claims.put(keyValue[0], keyValue[1]);
+                        }
+                    }
+                }
+                
+                // Get email from claims
+                String email = claims.get("email");
+                if (email != null) {
+                    return userRepository.findByEmail(email).orElse(null);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error decoding token: " + e.getMessage());
+        }
+        
+        return null;
+    }
 
     /**
-     * Update user profile (including userType)
+     * Update user profile (including userType) - now uses token-based auth
      */
     @PutMapping("/update-profile")
     public ResponseEntity<?> updateProfile(
             @RequestBody Map<String, String> body,
-            Authentication auth) {
-        // Check if user is authenticated via OAuth
-        if (auth == null || !auth.isAuthenticated()) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // Try to resolve user from token
+        User user = resolveUserFromToken(authHeader);
+        
+        if (user == null) {
             return ResponseEntity.status(401).body("Not authenticated");
         }
 
-        // Get OAuth user principal
-        Object principal = auth.getPrincipal();
-        if (!(principal instanceof org.springframework.security.oauth2.core.user.OAuth2User)) {
-            return ResponseEntity.status(401).body("Not an OAuth user");
-        }
-
-        org.springframework.security.oauth2.core.user.OAuth2User oauthUser = 
-            (org.springframework.security.oauth2.core.user.OAuth2User) principal;
-
-        String email = oauthUser.getAttribute("email");
-        
-        // Find user in database by email
-        User user = userRepository.findByEmail(email).orElse(null);
+        // User already resolved from token
         if (user == null) {
             return ResponseEntity.status(404).body("User not found");
         }

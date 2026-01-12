@@ -13,11 +13,11 @@ import com.saarthix.jobs.service.AIProblemStatementService;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.core.Authentication;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Base64;
 
 @RestController
 @RequestMapping("/api/hackathons")
@@ -36,19 +36,70 @@ public class HackathonController {
         this.aiProblemStatementService = aiProblemStatementService;
     }
 
-    // --- KEEP ONLY THIS METHOD ---
-    private User resolveUser(Authentication auth) {
-        if (auth == null)
+    /**
+     * Helper method to extract user from Saarthix token (token-based auth only)
+     */
+    private User resolveUser(String authHeader) {
+        System.out.println("=== HackathonController.resolveUser ===");
+        System.out.println("AuthHeader: " + (authHeader != null ? (authHeader.length() > 50 ? authHeader.substring(0, 50) + "..." : authHeader) : "null"));
+        
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.err.println("No Bearer token found in Authorization header");
             return null;
-
-        if (auth.getPrincipal() instanceof OAuth2User oauth) {
-            String email = oauth.getAttribute("email");
-            return userRepository.findByEmail(email).orElse(null);
         }
-
+        
+        String token = authHeader.substring(7);
+        System.out.println("Token length: " + token.length());
+        
+        // Decode custom SomethingX JWT token format
+        try {
+            String[] parts = token.split("\\.");
+            System.out.println("Token parts count: " + parts.length);
+            
+            if (parts.length >= 2) {
+                // Decode the payload (first part)
+                String payload = new String(Base64.getDecoder().decode(parts[0]), 
+                    java.nio.charset.StandardCharsets.UTF_8);
+                System.out.println("Decoded payload: " + payload);
+                
+                // Parse the custom format: key:value|key:value|
+                Map<String, String> claims = new java.util.HashMap<>();
+                String[] claimPairs = payload.split("\\|");
+                for (String pair : claimPairs) {
+                    if (pair.contains(":")) {
+                        String[] keyValue = pair.split(":", 2);
+                        if (keyValue.length == 2) {
+                            claims.put(keyValue[0], keyValue[1]);
+                        }
+                    }
+                }
+                
+                System.out.println("Extracted claims: " + claims);
+                
+                // Get email from claims
+                String email = claims.get("email");
+                if (email != null) {
+                    System.out.println("Extracted email: " + email);
+                    Optional<User> userOpt = userRepository.findByEmail(email);
+                    if (userOpt.isPresent()) {
+                        System.out.println("User found: " + userOpt.get().getEmail() + " (type: " + userOpt.get().getUserType() + ")");
+                        return userOpt.get();
+                    } else {
+                        System.err.println("User not found in database for email: " + email);
+                    }
+                } else {
+                    System.err.println("Email not found in token claims");
+                }
+            } else {
+                System.err.println("Token does not have expected format (expected at least 2 parts)");
+            }
+        } catch (Exception e) {
+            System.err.println("Error decoding token in HackathonController: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         return null;
     }
-    // ------------------------------
 
     // GET all hackathons (public)
     @GetMapping
@@ -77,12 +128,12 @@ public class HackathonController {
 
     // GET hackathons posted by the authenticated industry user
     @GetMapping("/my-hackathons")
-    public ResponseEntity<?> getMyHackathons(Authentication auth) {
+    public ResponseEntity<?> getMyHackathons(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            User user = resolveUser(auth);
+            User user = resolveUser(authHeader);
 
             if (user == null) {
-                System.err.println("User resolution failed - auth is null or not OAuth2");
+                System.err.println("User resolution failed - no valid token");
                 return ResponseEntity.status(401).body("Authentication failed. Please log in again.");
             }
 
@@ -117,13 +168,9 @@ public class HackathonController {
 
     // POST improve problem statement with AI (must be before /{hackathonId} to avoid path conflict)
     @PostMapping("/improve-problem-statement")
-    public ResponseEntity<?> improveProblemStatement(@RequestBody Map<String, String> request, Authentication auth) {
+    public ResponseEntity<?> improveProblemStatement(@RequestBody Map<String, String> request, @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            if (auth == null) {
-                return ResponseEntity.status(401).body("Authentication required. Please log in first.");
-            }
-
-            User user = resolveUser(auth);
+            User user = resolveUser(authHeader);
 
             if (user == null) {
                 return ResponseEntity.status(401).body("User not found. Please log in again.");
@@ -154,13 +201,9 @@ public class HackathonController {
 
     // POST improve eligibility criteria with AI
     @PostMapping("/improve-eligibility")
-    public ResponseEntity<?> improveEligibility(@RequestBody Map<String, String> request, Authentication auth) {
+    public ResponseEntity<?> improveEligibility(@RequestBody Map<String, String> request, @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            if (auth == null) {
-                return ResponseEntity.status(401).body("Authentication required. Please log in first.");
-            }
-
-            User user = resolveUser(auth);
+            User user = resolveUser(authHeader);
 
             if (user == null) {
                 return ResponseEntity.status(401).body("User not found. Please log in again.");
@@ -191,13 +234,9 @@ public class HackathonController {
 
     // POST improve submission guidelines with AI
     @PostMapping("/improve-submission-guidelines")
-    public ResponseEntity<?> improveSubmissionGuidelines(@RequestBody Map<String, String> request, Authentication auth) {
+    public ResponseEntity<?> improveSubmissionGuidelines(@RequestBody Map<String, String> request, @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            if (auth == null) {
-                return ResponseEntity.status(401).body("Authentication required. Please log in first.");
-            }
-
-            User user = resolveUser(auth);
+            User user = resolveUser(authHeader);
 
             if (user == null) {
                 return ResponseEntity.status(401).body("User not found. Please log in again.");
@@ -228,9 +267,9 @@ public class HackathonController {
 
     // GET single hackathon by ID
     @GetMapping("/{hackathonId}")
-    public ResponseEntity<?> getHackathonById(@PathVariable String hackathonId, Authentication auth) {
+    public ResponseEntity<?> getHackathonById(@PathVariable String hackathonId, @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            User user = resolveUser(auth);
+            User user = resolveUser(authHeader);
 
             if (user == null) {
                 return ResponseEntity.status(401).body("Authentication failed. Please log in again.");
@@ -283,12 +322,12 @@ public class HackathonController {
 
     // POST create hackathon (industry only)
     @PostMapping
-    public ResponseEntity<?> createHackathon(@RequestBody Hackathon hackathon, Authentication auth) {
+    public ResponseEntity<?> createHackathon(@RequestBody Hackathon hackathon, @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            User user = resolveUser(auth);
+            User user = resolveUser(authHeader);
 
             if (user == null) {
-                System.err.println("User resolution failed - auth is null or not OAuth2");
+                System.err.println("User resolution failed - no valid token");
                 return ResponseEntity.status(401).body("Authentication failed. Please log in again.");
             }
 
@@ -327,9 +366,9 @@ public class HackathonController {
     // PUT update hackathon (industry only)
     @PutMapping("/{hackathonId}")
     public ResponseEntity<?> updateHackathon(@PathVariable String hackathonId, @RequestBody Hackathon updatedHackathon,
-            Authentication auth) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
 
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can update hackathons");
@@ -387,9 +426,9 @@ public class HackathonController {
 
     // DELETE hackathon (industry only)
     @DeleteMapping("/{hackathonId}")
-    public ResponseEntity<?> deleteHackathon(@PathVariable String hackathonId, Authentication auth) {
+    public ResponseEntity<?> deleteHackathon(@PathVariable String hackathonId, @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        User user = resolveUser(auth);
+        User user = resolveUser(authHeader);
 
         if (user == null || !"INDUSTRY".equals(user.getUserType())) {
             return ResponseEntity.status(403).body("Only industry users can delete hackathons");

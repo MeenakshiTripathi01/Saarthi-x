@@ -5,8 +5,7 @@ import com.saarthix.jobs.model.UserProfile;
 import com.saarthix.jobs.repository.UserProfileRepository;
 import com.saarthix.jobs.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+// OAuth2 imports removed - using token-based auth only
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,17 +26,21 @@ public class UserProfileController {
     }
 
     /**
-     * Get current user's profile
+     * Get current user's profile - now uses token-based auth
      */
     @GetMapping
-    public ResponseEntity<?> getMyProfile(Authentication auth) {
-        // Check authentication
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Must be logged in to view profile");
-        }
-
-        User user = resolveUserFromOAuth(auth);
+    public ResponseEntity<?> getMyProfile(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        System.out.println("=========================================");
+        System.out.println("GET /api/profile");
+        System.out.println("AuthHeader: " + (authHeader != null ? (authHeader.length() > 50 ? authHeader.substring(0, 50) + "..." : authHeader) : "null"));
+        System.out.println("=========================================");
+        
+        // Try to resolve user from token
+        User user = resolveUser(authHeader);
+        System.out.println("Resolved user: " + (user != null ? user.getEmail() + " (type: " + user.getUserType() + ")" : "null"));
+        
         if (user == null) {
+            System.err.println("User resolution failed - returning 401");
             return ResponseEntity.status(401).body("User not found");
         }
 
@@ -53,7 +56,7 @@ public class UserProfileController {
      * Create or update user profile
      */
     @PostMapping
-    public ResponseEntity<?> saveProfile(@RequestBody Map<String, Object> profileData, Authentication auth) {
+    public ResponseEntity<?> saveProfile(@RequestBody Map<String, Object> profileData, @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             System.out.println("=========================================");
             System.out.println("RECEIVED PROFILE SAVE REQUEST");
@@ -71,16 +74,11 @@ public class UserProfileController {
             System.out.println("Preferred Locations: " + profileData.get("preferredLocations"));
             System.out.println("=========================================");
             
-            // Check authentication
-            if (auth == null || !auth.isAuthenticated()) {
-                System.err.println("ERROR: User not authenticated");
-                return ResponseEntity.status(401).body("Must be logged in to save profile");
-            }
-
-            User user = resolveUserFromOAuth(auth);
+            // Try to resolve user from token
+            User user = resolveUser(authHeader);
             if (user == null) {
-                System.err.println("ERROR: User not found in database");
-                return ResponseEntity.status(401).body("User not found");
+                System.err.println("ERROR: User not found or not authenticated");
+                return ResponseEntity.status(401).body("User not found or not authenticated");
             }
 
             System.out.println("User found: " + user.getEmail() + ", UserType: " + user.getUserType());
@@ -527,31 +525,76 @@ public class UserProfileController {
     }
 
     /**
-     * Update user profile (PUT method)
+     * Update user profile (PUT method) - now uses token-based auth
      */
     @PutMapping
-    public ResponseEntity<?> updateProfile(@RequestBody Map<String, Object> profileData, Authentication auth) {
+    public ResponseEntity<?> updateProfile(@RequestBody Map<String, Object> profileData, @RequestHeader(value = "Authorization", required = false) String authHeader) {
         // PUT is same as POST for this use case
-        return saveProfile(profileData, auth);
+        return saveProfile(profileData, authHeader);
     }
 
     /**
-     * Helper method to extract user from OAuth2 principal
+     * Helper method to resolve user from Saarthix token (token-based auth only)
      */
-    private User resolveUserFromOAuth(Authentication auth) {
-        if (auth == null || auth.getPrincipal() == null) {
+    private User resolveUser(String authHeader) {
+        System.out.println("=== UserProfileController.resolveUser ===");
+        System.out.println("AuthHeader: " + (authHeader != null ? (authHeader.length() > 50 ? authHeader.substring(0, 50) + "..." : authHeader) : "null"));
+        
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.err.println("No Bearer token found in Authorization header");
             return null;
         }
-
-        Object principal = auth.getPrincipal();
-
-        if (principal instanceof OAuth2User oauthUser) {
-            String email = oauthUser.getAttribute("email");
-            if (email != null) {
-                return userRepository.findByEmail(email).orElse(null);
+        
+        String token = authHeader.substring(7);
+        System.out.println("Token length: " + token.length());
+        
+        // Decode custom SomethingX JWT token format
+        try {
+            String[] parts = token.split("\\.");
+            System.out.println("Token parts count: " + parts.length);
+            
+            if (parts.length >= 2) {
+                // Decode the payload (first part)
+                String payload = new String(java.util.Base64.getDecoder().decode(parts[0]), 
+                    java.nio.charset.StandardCharsets.UTF_8);
+                System.out.println("Decoded payload: " + payload);
+                
+                // Parse the custom format: key:value|key:value|
+                Map<String, String> claims = new java.util.HashMap<>();
+                String[] claimPairs = payload.split("\\|");
+                for (String pair : claimPairs) {
+                    if (pair.contains(":")) {
+                        String[] keyValue = pair.split(":", 2);
+                        if (keyValue.length == 2) {
+                            claims.put(keyValue[0], keyValue[1]);
+                        }
+                    }
+                }
+                
+                System.out.println("Extracted claims: " + claims);
+                
+                // Get email from claims
+                String email = claims.get("email");
+                if (email != null) {
+                    System.out.println("Extracted email: " + email);
+                    Optional<User> userOpt = userRepository.findByEmail(email);
+                    if (userOpt.isPresent()) {
+                        System.out.println("User found: " + userOpt.get().getEmail() + " (type: " + userOpt.get().getUserType() + ")");
+                        return userOpt.get();
+                    } else {
+                        System.err.println("User not found in database for email: " + email);
+                    }
+                } else {
+                    System.err.println("Email not found in token claims");
+                }
+            } else {
+                System.err.println("Token does not have expected format (expected at least 2 parts)");
             }
+        } catch (Exception e) {
+            System.err.println("Error decoding token in UserProfileController: " + e.getMessage());
+            e.printStackTrace();
         }
-
+        
         return null;
     }
 }

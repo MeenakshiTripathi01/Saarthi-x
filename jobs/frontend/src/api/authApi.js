@@ -1,9 +1,17 @@
 import { BACKEND_URL } from '../config';
 
-// Check if user is authenticated
+// Check if user is authenticated using token
 export const checkAuth = async () => {
   try {
+    const token = localStorage.getItem('saarthixToken');
+    if (!token) {
+      return { authenticated: false };
+    }
+    
     const response = await fetch(`${BACKEND_URL}/api/user/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
       credentials: 'include'
     });
     
@@ -14,7 +22,7 @@ export const checkAuth = async () => {
     const data = await response.json();
     // Map the response to match expected format
     return {
-      authenticated: data.authenticated || true,
+      authenticated: true,
       name: data.name,
       email: data.email,
       picture: data.picture,
@@ -26,14 +34,8 @@ export const checkAuth = async () => {
   }
 };
 
-// Initiate Google login
-export const loginWithGoogle = () => {
-  // Mark that we're redirecting for OAuth
-  sessionStorage.setItem('oauthRedirect', 'true');
-  // Use relative URL so it goes through Vite proxy on port 2003
-  // This will be proxied to http://localhost:2000/oauth2/authorization/google
-  window.location.href = '/oauth2/authorization/google';
-};
+// OAuth login removed - using token-based auth from SomethingX platform only
+// Users should login through SomethingX and be redirected with token
 
 // Logout
 export const logout = async (clearAuthCallback) => {

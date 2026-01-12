@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { loginWithGoogle } from '../api/authApi';
+// OAuth login removed - using token-based auth from SomethingX
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
@@ -106,10 +106,10 @@ export default function Login() {
 
     console.log('[LOGIN] URL: /login/' + roleIntent);
     console.log('[LOGIN] Stored intent: ' + roleIntent);
-    console.log('[LOGIN] Initiating Google OAuth...');
+    console.log('[LOGIN] Redirecting to SomethingX to login...');
     
-    // Initiate Google login
-    loginWithGoogle();
+    // Redirect to SomethingX to login
+    window.location.href = 'http://localhost:3000/login';
   };
 
   const handleBackToRoleSelection = () => {

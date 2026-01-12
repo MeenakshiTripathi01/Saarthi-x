@@ -12,11 +12,32 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const loadAuth = async () => {
       try {
+        // First check if we have a Saarthix token (from SomethingX platform)
+        const saarthixToken = localStorage.getItem('saarthixToken');
+        if (saarthixToken) {
+          // If we have a token, check if we have user info stored
+          const storedUser = localStorage.getItem('saarthixUser');
+          if (storedUser) {
+            try {
+              const userData = JSON.parse(storedUser);
+              setUser(userData);
+              setIsAuthenticated(true);
+              setLoading(false);
+              return;
+            } catch (e) {
+              console.error('Error parsing stored user:', e);
+            }
+          }
+        }
+
+        // Otherwise, check token-based auth
         const authData = await checkAuth();
         if (authData.authenticated) {
           setUser(authData);
           setIsAuthenticated(true);
           console.log('User authenticated with role:', authData.userType);
+          // Store user data
+          localStorage.setItem('saarthixUser', JSON.stringify(authData));
         } else {
           setUser(null);
           setIsAuthenticated(false);
@@ -32,37 +53,33 @@ export const AuthProvider = ({ children }) => {
 
     loadAuth();
 
-    // If returning from OAuth redirect, check once more after a short delay
-    // This handles the case where session cookie is set but not immediately available
-    const isOAuthReturn = window.location.search.includes('code=') || 
-                          sessionStorage.getItem('oauthRedirect') === 'true';
-    
-    if (isOAuthReturn) {
-      sessionStorage.removeItem('oauthRedirect');
-      // Check auth again after a short delay to ensure session is established
-      // This is crucial for EXISTING users to get their role from database
-      setTimeout(() => {
-        loadAuth();
-      }, 1000); // Increased to 1000ms to ensure backend is ready
-    }
+    // OAuth redirect handling removed - using token-based auth only
   }, []); // Empty dependency array - only runs once on mount
 
   const updateAuth = (authData) => {
-    if (authData.authenticated) {
-      setUser({
+    if (authData && (authData.authenticated || authData.email)) {
+      const userData = {
         ...authData,
+        authenticated: true,
         userType: authData.userType || 'APPLICANT', // Default to APPLICANT if not specified
-      });
+      };
+      setUser(userData);
       setIsAuthenticated(true);
+      
+      // Store user data in localStorage for token-based auth
+      localStorage.setItem('saarthixUser', JSON.stringify(userData));
     } else {
       setUser(null);
       setIsAuthenticated(false);
+      localStorage.removeItem('saarthixUser');
     }
   };
 
   const clearAuth = () => {
     setUser(null);
     setIsAuthenticated(false);
+    localStorage.removeItem('saarthixToken');
+    localStorage.removeItem('saarthixUser');
   };
 
   // Helper to check if user is INDUSTRY type
